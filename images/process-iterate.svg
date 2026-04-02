@@ -1,0 +1,35 @@
+<svg width="400" height="300" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGradient3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3A6495;stop-opacity:0.15" />
+      <stop offset="100%" style="stop-color:#4A7CB5;stop-opacity:0.08" />
+    </linearGradient>
+    <linearGradient id="iconGradient3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3A6495;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#6B9AD0;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="400" height="300" fill="url(#bgGradient3)"/>
+
+  <!-- Circular arrows (iteration symbol) -->
+  <g transform="translate(200, 150)">
+    <!-- Outer circle arrow -->
+    <path d="M 0,-60 A 60 60 0 1 1 0,60 A 60 60 0 0 1 0,-60"
+          fill="none" stroke="url(#iconGradient3)" stroke-width="4"
+          stroke-dasharray="8,6"/>
+
+    <!-- Arrow heads -->
+    <path d="M 3,-60 L 15,-70 L 15,-50 Z" fill="#3A6495"/>
+    <path d="M -3,60 L -15,70 L -15,50 Z" fill="#6B9AD0"/>
+
+    <!-- Inner gear/cog teeth -->
+    <circle cx="0" cy="0" r="35" fill="none" stroke="#4A7CB5" stroke-width="3"/>
+
+    <!-- Checkmarks in center (progress indicators) -->
+    <path d="M -15,-5 L -10,0 L -5,-10" fill="none" stroke="#3A6495" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M 0,-5 L 5,0 L 10,-10" fill="none" stroke="#6B9AD0" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M -8,8 L -3,13 L 2,3" fill="none" stroke="#4A7CB5" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+</svg>

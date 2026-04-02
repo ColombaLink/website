@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800" viewBox="0 0 600 800" fill="none">
+  <!-- Background gradient -->
+  <defs>
+    <linearGradient id="primaryGrad" x1="0" y1="0" x2="600" y2="800" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" style="stop-color:#4A7CB5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3A6495;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="600" height="800" fill="url(#primaryGrad)"/>
+
+  <!-- Decorative circles -->
+  <circle cx="500" cy="160" r="170" fill="#6B9AD0" opacity="0.2"/>
+  <circle cx="100" cy="640" r="130" fill="#7AA8D4" opacity="0.15"/>
+
+  <!-- Shield/Healthcare Icon -->
+  <g transform="translate(150, 250)" opacity="0.3">
+    <path d="M150 80C150 80 90 92 90 150C90 208 150 230 150 230C150 230 210 208 210 150C210 92 150 80 150 80Z" stroke="white" stroke-width="7" fill="white" opacity="0.2"/>
+    <path d="M125 145L145 165L185 125" stroke="white" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Text -->
+  <text x="300" y="420" font-family="Arial, sans-serif" font-size="52" font-weight="bold" fill="white" text-anchor="middle">WEBSITE</text>
+  <text x="300" y="490" font-family="Arial, sans-serif" font-size="48" font-weight="600" fill="white" text-anchor="middle">+ SEO</text>
+  <text x="300" y="560" font-family="Arial, sans-serif" font-size="24" fill="rgba(255,255,255,0.9)" text-anchor="middle">Healthcare Practice</text>
+</svg>
