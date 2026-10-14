@@ -526,6 +526,60 @@ p {
   padding: 4px 12px;
 }
 
+.case-gallery {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  padding-top: 32px;
+  border-top: 1px solid var(--border);
+}
+
+.case-gallery figure {
+  margin: 0;
+}
+
+.case-gallery img {
+  width: 100%;
+  height: auto;
+  padding: 12px 8px 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(20, 28, 41, 0.06);
+}
+
+.chart-legend {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+
+.chart-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.chart-legend li::before {
+  content: "";
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--c);
+}
+
+.case-gallery figcaption {
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
 .cases-compact {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -538,29 +592,6 @@ p {
   padding: 32px;
 }
 
-.more-work {
-  margin-top: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 32px 40px;
-  border-radius: var(--radius);
-  border: 1px dashed #c3cbd8;
-  background: transparent;
-}
-
-.more-work h3 {
-  font-size: 20px;
-  font-weight: 650;
-}
-
-.more-work p {
-  margin-top: 6px;
-  color: var(--muted);
-  font-size: 16px;
-  max-width: 680px;
-}
 
 /* ---------- Industries ---------- */
 
@@ -1040,6 +1071,16 @@ p {
   filter: grayscale(0.15);
 }
 
+.team-link {
+  display: block;
+  border-radius: 50%;
+  transition: transform 0.15s ease;
+}
+
+.team-link:hover {
+  transform: translateY(-2px);
+}
+
 .team-more-badge {
   display: inline-flex;
   align-items: center;
@@ -1147,8 +1188,7 @@ p {
     grid-template-columns: 1fr;
   }
 
-  .cta-inner,
-  .more-work {
+  .cta-inner {
     flex-direction: column;
     align-items: flex-start;
   }
@@ -1209,8 +1249,8 @@ p {
     padding: 24px;
   }
 
-  .more-work {
-    padding: 24px;
+  .case-gallery {
+    grid-template-columns: 1fr;
   }
 
   .contact-form {
