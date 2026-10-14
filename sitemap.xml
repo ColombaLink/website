@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://colomba.link/en/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://colomba.link/en/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://colomba.link/de/"/>
+  </url>
+  <url>
+    <loc>https://colomba.link/de/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://colomba.link/en/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://colomba.link/de/"/>
+  </url>
+  <url>
+    <loc>https://colomba.link/en/contact/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://colomba.link/en/contact/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://colomba.link/de/contact/"/>
+  </url>
+  <url>
+    <loc>https://colomba.link/de/contact/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://colomba.link/en/contact/"/>
+    <xhtml:link rel="alternate" hreflang="de" href="https://colomba.link/de/contact/"/>
+  </url>
+</urlset>

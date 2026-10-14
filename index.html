@@ -1,1 +1,23 @@
-<!doctype html><title>Redirecting to: /de/</title><meta http-equiv="refresh" content="2;url=/de/"><meta name="robots" content="noindex"><link rel="canonical" href="https://colomba.link/de/"><body>	<a href="/de/">Redirecting from <code>/</code> to <code>/de/</code></a></body>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Colomba – Software &amp; Data Engineering Consultancy, Basel</title>
+  <meta name="robots" content="noindex">
+  <link rel="canonical" href="https://colomba.link/en/">
+  <link rel="alternate" hreflang="en" href="https://colomba.link/en/">
+  <link rel="alternate" hreflang="de" href="https://colomba.link/de/">
+  <link rel="alternate" hreflang="x-default" href="https://colomba.link/en/">
+  <script>
+    (function () {
+      var langs = navigator.languages || [navigator.language || ""];
+      var de = String(langs[0] || "").toLowerCase().indexOf("de") === 0;
+      location.replace((de ? "/de/" : "/en/") + location.hash);
+    })();
+  </script>
+  <meta http-equiv="refresh" content="0;url=/en/">
+</head>
+<body>
+  <p><a href="/en/">English</a> · <a href="/de/">Deutsch</a></p>
+</body>
+</html>
