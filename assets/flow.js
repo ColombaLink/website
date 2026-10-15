@@ -18,11 +18,11 @@
         dash: "Dashboards",
         alerts: "Alarme",
         api: "APIs &\nSchnittstellen",
-        cloud: "CLOUD · KUBERNETES",
+        cloud: "IHRE INFRASTRUKTUR · KUBERNETES",
         field: "IM FELD",
         people: "FÜR MENSCHEN & SYSTEME",
         title: "Architektur des Datenflusses",
-        desc: "Sensoren für Temperatur, CO₂, Lecks und Energie senden Daten über ein privates LoRaWAN-Gateway in eine Kubernetes-Cloud. Dort werden sie aufgenommen, als Zeitreihen gespeichert und analysiert; die Ergebnisse gehen an Dashboards, Alarme und APIs.",
+        desc: "Sensoren für Temperatur, CO₂, Lecks und Energie senden Daten über ein privates LoRaWAN-Gateway an Kubernetes auf Ihrer eigenen Infrastruktur. Dort werden sie aufgenommen, als Zeitreihen gespeichert und analysiert; die Ergebnisse gehen an Dashboards, Alarme und APIs.",
       }
     : {
         temp: "Temperature",
@@ -36,11 +36,11 @@
         dash: "Dashboards",
         alerts: "Alarms",
         api: "APIs &\nintegrations",
-        cloud: "CLOUD · KUBERNETES",
+        cloud: "YOUR INFRASTRUCTURE · KUBERNETES",
         field: "IN THE FIELD",
         people: "FOR PEOPLE & SYSTEMS",
         title: "Data flow architecture",
-        desc: "Sensors for temperature, CO₂, leaks and energy send data through a private LoRaWAN gateway to a Kubernetes cloud, where it is ingested, stored as time series and analysed; results go to dashboards, alarms and APIs.",
+        desc: "Sensors for temperature, CO₂, leaks and energy send data through a private LoRaWAN gateway to Kubernetes on your own infrastructure, where it is ingested, stored as time series and analysed; results go to dashboards, alarms and APIs.",
       };
 
   const ICONS = {

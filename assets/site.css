@@ -132,13 +132,14 @@ p {
 .nav {
   display: flex;
   align-items: center;
-  gap: 28px;
+  gap: 24px;
 }
 
 .nav a {
   color: var(--ink-2);
   font-size: 15px;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .nav a:hover {
@@ -604,6 +605,29 @@ p {
   border-left: 2px solid var(--accent);
   border-bottom: 2px solid var(--accent);
   transform: rotate(-45deg);
+}
+
+.proof-note {
+  margin-top: 32px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.proof-note svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.footer-note {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #7d8aa0;
 }
 
 /* ---------- Case studies ---------- */
@@ -1562,7 +1586,7 @@ p {
   }
 }
 
-@media (max-width: 860px) {
+@media (max-width: 1000px) {
   .nav {
     display: none;
     position: absolute;
@@ -1608,7 +1632,9 @@ p {
     display: inline-flex;
     align-items: center;
   }
+}
 
+@media (max-width: 860px) {
   .about-lead,
   .contact-grid {
     grid-template-columns: 1fr;
