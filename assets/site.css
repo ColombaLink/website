@@ -338,6 +338,189 @@ p {
   background: var(--slate);
 }
 
+.hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
+  gap: 24px 56px;
+  align-items: center;
+}
+
+.hero-grid h1 {
+  font-size: clamp(38px, 4.3vw, 56px);
+}
+
+.hero-grid .capabilities {
+  grid-column: 1 / -1;
+}
+
+/* ---------- Hero network graphic ---------- */
+
+.hero-art {
+  position: relative;
+}
+
+.net-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.net-dot {
+  fill: #d6dce6;
+}
+
+.net-orbit {
+  fill: none;
+  stroke: #c3cddd;
+  stroke-width: 1;
+  stroke-dasharray: 2 6;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: net-spin 24s linear infinite;
+}
+
+.net-orbit-slow {
+  stroke-dasharray: 1 9;
+  animation-duration: 40s;
+  animation-direction: reverse;
+}
+
+.net-links path {
+  fill: none;
+  stroke: #cbd3df;
+  stroke-width: 1.2;
+}
+
+.net-node circle,
+.net-node rect {
+  fill: #fff;
+  stroke: #9aa6b8;
+  stroke-width: 1.5;
+}
+
+.net-gw circle {
+  stroke: var(--slate);
+}
+
+.net-node .net-inner {
+  fill: var(--slate);
+  stroke: none;
+}
+
+.net-core circle {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.net-core .net-inner {
+  fill: var(--accent);
+}
+
+.net-core .net-pulse {
+  fill: none;
+  stroke: var(--accent);
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.net-core.hit .net-pulse {
+  animation: net-pulse 0.9s ease-out;
+}
+
+.net-out rect {
+  stroke: var(--slate);
+}
+
+.net-out.hit rect {
+  animation: net-light 0.8s ease-out;
+}
+
+.net-edge.hit circle,
+.net-gw.hit circle:first-child {
+  animation: net-blink 0.5s ease-out;
+}
+
+.net-toggle {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--slate);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+}
+
+.net-toggle:hover,
+.net-toggle:focus-visible {
+  opacity: 1;
+}
+
+.net-toggle svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+.net-toggle .i-play,
+.hero-art.is-paused .net-toggle .i-pause {
+  display: none;
+}
+
+.hero-art.is-paused .net-toggle .i-play {
+  display: block;
+}
+
+.hero-art.is-paused .net-orbit {
+  animation-play-state: paused;
+}
+
+@keyframes net-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes net-pulse {
+  from {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2.2);
+  }
+}
+
+@keyframes net-light {
+  0% {
+    fill: var(--accent-soft);
+    stroke: var(--accent);
+  }
+  100% {
+    fill: #fff;
+    stroke: var(--slate);
+  }
+}
+
+@keyframes net-blink {
+  0% {
+    stroke: var(--accent);
+  }
+  100% {
+    stroke: #9aa6b8;
+  }
+}
+
 /* ---------- Services ---------- */
 
 .grid {
@@ -594,6 +777,244 @@ p {
   padding: 32px;
 }
 
+
+/* ---------- Architecture flow ---------- */
+
+.flow-section {
+  background: var(--band);
+  color: var(--band-text);
+}
+
+.flow-section .eyebrow {
+  color: var(--periwinkle);
+}
+
+.flow-section .section-head h2 {
+  color: #fff;
+}
+
+.flow-section .section-head p {
+  color: var(--band-muted);
+}
+
+.flow {
+  margin: 0;
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius);
+  background: radial-gradient(120% 90% at 50% 40%, #1b2638 0%, var(--band) 70%);
+}
+
+.flow-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.flow-svg.flow-tall {
+  max-width: 440px;
+  margin: 0 auto;
+}
+
+.flow-svg text {
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  fill: var(--band-muted);
+}
+
+.flow-svg.flow-tall text {
+  font-size: 14px;
+}
+
+.flow-svg .flow-caption {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  fill: #6f7d94;
+}
+
+.flow-cloud rect {
+  fill: rgba(180, 196, 226, 0.035);
+  stroke: rgba(180, 196, 226, 0.22);
+  stroke-width: 1.2;
+  stroke-dasharray: 6 6;
+}
+
+.flow-edges path {
+  fill: none;
+  stroke: rgba(180, 196, 226, 0.28);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 7;
+  animation: flow-dash 1.4s linear infinite;
+}
+
+.flow-node .disc {
+  fill: #1c2636;
+  stroke: rgba(180, 196, 226, 0.4);
+  stroke-width: 1.5;
+}
+
+.flow-node .ring {
+  fill: none;
+  stroke: var(--periwinkle);
+  stroke-width: 2;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.flow-node .icon * {
+  fill: none;
+  stroke: var(--periwinkle);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.flow-node.hit .ring {
+  animation: flow-ring 0.7s ease-out;
+}
+
+.flow-node.hit .disc {
+  animation: flow-glow 0.7s ease-out;
+}
+
+.flow-node.alarm .ring {
+  stroke: #ff6b6b;
+  animation: flow-ring 1s ease-out;
+}
+
+.flow-node.alarm .disc {
+  animation: flow-alarm 1s ease-out;
+}
+
+.pigeon .pg-logo {
+  filter: drop-shadow(0 0 0.6px rgba(230, 236, 246, 0.6));
+}
+
+.pigeon .pg-body,
+.pigeon .pg-pupil {
+  fill: #758394;
+}
+
+.pigeon .pg-belly,
+.pigeon .pg-beak {
+  fill: #b5c5e0;
+}
+
+.pigeon .pg-iris {
+  fill: #e9c6af;
+}
+
+.pigeon .pg-wing {
+  fill: var(--periwinkle);
+  stroke: var(--band);
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+
+.pigeon .pg-packet rect {
+  stroke: var(--band);
+  stroke-width: 1;
+}
+
+.pigeon .pg-packet path {
+  fill: none;
+  stroke: var(--band);
+  stroke-width: 1;
+}
+
+.pigeon .pg-wing {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: flow-flap 0.3s ease-in-out infinite alternate;
+}
+
+.flow.is-paused .pg-wing,
+.flow.is-paused .flow-edges path {
+  animation-play-state: paused;
+}
+
+.flow-foot {
+  margin-top: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.flow-note {
+  font-size: 15px;
+  color: var(--band-muted);
+}
+
+.flow-toggle {
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--band-text);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.flow-toggle:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+@keyframes flow-dash {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+@keyframes flow-flap {
+  from {
+    transform: scaleY(1);
+  }
+  to {
+    transform: scaleY(-0.55);
+  }
+}
+
+@keyframes flow-ring {
+  from {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.75);
+  }
+}
+
+@keyframes flow-glow {
+  0% {
+    stroke: #fff;
+    fill: #26344a;
+  }
+  100% {
+    stroke: rgba(180, 196, 226, 0.4);
+    fill: #1c2636;
+  }
+}
+
+@keyframes flow-alarm {
+  0%,
+  55% {
+    stroke: #ff6b6b;
+    fill: #4a1f26;
+  }
+  100% {
+    stroke: rgba(180, 196, 226, 0.4);
+    fill: #1c2636;
+  }
+}
 
 /* ---------- Industries ---------- */
 
@@ -1102,6 +1523,14 @@ p {
 /* ---------- Responsive ---------- */
 
 @media (max-width: 1040px) {
+  .hero-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-art {
+    display: none;
+  }
+
   .grid-3 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1259,6 +1688,10 @@ p {
     grid-template-columns: 1fr;
   }
 
+  .flow {
+    padding: 12px;
+  }
+
   .footer-bottom {
     flex-direction: column;
   }
@@ -1281,6 +1714,12 @@ p {
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+
+  .pigeon .pg-wing,
+  .flow-edges path,
+  .net-orbit {
+    animation: none;
   }
 
   * {

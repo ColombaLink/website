@@ -75,13 +75,18 @@
   <main id="main">
     <!-- Hero -->
     <section class="hero">
-      <div class="container">
-        <span class="eyebrow">Software- &amp; Data-Engineering-Beratung · Basel</span>
-        <h1>Wir konzipieren, entwickeln und betreiben die Software, auf die Ihr Betrieb angewiesen ist.</h1>
-        <p class="hero-lead">Colomba unterstützt Unternehmen und Forschungsorganisationen dabei, aus grossen, komplexen Datenmengen verlässliche Plattformen zu machen, von Sensordatenströmen aus der Industrie bis zu Geo- und Forschungsdatenarchiven im Terabyte-Bereich. Wir begleiten den ganzen Weg, von der ersten Architekturanalyse bis zum produktiven Betrieb.</p>
-        <div class="hero-actions">
-          <a class="btn btn-primary" href="/de/contact/">Erstgespräch vereinbaren</a>
-          <a class="btn btn-secondary" href="#projekte">Referenzen ansehen</a>
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <span class="eyebrow">Software- &amp; Data-Engineering-Beratung · Basel</span>
+          <h1>Wir konzipieren, entwickeln und betreiben die Software, auf die Ihr Betrieb angewiesen ist.</h1>
+          <p class="hero-lead">Colomba unterstützt Unternehmen und Forschungsorganisationen dabei, aus grossen, komplexen Datenmengen verlässliche Plattformen zu machen, von Sensordatenströmen aus der Industrie bis zu Geo- und Forschungsdatenarchiven im Terabyte-Bereich. Wir begleiten den ganzen Weg, von der ersten Architekturanalyse bis zum produktiven Betrieb.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="/de/contact/">Erstgespräch vereinbaren</a>
+            <a class="btn btn-secondary" href="#projekte">Referenzen ansehen</a>
+          </div>
+        </div>
+        <div class="hero-art" data-network>
+          <button type="button" class="net-toggle" data-network-toggle aria-pressed="false" aria-label="Animation pausieren" data-pause="Animation pausieren" data-play="Animation abspielen"><svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="5" width="3.5" height="14" rx="1"/><rect x="13.5" y="5" width="3.5" height="14" rx="1"/></svg><svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.87l11-6.5a1 1 0 0 0 0-1.74l-11-6.5A1 1 0 0 0 8 5.5Z"/></svg></button>
         </div>
         <ul class="capabilities" aria-label="Kernkompetenzen">
           <li>Industrial IoT</li>
@@ -163,6 +168,24 @@
               <li>Wartung und kontinuierliche Weiterentwicklung nach dem Launch</li>
             </ul>
           </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Architektur -->
+    <section class="section flow-section" id="architektur">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">Architektur</span>
+          <h2>Vom Sensor bis zum Entscheid, durchgängig.</h2>
+          <p>Wir bauen jede Etappe: Firmware auf dem Gerät, ein privates Funknetz, Datenaufnahme und Speicherung im grossen Massstab, Analysen und Alarme sowie die Dashboards und Schnittstellen, mit denen Menschen arbeiten.</p>
+        </div>
+        <figure class="flow" data-flow>
+          <noscript><p class="flow-note">Sensoren → LoRaWAN-Gateway → Datenaufnahme → Zeitreihenspeicher → Analyse &amp; ML → Dashboards, Alarme und APIs.</p></noscript>
+        </figure>
+        <div class="flow-foot">
+          <p class="flow-note">Colomba ist Italienisch für Taube. Unsere tragen die Datenpakete.</p>
+          <button type="button" class="flow-toggle" data-flow-toggle aria-pressed="false" data-pause="Animation pausieren" data-play="Animation abspielen">Animation pausieren</button>
         </div>
       </div>
     </section>
@@ -453,5 +476,7 @@
   </footer>
 
   <script src="/assets/site.js" defer></script>
+  <script src="/assets/flow.js" defer></script>
+  <script src="/assets/network.js" defer></script>
 </body>
 </html>

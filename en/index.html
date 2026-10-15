@@ -75,13 +75,18 @@
   <main id="main">
     <!-- Hero -->
     <section class="hero">
-      <div class="container">
-        <span class="eyebrow">Software &amp; data engineering consultancy · Basel</span>
-        <h1>We design, build and run the software your operations depend on.</h1>
-        <p class="hero-lead">Colomba helps companies and research organisations turn big, complex data, from industrial sensor streams to multi-terabyte geospatial and scientific archives, into dependable platforms. We cover the whole path, from the first architecture review to production.</p>
-        <div class="hero-actions">
-          <a class="btn btn-primary" href="/en/contact/">Book an initial consultation</a>
-          <a class="btn btn-secondary" href="#work">View case studies</a>
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <span class="eyebrow">Software &amp; data engineering consultancy · Basel</span>
+          <h1>We design, build and run the software your operations depend on.</h1>
+          <p class="hero-lead">Colomba helps companies and research organisations turn big, complex data, from industrial sensor streams to multi-terabyte geospatial and scientific archives, into dependable platforms. We cover the whole path, from the first architecture review to production.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="/en/contact/">Book an initial consultation</a>
+            <a class="btn btn-secondary" href="#work">View case studies</a>
+          </div>
+        </div>
+        <div class="hero-art" data-network>
+          <button type="button" class="net-toggle" data-network-toggle aria-pressed="false" aria-label="Pause animation" data-pause="Pause animation" data-play="Play animation"><svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="5" width="3.5" height="14" rx="1"/><rect x="13.5" y="5" width="3.5" height="14" rx="1"/></svg><svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.87l11-6.5a1 1 0 0 0 0-1.74l-11-6.5A1 1 0 0 0 8 5.5Z"/></svg></button>
         </div>
         <ul class="capabilities" aria-label="Core capabilities">
           <li>Industrial IoT</li>
@@ -163,6 +168,24 @@
               <li>Maintenance and continuous improvement after launch</li>
             </ul>
           </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Architecture -->
+    <section class="section flow-section" id="architecture">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">Architecture</span>
+          <h2>From sensor to decision, end to end.</h2>
+          <p>We build every hop: firmware on the device, a private radio network, ingestion and storage at scale, analytics and alarms, and the dashboards and APIs people use.</p>
+        </div>
+        <figure class="flow" data-flow>
+          <noscript><p class="flow-note">Sensors → LoRaWAN gateway → ingestion → time-series storage → analytics &amp; ML → dashboards, alarms and APIs.</p></noscript>
+        </figure>
+        <div class="flow-foot">
+          <p class="flow-note">Colomba is Italian for dove. Ours carry the packets.</p>
+          <button type="button" class="flow-toggle" data-flow-toggle aria-pressed="false" data-pause="Pause animation" data-play="Play animation">Pause animation</button>
         </div>
       </div>
     </section>
@@ -453,5 +476,7 @@
   </footer>
 
   <script src="/assets/site.js" defer></script>
+  <script src="/assets/flow.js" defer></script>
+  <script src="/assets/network.js" defer></script>
 </body>
 </html>
