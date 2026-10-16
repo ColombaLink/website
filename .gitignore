@@ -2,3 +2,4 @@
 .DS_Store
 Logos.zip
 Logos/
+__pycache__/
