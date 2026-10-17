@@ -145,6 +145,7 @@ button{font:inherit;color:inherit}
 .hud-l{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:9px 13px;max-width:min(520px,62vw);min-width:0;box-shadow:var(--shadow)}
 .hud-level{font:500 11px/1.3 var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 .hud-obj{font-weight:700;font-size:15px;line-height:1.3}
+.tour-go{pointer-events:auto;margin-top:8px;font:600 14px/1.2 var(--font-body);padding:7px 10px;border-radius:8px;border:1.5px solid var(--line);background:var(--paper);color:var(--ink);max-width:100%}
 .hud-r{display:flex;gap:8px;align-items:center;pointer-events:auto}
 .hud-time{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:8px 11px;font-size:17px;box-shadow:var(--shadow);transition:color .2s}
 .hud-time.pen{color:var(--stamp)}
@@ -186,6 +187,8 @@ button{font:inherit;color:inherit}
 .knob{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:var(--paper);border:1.5px solid var(--ink);box-shadow:var(--shadow)}
 .flap-btn{pointer-events:auto;touch-action:none;width:92px;height:92px;border-radius:50%;border:0;background:var(--neck);color:var(--on-accent);font:700 17px var(--font-body);box-shadow:var(--shadow)}
 .flap-btn:active{transform:scale(.95)}
+.tbtns{display:flex;flex-direction:column;align-items:center;gap:12px;pointer-events:none}
+.sink-btn{width:64px;height:64px;font-size:14px;background:var(--paper);color:var(--ink);border:1.5px solid var(--line)}
 
 @media (max-width:520px){
   .hud-l{max-width:calc(100vw - 150px)}
@@ -202,6 +205,7 @@ button{font:inherit;color:inherit}
   <div class="hud-l">
     <div id="hud-level" class="hud-level"></div>
     <div id="hud-obj" class="hud-obj"></div>
+    <select id="tour-go" class="tour-go" aria-label="Fly to a landmark" hidden></select>
   </div>
   <div class="hud-r">
     <span id="hud-time" class="hud-time mono">0:00</span>
@@ -232,7 +236,7 @@ button{font:inherit;color:inherit}
 
 <div id="touch" class="touch" hidden>
   <div id="stick" class="stick" aria-label="Steering stick"><div id="knob" class="knob"></div></div>
-  <button id="btn-flap" class="flap-btn">Flap</button>
+  <div class="tbtns"><button id="btn-sink" class="flap-btn sink-btn" hidden>Sink</button><button id="btn-flap" class="flap-btn">Flap</button></div>
 </div>
 
 <main id="s-title" class="screen">
@@ -261,6 +265,7 @@ button{font:inherit;color:inherit}
     <div class="actions">
       <button id="btn-start" class="btn primary" disabled>Loading…</button>
       <button id="btn-continue" class="btn" hidden>Continue</button>
+      <button id="btn-tour" class="btn">Tour the city</button>
       <button id="btn-notebook" class="btn">Field notebook <span id="nb-count" class="mono"></span></button>
     </div>
     <div id="level-chips" class="levels" role="group" aria-label="Choose a level"></div>
@@ -1576,6 +1581,18 @@ const FACADE_STYLES=(()=>{
     if(!glow){for(const x0 of [14,114])for(let i=0;i<4;i++){x.fillStyle=['#c0392b','#e0b84a','#3d7a5a','#d8d2c4','#7a4f8a'][(i+(x0>100?2:0))%5];x.fillRect(x0+i*17,G+97+r()*14,12,36);}
       x.fillStyle='#8f877b';x.fillRect(0,G+137,w,14);}else for(let i=0;i<8;i++)r();},192,1136);
   const shopRoofs={pitched:roofBrown,flat:roofGrey,u:1.6,v:9.47};
+  // the University of Basel's Kollegienhaus (Roland Rohn, 1937–39): pale limestone slabs, a row of square windows on
+  // the ground floor and a band of tall narrow windows above; a tile is one 12 m bay and the whole 16 m height
+  const uniWall=glowMat((x,glow)=>{const w=256,h=448;
+    if(glow){x.fillStyle='#000';x.fillRect(0,0,w,h);}
+    else{x.fillStyle='#e9e4d5';x.fillRect(0,0,w,h);x.strokeStyle='rgba(120,110,90,.22)';x.lineWidth=1;
+      for(let y=0;y<h;y+=28){x.beginPath();x.moveTo(0,y+.5);x.lineTo(w,y+.5);x.stroke();
+        for(let i=((y/28)%2)*32;i<w;i+=64){x.beginPath();x.moveTo(i+.5,y);x.lineTo(i+.5,y+28);x.stroke();}}
+      x.fillStyle='#cfc8b6';x.fillRect(0,h-28,w,28);}
+    for(let k=0;k<4;k++){const X=18+k*62;x.fillStyle=glow?'#000':'#bdb6a4';x.fillRect(X-4,h-132,52,62);x.fillStyle=glow?'#ffd88a':'#2c333a';x.fillRect(X,h-128,44,54);}
+    x.fillStyle=glow?'#000':'#bdb6a4';x.fillRect(22,96,212,190);
+    for(let k=0;k<5;k++){const X=28+k*41;x.fillStyle=glow?'#ffd88a':'#2c333a';x.fillRect(X,104,33,174);
+      if(!glow){x.fillStyle='rgba(170,190,205,.25)';x.fillRect(X,104,33,30);}}},256,448);
   // every other high-rise: a curtain wall, eight floors and eight bays a tile; any other church: sandstone and lancets
   const highrise=glowMat((x,glow)=>{const w=256,h=256;x.fillStyle=glow?'#000':'#c3c9ce';x.fillRect(0,0,w,h);
     for(let f=0;f<8;f++)for(let b=0;b<8;b++){const lit=rng()<0.3;
@@ -1593,6 +1610,7 @@ const FACADE_STYLES=(()=>{
     badbf:{wall:badbf,pitched:copperFlat,flat:roofGrey,u:3.0,v:4.6},
     tinguely:{wall:tinguely,pitched:roofGrey,flat:roofGrey,u:2.0,v:1.6},
     moh:{wall:moh,pitched:roofGrey,flat:roofDark,u:3.6,v:6.94},
+    uni:{wall:uniWall,pitched:roofDark,flat:roofDark,u:2.4,v:4.48},
     shops1:{wall:shops('#e8d7a6',null,'#4f6f4a','#a3262b','#f3e7c8',101),...shopRoofs},
     shops2:{wall:shops('#d6d3cc','rgba(95,90,80,.22)',null,'#1f3d63','#e9eef5',202),...shopRoofs},
     shops3:{wall:shops('#e3b9a3',null,null,'#1d1f22','#d8b04a',303),...shopRoofs},
@@ -1714,6 +1732,38 @@ function rathaus(L,era,parent){
     B.add(cone6,goldMat,M4(Mp,0,top-0.15,0,0.08,1.6,0.08));B.add(sphere8,goldMat,M4(Mp,0,top+0.55,0,0.1,0.1,0.1));}
   B.build(parent);
   landmarkLabel('Rathaus',null,'#b8392b',L.x,hM(L.peak?L.peak[2]:45)+5,L.z,0.9,era);
+}
+
+/* the University of Basel's Kollegienhaus (Roland Rohn, 1937–39), after photos: pale limestone under a deep roof
+   overhang; the entrance block stands forward on four square pillars over a wide flight of steps, Walter Eglin's
+   mosaic "Sendung" (1942–48) on the wall behind them and Carl Gutknecht's relief "Jüngling mit Pegasus" (1939) by
+   the door. Laid on swisstopo's model of the building: along its eaves, and on the wall with the main door */
+function university(U,parent){
+  const B=Batch(),wood=stdMat({color:0x4d3e33,roughness:.9}),stone=stdMat({color:0xe6e0d0,flatShading:true});
+  const mosaic=stdMat({roughness:.6,map:canvasTexture(512,96,(x,w,h)=>{x.fillStyle='#8f8a7e';x.fillRect(0,0,w,h);
+    const cols=['#d9b23b','#3f7a4f','#b8402d','#2f5f8f','#e9dfc8','#6b4a7a','#c9773a'];
+    for(let k=0;k<30;k++){x.fillStyle=cols[k%cols.length];const X=rng()*w,Y=12+rng()*(h-24),Wd=8+rng()*34,Hd=24+rng()*56;
+      if(k%3===0){x.beginPath();x.moveTo(X,Y+Hd/2);x.lineTo(X+Wd/2,Y-Hd/2);x.lineTo(X+Wd,Y+Hd/2);x.fill();}else x.fillRect(X,Y-Hd/2,Wd,Hd);}
+    for(let i=0;i<5000;i++){x.fillStyle=rng()<0.5?'rgba(0,0,0,.13)':'rgba(255,255,255,.1)';x.fillRect(rng()*w,rng()*h,2,2);}},false)});
+  const relief=stdMat({map:canvasTexture(64,80,(x,w,h)=>{x.fillStyle='#ddd5c2';x.fillRect(0,0,w,h);x.fillStyle='#b9ae95';
+    x.beginPath();x.ellipse(36,44,16,8,-0.2,0,Math.PI*2);x.fill();x.fillRect(22,48,4,22);x.fillRect(44,46,4,22);   // Pegasus
+    x.beginPath();x.moveTo(30,40);x.lineTo(14,14);x.lineTo(40,34);x.fill();x.beginPath();x.arc(52,32,6,0,Math.PI*2);x.fill();
+    x.fillRect(10,30,6,30);x.beginPath();x.arc(13,25,5,0,Math.PI*2);x.fill();},false)});   // the youth beside it
+  // the roof reaches 1.5 m out over every wall
+  const E=U.eaves;
+  for(let k=0;k+6<E.length;k+=7){const [ax,az,bx,bz,h,nx,nz]=E.slice(k,k+7),L=Math.hypot(bx-ax,bz-az);
+    B.add(boxC,wood,M4(frameOf((ax+bx)/2+nx*0.15,(az+bz)/2+nz*0.15,Math.atan2(nx,nz)),0,hM(h)+0.02,0,L+0.32,0.07,0.32));}
+  // the entrance: the upper block standing forward on its pillars, the mosaic behind, the steps up to it
+  const [dx,dz,ang,eh,wl]=U.door,M=frameOf(dx,dz,ang),top=hM(eh),low=hM(5.4),wd=Math.min(3.6,wl*0.8),pod=0.14;
+  B.add(boxC,stone,M4(M,0,(low+top)/2,0.35,wd+0.3,top-low,0.7));
+  B.add(boxC,wood,M4(M,0,top+0.02,0.85,wd+0.62,0.07,0.32));
+  for(const sx of [-1,1])B.add(boxC,wood,M4(M,sx*(wd/2+0.3),top+0.02,0.35,0.32,0.07,1.0));
+  B.add(planeGeo,mosaic,M4(M,0,(pod+low)/2,0.04,wd,low-pod,1));
+  B.add(planeGeo,relief,M4(M,wd/2-0.35,pod+0.75,0.05,0.38,0.66,1));
+  for(let k=0;k<4;k++)B.add(boxGeo,stone,M4(M,-wd/2+0.25+(wd-0.5)*k/3,pod,0.6,0.22,low-pod,0.22));
+  B.add(boxGeo,stone,M4(M,0,0,0.375,wd+0.6,pod,0.75));
+  for(let k=0;k<3;k++)B.add(boxGeo,stone,M4(M,0,0,0.81+k*0.12,wd+0.6+k*0.2,pod-(k+1)*0.035,0.12));
+  B.build(parent);
 }
 
 /* Basel SBB (Emil Faesch and Emanuel La Roche, 1907), after photos: the ticket hall's huge glazed arch under a green
@@ -2376,8 +2426,11 @@ const G1_TODAY={x:T1.x,z:T1.z,h:T1.top},G2_TODAY={x:T2.x,z:T2.z,h:T2.top};
 const towerA_today=addAntenna(G1_TODAY,'Roche Tower',TODAY,'today'),towerB_today=addAntenna(G2_TODAY,'Messeturm',TODAY,'today');
 landmarkLabel('Mittlere Brücke',null,'#b4553f',0,9,0,0.8,'today');
 if(PL.sbb)landmarkLabel('Basel SBB',null,'#3b82c4',PL.sbb[0],12,PL.sbb[1],0.9,'today');
-const roofsAround=(x,z,r)=>{let t=0;for(let dx=-r;dx<=r;dx+=0.4)for(let dz=-r;dz<=r;dz+=0.4)t=Math.max(t,cityToday.topAt(x+dx,z+dz));return t;};
+const RED_UNI='#a5193c';
+const roofsAround=(x,z,r,c=cityToday)=>{let t=0;for(let dx=-r;dx<=r;dx+=0.4)for(let dz=-r;dz<=r;dz+=0.4)t=Math.max(t,c.topAt(x+dx,z+dz));return t;};
 if(PL.moh)landmarkLabel('Meret Oppenheim Hochhaus',null,'#7d8287',PL.moh[0],roofsAround(PL.moh[0],PL.moh[1],4)+3,PL.moh[1],0.8,'today');   // over its top, not its plinth
+if(BASEL.iconic.uni){university(BASEL.iconic.uni,TODAY);
+  if(PL.uni)landmarkLabel('Universität Basel','Kollegienhaus',RED_UNI,PL.uni[0],roofsAround(PL.uni[0],PL.uni[1],6)+3,PL.uni[1],0.9,'today');}
 landmarkLabel('Schützenmattpark',null,'#4caf6a',PL.schuetzenmatt[0],10,PL.schuetzenmatt[1],0.8,'today');
 
 /* ---------- Basel in 1615, built the first time the time machine is used ---------- */
@@ -2402,6 +2455,8 @@ function build1615(){
   towerB_1615=addAntenna(G2_1615,'Münster gateway',Y1615,'1615');
   landmarkLabel('Rheinbrücke','the only bridge in 1615','#b4553f',0,10,0,0.8,'1615');
   landmarkLabel('Schützenmatte','the shooting meadow','#4caf6a',PL.schuetzenmatt[0],10,PL.schuetzenmatt[1],0.8,'1615');
+  // the university before the Kollegienhaus: the college on the Rheinsprung, its home from 1460 until 1939
+  if(PL.alte_uni)landmarkLabel('Universität Basel','the college on the Rheinsprung, since 1460',RED_UNI,PL.alte_uni[0],roofsAround(PL.alte_uni[0],PL.alte_uni[1],3,city1615)+3,PL.alte_uni[1],0.85,'1615');
   groundTex1615=groundTexture(BASEL1615.ground.src,BASEL1615.ground.fallback);waterMask1615=texLoader.load(BASEL1615.ground.water);
 }
 
@@ -3080,7 +3135,7 @@ async function buildL5(L,st){
 
 /* ===================== 6. Flight, camera, per-frame updates ===================== */
 const keys=new Set();
-const touch={x:0,y:0};
+const touch={x:0,y:0,up:0,down:0};   // up / down: the Flap and Sink buttons held during the tour
 function inTurn(){return ((keys.has('a')||keys.has('arrowleft'))?1:0)-((keys.has('d')||keys.has('arrowright'))?1:0)-touch.x;}
 function inClimb(){return ((keys.has('w')||keys.has('arrowup'))?1:0)-((keys.has('s')||keys.has('arrowdown'))?1:0)+touch.y;}
 function forwardOf(yaw,pitch,out){const cp=Math.cos(pitch);return out.set(-Math.sin(yaw)*cp,Math.sin(pitch),-Math.cos(yaw)*cp);}
@@ -3136,6 +3191,7 @@ function updateBird(dt){
   bird.g.position.copy(P.pos);bird.g.rotation.set(P.pitch,P.yaw,P.roll,'YXZ');
   let amp=0.32,rate=7;
   if(P.flapT>0){amp=0.95;rate=20;}else if(G.mode==='play'&&!G.hold&&inClimb()>0.2){amp=0.7;rate=13;}
+  else if(G.mode==='tour'){const sp=G.tour.glide?0.6:Math.min(1,Math.abs(G.tour.v)/18);amp=0.95-0.4*sp;rate=17-7*sp;}   // hovering: fast, full beats
   P.fold+=((P.perched?1:0)-P.fold)*Math.min(1,dt*6);
   P.phase+=dt*rate;
   const a=Math.sin(P.phase)*amp*(1-P.fold)-0.3*P.fold;
@@ -3200,6 +3256,7 @@ function loop(){
   requestAnimationFrame(loop);
   const dt=Math.min(clock.getDelta(),0.05);G.clock+=dt;
   if(G.mode==='play'){updateTweens(dt);updatePlay(dt);}
+  else if(G.mode==='tour'){updateTweens(dt);tourFly(dt);}
   else if(G.mode==='brief'||G.mode==='done'){hover(dt);animateItems(dt);}
   else if(G.mode!=='paused')circle(dt);
   if(G.mode!=='paused'){updateBird(dt);updateCamera(dt);}
@@ -3260,6 +3317,71 @@ function unloadLevel(){
   towerA.ant.visible=true;
   for(const T of [towerA,towerB]){T.tipMat.emissive.set(0xff5a3c);T.tipMat.color.set(0xff5a3c);}
   G.objText='';G.objTarget=null;G.lastSec=-1;
+}
+/* the tour: no level and no clock, just Basel. The pigeon hovers on the spot, wings beating, and goes where it is
+   steered: W / S (or up and down) forward and back, A / D turn, Space up, Shift down; the list flies to a landmark */
+function tourSpots(){
+  const L=BASEL.landmarks,list=[],add=(name,p,h,only)=>{if(p&&!(only&&era!==only))list.push({name,x:p[0],z:p[1],h});};
+  add('Universität Basel (Kollegienhaus)',PL.uni,hM(16),'today');
+  add('Universität Basel (the college, 1460)',PL.alte_uni,city1615&&PL.alte_uni?roofsAround(PL.alte_uni[0],PL.alte_uni[1],3,city1615):hM(18),'1615');
+  add('Rathaus and Marktplatz',L.rathaus&&[L.rathaus.x,L.rathaus.z],hM(45));
+  add('Basler Münster',L.muenster&&[L.muenster.x,L.muenster.z],hM(65));
+  add('Mittlere Brücke',[0,0],1);
+  add('Spalentor',L.spalentor&&[L.spalentor.x,L.spalentor.z],hM(40));
+  add('Barfüsserplatz',PL.barfi,1);
+  add('Elisabethenkirche',L.elisabethen&&[L.elisabethen.x,L.elisabethen.z],hM(74),'today');
+  add('Basel SBB',PL.sbb,hM(32),'today');
+  add('Meret Oppenheim Hochhaus',PL.moh,hM(88),'today');
+  add('Messe Basel',PL.messeplatz,hM(105),'today');
+  add('Roche Towers',BASEL.towers.roche2&&[BASEL.towers.roche2.x,BASEL.towers.roche2.z],hM(205),'today');
+  add('Museum Tinguely',PL.tinguely,1,'today');
+  return list;
+}
+function startTour(){
+  unloadLevel();resetPigeon();camPos.set(SPAWN.x,SPAWN.y+5,SPAWN.z+14);
+  G.mode='tour';G.tour={v:0,glide:null};show(null);Sound.init();$('btn-sink').hidden=false;
+  $('hud-level').textContent=`Tour · ${NAMES.era}`;
+  $('hud-obj').textContent=COARSE?'Drag the stick to fly and turn · hold Flap to rise, Sink to drop':'W / S forward and back · A / D turn · Space up · Shift down · Esc to leave';
+  $('hud-time').hidden=true;
+  const sel=$('tour-go');sel.replaceChildren(new Option('Fly to…',''),...tourSpots().map((p,i)=>new Option(p.name,String(i))));sel.hidden=false;
+  setHud(true);Sound.coo();
+}
+function tourGo(i){   // glide over to a landmark and hover a little below its label, off to one side of it
+  const p=tourSpots()[i];if(!p||!G.tour)return;
+  const a0=Math.atan2(P.pos.x-p.x,P.pos.z-p.z),from=P.pos.clone();let best=null;
+  // of the spots around it, the one nearest the way we came with nothing tall underneath
+  for(const d of [18,24])for(let k=-3;k<=3;k++){const a=a0+k*0.5;
+    const x=clamp(p.x+Math.sin(a)*d,WORLD.x0,WORLD.x1),z=clamp(p.z+Math.cos(a)*d,WORLD.z0,WORLD.z1);
+    const y=Math.max(p.h-1,6,topAt(x,z,1.5)+2.5),cost=(y-Math.max(p.h-1,6))*2+Math.abs(k)*1.5+(d-18)*0.3;
+    if(!best||cost<best.cost)best={x,y,z,a:Math.atan2(x-p.x,z-p.z),cost};}
+  const to=new V3(best.x,best.y,best.z);
+  // arc up over anything standing in the way; the lift is full mid-glide and fades out at both ends
+  let lift=0;
+  for(let k=1;k<24;k++){const e=k/24,x=from.x+(to.x-from.x)*e,z=from.z+(to.z-from.z)*e,y=from.y+(to.y-from.y)*e;
+    lift=Math.max(lift,(topAt(x,z,1.5)+3-y)/Math.max(0.3,Math.sqrt(Math.sin(Math.PI*e))));}
+  // turned a little off the landmark, so the chase camera sees it beside the pigeon, not behind it
+  G.tour.glide={from,to,lift,t:0,dur:clamp(from.distanceTo(to)/70,1.4,4)+lift/40,yaw:best.a+0.3,travel:Math.atan2(from.x-to.x,from.z-to.z)};
+  G.tour.v=0;P.vy=0;
+}
+function tourFly(dt){
+  const T=G.tour;
+  if(T.glide){const g=T.glide;g.t=Math.min(1,g.t+dt/g.dur);const e=g.t*g.t*(3-2*g.t);
+    P.pos.lerpVectors(g.from,g.to,e);P.pos.y+=g.lift*Math.sqrt(Math.sin(Math.PI*e));
+    P.yaw=lerpAngle(P.yaw,e<0.75?g.travel:g.yaw,Math.min(1,dt*3));P.roll*=Math.exp(-dt*4);P.pitch+=(0.15-P.pitch)*Math.min(1,dt*3);
+    if(g.t>=1)T.glide=null;return;}
+  const turn=clamp(inTurn(),-1,1),fwd=clamp(inClimb(),-1,1),up=((keys.has(' ')||touch.up)?1:0)-((keys.has('shift')||keys.has('c')||touch.down)?1:0);
+  P.yaw+=turn*1.7*dt;
+  T.v+=((fwd>0?18:7)*fwd-T.v)*Math.min(1,dt*2.2);
+  P.vy+=(up*9-P.vy)*Math.min(1,dt*3);
+  P.pitch+=(0.3*(1-Math.abs(T.v)/18)+0.15*P.vy/9-P.pitch)*Math.min(1,dt*4);   // upright while hovering
+  P.roll+=(turn*0.45-P.roll)*Math.min(1,dt*4);
+  forwardOf(P.yaw,0,FWD);const px0=P.pos.x,pz0=P.pos.z;
+  P.pos.addScaledVector(FWD,T.v*dt);P.pos.y+=P.vy*dt;
+  if(P.pos.y<1.4){P.pos.y=1.4;if(P.vy<0)P.vy=0;}
+  if(P.pos.y>150){P.pos.y=150;if(P.vy>0)P.vy=0;}
+  P.pos.x=clamp(P.pos.x,WORLD.x0,WORLD.x1);P.pos.z=clamp(P.pos.z,WORLD.z0,WORLD.z1);
+  if(G.bonkCool>0)G.bonkCool-=dt;
+  if(collide(P.pos,px0,pz0)){T.v*=-0.25;P.vy=Math.max(P.vy,2);if(G.bonkCool<=0){Sound.bonk();G.bonkCool=0.6;}}
 }
 function resetPigeon(){bird.g.visible=true;P.pos.copy(SPAWN);P.yaw=0;P.pitch=0;P.roll=0;P.boost=0;P.vy=0;P.perched=null;P.flapQueued=false;}
 function startLevel(id){
@@ -3414,11 +3536,11 @@ function chooseEra(e){
   const msg=$('load-msg');if(e==='1615'&&!city1615){msg.hidden=false;msg.textContent='Travelling to 1615…';}
   setTimeout(()=>{setEra(e);save.era=e;persist();applyTheme();msg.hidden=true;renderTitle();},40);
 }
-function toTitle(){unloadLevel();G.mode='title';G.run=null;setHud(false);resetPigeon();renderTitle();show('s-title');}
+function toTitle(){unloadLevel();G.mode='title';G.run=null;G.tour=null;$('hud-time').hidden=false;$('tour-go').hidden=true;$('btn-sink').hidden=true;touch.up=touch.down=0;setHud(false);resetPigeon();renderTitle();show('s-title');}
 function pause(){if(G.mode!=='play')return;G.mode='paused';$('pause-title').textContent=LEVELS[G.lv-1].name;show('s-pause');$('btn-resume').focus({preventScroll:true});}
 function resume(){if(G.mode!=='paused')return;G.mode='play';show(null);clock.getDelta();}
 function setMuted(m){Sound.setMuted(m);$('btn-mute').textContent=`Sound: ${m?'off':'on'}`;$('mute-wave').style.display=m?'none':'';$('mute-x').style.display=m?'':'none';$('hud-mute').setAttribute('aria-label',m?'Turn sound on':'Mute sound');}
-function flap(){if(G.mode==='play'&&!G.hold&&!G.cine)P.flapQueued=true;}
+function flap(){if(G.mode==='tour'){P.vy=Math.max(P.vy,6);return;}if(G.mode==='play'&&!G.hold&&!G.cine)P.flapQueued=true;}
 function splat(){   // Agent Coo hit a Roche Tower: feathers everywhere, then the level starts again
   if(G.splatting)return;
   G.splatting=true;G.hold=true;bird.g.visible=false;
@@ -3449,12 +3571,13 @@ function renderSF(){
 /* ---------- input ---------- */
 addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();
-  if(G.mode==='play'&&['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k))e.preventDefault();
+  if((G.mode==='play'||G.mode==='tour')&&['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k))e.preventDefault();
   keys.add(k);
   if(e.repeat)return;
   const onButton=e.target&&e.target.tagName==='BUTTON';
   if(k==='m'){setMuted(!save.muted);return;}
   if(k==='n'){chooseSky(NIGHT?'day':'night');return;}
+  if(G.mode==='tour'){if(k==='escape'||k==='p')toTitle();else if(k===' ')flap();return;}
   if(G.mode==='play'){
     if(k===' '){flap();return;}
     if(k==='escape'||k==='p'){pause();return;}
@@ -3485,6 +3608,9 @@ stick.addEventListener('pointermove',e=>{if(e.pointerId===stickId)moveStick(e);}
 const endStick=e=>{if(e.pointerId===stickId){stickId=null;touch.x=0;touch.y=0;knob.style.transform='';}};
 stick.addEventListener('pointerup',endStick);stick.addEventListener('pointercancel',endStick);
 $('btn-flap').addEventListener('pointerdown',e=>{e.preventDefault();flap();});
+for(const [id,k] of [['btn-flap','up'],['btn-sink','down']]){const b=$(id);   // held, for the tour
+  b.addEventListener('pointerdown',e=>{e.preventDefault();touch[k]=1;try{b.setPointerCapture(e.pointerId);}catch(_){}});
+  for(const ev of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(ev,()=>{touch[k]=0;});}
 
 $('btn-start').addEventListener('click',()=>{Sound.init();G.run={times:{}};startLevel(1);});
 $('btn-continue').addEventListener('click',()=>{Sound.init();G.run={times:{}};startLevel(nextUnfinished()||1);});
@@ -3501,7 +3627,9 @@ $('btn-nb-close').addEventListener('click',()=>{if(G.nbReturn==='s-title')render
 $('btn-resume').addEventListener('click',resume);
 $('btn-restart').addEventListener('click',()=>startLevel(G.lv));
 $('btn-quit').addEventListener('click',toTitle);
-$('hud-pause').addEventListener('click',pause);
+$('hud-pause').addEventListener('click',()=>G.mode==='tour'?toTitle():pause());
+$('btn-tour').addEventListener('click',startTour);
+$('tour-go').addEventListener('change',e=>{const v=e.target.value;if(v!=='')tourGo(+v);e.target.value='';e.target.blur();});
 $('hud-mute').addEventListener('click',()=>setMuted(!save.muted));
 $('btn-mute').addEventListener('click',()=>{Sound.init();setMuted(!save.muted);});
 $('sf-send').addEventListener('click',sendL4);
@@ -3516,8 +3644,8 @@ $('btn-reset').addEventListener('click',()=>{
 
 /* ---------- boot ---------- */
 if(DEBUG)window.__sp={G,P,LEVELS,startLevel,beginPlay,completeLevel,startQuiz,sendL4,getSave:()=>save,V3,renderer,scene,camera,topAt,collide,setEra,chooseEra,splatHit,
-  get city(){return city},get era(){return era},get G1(){return G1},get SENSORS4(){return SENSORS4},get splatTargets(){return splatToday},feathers,ferries,trains,
-  step:(dt=1/60)=>{G.clock+=dt;if(G.mode==="play"){updateTweens(dt);updatePlay(dt);}animateWorld(dt);updateFeathers(dt);updateBird(dt);updateCamera(dt);renderer.render(scene,camera);}};
+  get city(){return city},get era(){return era},get G1(){return G1},get SENSORS4(){return SENSORS4},get splatTargets(){return splatToday},feathers,ferries,trains,bird,keys,tourGo,tourSpots,
+  step:(dt=1/60)=>{G.clock+=dt;if(G.mode==="play"){updateTweens(dt);updatePlay(dt);}else if(G.mode==="tour"){updateTweens(dt);tourFly(dt);}animateWorld(dt);updateFeathers(dt);updateBird(dt);updateCamera(dt);renderer.render(scene,camera);}};
 setMuted(save.muted);
 setEra(save.era==='1615'?'1615':'today');applyTheme();
 $('era-today').addEventListener('click',()=>chooseEra('today'));$('era-1615').addEventListener('click',()=>chooseEra('1615'));

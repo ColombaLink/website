@@ -51,8 +51,10 @@ LANDMARK_TOWERS = {"elisabethen": ("way", 407463501)}      # the Elisabethenkirc
 FACADES = [("rathaus", "relation", 7634307), ("messe1", "way", 315916587), ("kunstmuseum", "relation", 5279724),
            ("kunstneubau", "way", 295287955), ("sbb", "way", 100712891), ("badbf", "way", 100789428),
            ("tinguely", "way", 317500933), ("messe1", "relation", 18445990), ("moh", "way", 562039631),
+           ("uni", "way", 270630550),
            ("highrise", None, None), ("sacral", None, None),     # every other high-rise and church
            ("shops1", None, None), ("shops2", None, None), ("shops3", None, None), ("shops4", None, None)]
+UNI_ENTRANCE = (47.5578479, 7.5841403)   # the Kollegienhaus's main door, by Carl Gutknecht's relief (OSM)
 SHOP_STYLES = ["shops1", "shops2", "shops3", "shops4"]   # houses with shop fronts along the streets below
 # the shopping streets from Barfüsserplatz to Marktplatz (OSM names, half their width in metres) and the two squares
 SHOP_STREETS = {"Gerbergasse": 4.5, "Falknerstrasse": 6.0, "Freie Strasse": 5.0, "Streitgasse": 4.0,
@@ -1123,7 +1125,11 @@ def main(raw, work, out_js):
         if any(bb[0] <= c[0] <= bb[1] and bb[2] <= c[1] <= bb[3] and inside(c, r) for r, bb in zip(skip_rings, skip_bb)):
             stats["landmark"] += 1
             continue
-        style = next((st for r, bb, st in facade_rings if bb[0] <= c[0] <= bb[1] and bb[2] <= c[1] <= bb[3] and inside(c, r)), None)
+        style = None
+        for q in (c, centroid(max(([(p[0], p[1]) for p in f] for f in roof), key=lambda r: abs(area2(r))))):
+            style = next((st for r, bb, st in facade_rings if bb[0] <= q[0] <= bb[1] and bb[2] <= q[1] <= bb[3] and inside(q, r)), None)
+            if style is not None:      # (a wedge round a courtyard has its middle outside it: then its biggest roof)
+                break
         kind = KINDS.get(b["kind"], 0)
         g = b["ground"]
         if g is None:
@@ -1394,6 +1400,34 @@ def main(raw, work, out_js):
     # Basel SBB's front onto the Centralbahnplatz: the ticket hall's glazed arch between two clock towers. The towers
     # are the two small clusters of the hall's highest roof points, the arch is the end of its barrel vault between
     # them; the outline of the arch is read from the roof so the game can glaze it and put domes on the towers
+    # the Kollegienhaus: every eave (a wall's top edge, with its height and which way it faces) for the deep
+    # overhanging roof, the wall with the main door for the entrance hall, and the height of its highest roof
+    uni = None
+    ue = geo.local(*UNI_ENTRANCE)
+    edges = []
+    for r in frecs:
+        if FACADE_STYLES[r["kind"]] != "uni":
+            continue
+        v, loops, flags = r["verts"], r["loops"], r["walls"]
+        directed = {(l[k], l[(k + 1) % len(l)]) for l in loops for k in range(len(l))}
+        bnd = [(l[k], l[(k + 1) % len(l)]) for l in loops for k in range(len(l)) if (l[(k + 1) % len(l)], l[k]) not in directed]
+        for (a, b), f in zip(bnd, flags):
+            pa, pb = v[a], v[b]
+            L = math.dist(pa[:2], pb[:2])
+            if f and L > 1.0:
+                edges.append((pa, pb, L, ((pb[1] - pa[1]) / L, -(pb[0] - pa[0]) / L)))
+    if edges:
+        def gap(e):
+            (pa, pb, L, _) = e
+            t = max(0.0, min(1.0, ((ue[0] - pa[0]) * (pb[0] - pa[0]) + (ue[1] - pa[1]) * (pb[1] - pa[1])) / (L * L)))
+            return math.dist(ue, (pa[0] + (pb[0] - pa[0]) * t, pa[1] + (pb[1] - pa[1]) * t)), t
+        door = min(edges, key=lambda e: gap(e)[0])
+        (pa, pb, L, nrm), t = door, gap(door)[1]
+        uni = {"eaves": [v for pa, pb, L, nrm in edges for v in (round(pa[0] / S, 2), round(-pa[1] / S, 2), round(pb[0] / S, 2),
+                                                                   round(-pb[1] / S, 2), round(min(pa[2], pb[2]), 1), round(nrm[0], 3), round(-nrm[1], 3))],
+               "door": [round((pa[0] + (pb[0] - pa[0]) * t) / S, 2), round(-(pa[1] + (pb[1] - pa[1]) * t) / S, 2),
+                        round(math.atan2(nrm[0], -nrm[1]), 4), round(min(pa[2], pb[2]), 1), round(L / S, 2), round(t, 3)],
+               "top": round(max(p[2] for r in frecs if FACADE_STYLES[r["kind"]] == "uni" for p in r["verts"]), 1)}
     sbb_front = None
     node = geo.local(47.54762, 7.58964)
     halls = [r for r in frecs if FACADE_STYLES[r["kind"]] == "sbb" and math.dist(r["c"], node) < 60]
@@ -1631,8 +1665,11 @@ def main(raw, work, out_js):
     water_png = mask_png(river, RW, RH, work, "water-today")
     for br in bridges:
         del br["_ring"], br["id"], br["_obb"]
-    for k, (lat, lon) in {"sbb": (47.54762, 7.58964), "tinguely": (47.55917, 7.61234), "moh": (47.54611, 7.58697)}.items():
-        x, y = geo.local(lat, lon)     # station building, museum and the Meret Oppenheim Hochhaus, from OSM
+    for k, (lat, lon) in {"sbb": (47.54762, 7.58964), "tinguely": (47.55917, 7.61234), "moh": (47.54611, 7.58697),
+                          "uni": (47.5582338, 7.5834589), "alte_uni": (47.5588605, 7.5893384)}.items():
+        # station building, museum, the Meret Oppenheim Hochhaus, the Kollegienhaus and the Alte Universität on the
+        # Rheinsprung, the university's home from 1460 until 1939 (OSM way 137472411)
+        x, y = geo.local(lat, lon)
         places[k] = [round(x / S, 2), round(-y / S, 2)]
     if "schuetzenmatt" not in places:
         x, y = geo.local(47.55257, 7.57448)
@@ -1654,7 +1691,7 @@ def main(raw, work, out_js):
         "lod2": {"count": len(recs), "gz": base64.b64encode(packed).decode()},
         "facades": {"count": len(frecs), "gz": base64.b64encode(fpacked).decode(), "styles": FACADE_STYLES},
         "trees": b64(trees), "treeInfo": b64(tree_info),
-        "towers": towers, "landmarks": landmarks, "iconic": dict(iconic, sbb=sbb_front), "places": places, "bridges": bridges, "ferries": ferries,
+        "towers": towers, "landmarks": landmarks, "iconic": dict(iconic, sbb=sbb_front, uni=uni), "places": places, "bridges": bridges, "ferries": ferries,
         "rail": rail, "tracks": rail_lines(raw, geo), "awnings": awnings, "market": market,
         "tramTracks": tram_tracks, "trams": trams,
     }
@@ -1668,6 +1705,7 @@ def main(raw, work, out_js):
                       "bridges": [[b["name"], b["structure"], b["axis"][2] * S, b["water"]] for b in bridges],
                       "ferries": [x["name"] for x in ferries],
                       "rail": [{k: v for k, v in t.items() if k != "p"} for t in rail], "sbb_front": sbb_front,
+                      "uni": uni and {"eaves": len(uni["eaves"]) // 7, "door": uni["door"], "top": uni["top"]},
                       "awnings": len(awnings) // 4, "market": market and len(market["square"]),
                       "trams": [[t["ref"], t["op"], t["colour"], len(t["pats"]), len(t["trips"]) // 3, [[d["name"], len(d["p"]) // 2, len(d["stops"])] for d in t["dirs"]]] for t in trams],
                       "tram_tracks": len(tram_tracks),

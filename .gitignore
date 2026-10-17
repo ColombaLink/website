@@ -3,3 +3,6 @@
 Logos.zip
 Logos/
 __pycache__/
+
+# Downloaded Basel research assets and source metadata
+/data/basel-reference/
