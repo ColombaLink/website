@@ -1,12 +1,13 @@
 """Download the raw map data for Secret Pigeon's Basel.
 
-Usage: python3 -I secret-pigeon/build/fetch_data.py <output-dir> [osm] [ortho] [sb3d] [trees]
+Usage: python3 -I secret-pigeon/build/fetch_data.py <output-dir> [osm] [rail] [ortho] [sb3d] [trees]
   (no part names: all of them)
 
 Writes into <output-dir>:
   osm_buildings.json   buildings and building parts (OpenStreetMap, ODbL) via the Swiss Overpass mirror; used for
                        the landmarks and the facade buildings
   osm_extras.json      trees, bridges, ferries, water, parks and a few named places
+  osm_rail.json        railway tracks and stations, for the trains between Basel SBB and the Badischer Bahnhof
   ortho/E-N.jpg        swisstopo SWISSIMAGE at 1 m per pixel, one file per LV95 kilometre (WMS)
   sb3d/*.citygml.zip   swisstopo swissBUILDINGS3D 3.0 (CityGML, LOD2 roofs), newest release of each map sheet
   trees_bs.json        Basel's public tree register (species and age), Geodaten Kanton Basel-Stadt
@@ -72,6 +73,14 @@ out body geom;""", os.path.join(out, "osm_buildings.json"))
 out body geom({bb});""", os.path.join(out, "osm_extras.json"))
 
 
+def fetch_rail(out):
+    s, w, n, e = BBOX
+    bb = f"{s},{w},{n},{e}"
+    overpass(f"""[out:json][timeout:300][bbox:{bb}];
+(way["railway"="rail"];node["railway"="station"];);
+out body geom;""", os.path.join(out, "osm_rail.json"))
+
+
 def fetch_ortho(out):
     """The aerial photo: every LV95 kilometre the area touches, at 1 m per pixel."""
     os.makedirs(os.path.join(out, "ortho"), exist_ok=True)
@@ -134,7 +143,7 @@ def fetch_trees(out):
     print(f"wrote {path} ({len(json.loads(body))} trees)", flush=True)
 
 
-PARTS = {"osm": fetch_osm, "ortho": fetch_ortho, "sb3d": fetch_buildings, "trees": fetch_trees}
+PARTS = {"osm": fetch_osm, "rail": fetch_rail, "ortho": fetch_ortho, "sb3d": fetch_buildings, "trees": fetch_trees}
 
 if __name__ == "__main__":
     if len(sys.argv) < 2 or any(a not in PARTS for a in sys.argv[2:]):

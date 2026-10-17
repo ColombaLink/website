@@ -6,12 +6,13 @@ Usage: python3 -I secret-pigeon/build/build_city.py <raw-dir> <work-dir> <out-js
   out-js    JS file that defines `const BASEL = {...}`; assemble.py injects it into the game
 
 Buildings are swisstopo's swissBUILDINGS3D 3.0: real roof shapes and heights. OpenStreetMap supplies the landmarks,
-the buildings that get facades in the game, trees, bridges, ferries and place names.
+the buildings that get facades in the game, trees, bridges, ferries, place names and the railway tracks.
 Coordinates: swiss LV95 metres relative to the Mittlere Brücke. Game x = east / S, game z = -north / S,
 heights are multiplied by VS (a mild vertical exaggeration so landmarks read from the air).
 """
 import base64
 import gzip
+import heapq
 import json
 import math
 import os
@@ -36,10 +37,22 @@ MARKT = (-152.0, -228.0)                     # rough Marktplatz offset, refined 
 # OSM ids of landmarks: the Münster and Spalentor are hand-modelled (their outlines are dropped from the generic
 # city); the Rathaus keeps its real outline but gets its red walls and a tower in the game
 LANDMARKS = {"muenster": ("way", 137472252), "rathaus": ("relation", 7634307), "spalentor": ("relation", 3531078),
-             "elisabethen": ("way", 105047858)}
-HAND_MODELLED = {"muenster", "spalentor", "elisabethen"}
+             "elisabethen": ("way", 105047858), "stalbantor": ("way", 100700024), "stjohannstor": ("way", 144223843),
+             "kreuzgang": ("relation", 7744965), "barfuesser": ("way", 137472263), "martins": ("way", 137472347),
+             "peters": ("way", 270939309), "leonhard": ("way", 137472332), "theodor": ("way", 317500703),
+             "clara": ("way", 315883214), "prediger": ("way", 262233179), "stalbankirche": ("way", 147744346),
+             "kartaeuser": ("way", 317492467)}
+HAND_MODELLED = set(LANDMARKS) - {"rathaus"}
 LANDMARK_TOWERS = {"elisabethen": ("way", 407463501)}      # the Elisabethenkirche's tower, as an OSM building part
-RATHAUS_ID = 7634307
+# buildings that keep swisstopo's shape but get painted facades in the game; the list order is the style number
+FACADES = [("rathaus", "relation", 7634307), ("messe1", "way", 315916587), ("kunstmuseum", "relation", 5279724),
+           ("kunstneubau", "way", 295287955), ("sbb", "way", 100712891), ("badbf", "way", 100789428),
+           ("tinguely", "way", 317500933), ("messe1", "relation", 18445990), ("moh", "way", 562039631),
+           ("highrise", None, None), ("sacral", None, None)]     # the last two: every other high-rise and church
+FACADE_STYLES = sorted({f[0] for f in FACADES}, key=[f[0] for f in FACADES].index)
+# landmarks that stood in 1615 too: build_1615.py leaves the plan's own shapes out inside their outlines
+IN_1615 = ["muenster", "kreuzgang", "spalentor", "stalbantor", "stjohannstor", "rathaus", "barfuesser", "martins",
+           "peters", "leonhard", "theodor", "clara", "prediger", "stalbankirche", "kartaeuser"]
 TOWERS = {"roche2": ("way", 317511699), "messe": ("way", 315916699)}
 # swisstopo's OBJEKTART -> a small code the game uses (windows go on 0, 1 and 10)
 KINDS = {"Gebaeude Einzelhaus": 0, "Hochhaus": 1, "Sakrales Gebaeude": 2, "Kapelle": 2, "Sakraler Turm": 2,
@@ -302,6 +315,225 @@ def scan_fill(poly):
                 yield ix, iy
 
 
+def river_mask(cand, w, h, seeds, extra=()):
+    """The river on a w x h grid: candidate cells connected to a seed, plus `extra` cells, with every enclosed hole
+    (moored boats, bridge shadows, noise) filled in. Returns a bytearray of 0/1."""
+    def spread(mask, ok, start):
+        stack = [i for i in start if not mask[i] and ok(i)]
+        for i in stack:
+            mask[i] = 1
+        while stack:
+            i = stack.pop()
+            x = i % w
+            for j in (i - 1 if x > 0 else -1, i + 1 if x < w - 1 else -1, i - w, i + w):
+                if 0 <= j < w * h and not mask[j] and ok(j):
+                    mask[j] = 1
+                    stack.append(j)
+    river = bytearray(w * h)
+    spread(river, lambda i: cand[i], [y * w + x for x, y in seeds if 0 <= x < w and 0 <= y < h])
+    for i in extra:
+        river[i] = 1
+    river = close_mask(river, w, h, 4)       # seals bridge shadows and smooths the banks
+    outside = bytearray(w * h)
+    border = list(range(w)) + list(range((h - 1) * w, h * w)) + list(range(0, w * h, w)) + list(range(w - 1, w * h, w))
+    spread(outside, lambda i: not river[i], border)
+    holes = outside.translate(bytes([1, 0] + [0] * 254))
+    n = w * h
+    return bytearray((int.from_bytes(river, "big") | int.from_bytes(holes, "big")).to_bytes(n, "big"))
+
+
+def close_mask(mask, w, h, r):
+    """Morphological closing (dilate, then erode, by r cells) of a 0/1 byte grid, a row at a time as big integers."""
+    full = (1 << (8 * w)) - 1
+    rows = [int.from_bytes(mask[y * w:(y + 1) * w], "big") for y in range(h)]
+
+    def sweep(rows, grow):
+        out = []
+        for v in rows:                   # along each row
+            acc = v
+            for k in range(1, r + 1):
+                a, b = (v << 8 * k) & full, v >> 8 * k
+                acc = (acc | a | b) if grow else (acc & a & b)
+            out.append(acc)
+        res = []
+        for y in range(h):               # across the rows
+            acc = out[y]
+            for k in range(1, r + 1):
+                a, b = out[max(0, y - k)], out[min(h - 1, y + k)]
+                acc = (acc | a | b) if grow else (acc & a & b)
+            res.append(acc)
+        return res
+    rows = sweep(sweep(rows, True), False)
+    return bytearray(b"".join(v.to_bytes(w, "big") for v in rows))
+
+
+def mask_png(mask, w, h, work, name, feather=48):
+    """The river mask as a grey PNG data URL (255 = water), faded out towards the edge of the map like the ground."""
+    img = bytearray(w * h * 3)
+    for y in range(h):
+        row = mask[y * w:(y + 1) * w].translate(bytes([0, 255] + [0] * 254))
+        img[y * w * 3:(y + 1) * w * 3:3] = row
+        img[y * w * 3 + 1:(y + 1) * w * 3:3] = row
+        img[y * w * 3 + 2:(y + 1) * w * 3:3] = row
+    for y in range(h):
+        for x in (list(range(min(feather, w))) + list(range(max(feather, w - feather), w))) if feather <= y < h - feather else range(w):
+            d = min(x, y, w - 1 - x, h - 1 - y)
+            if d < feather:
+                t = d / feather
+                o = (y * w + x) * 3
+                v = int(img[o] * t * t * (3 - 2 * t))
+                img[o] = img[o + 1] = img[o + 2] = v
+    bmp, png = os.path.join(work, name + ".bmp"), os.path.join(work, name + ".png")
+    write_bmp(bmp, w, h, img)
+    subprocess.run(["sips", "-s", "format", "png", bmp, "--out", png], check=True, capture_output=True)
+    return "data:image/png;base64," + base64.b64encode(open(png, "rb").read()).decode()
+
+
+def rail_tracks(raw, geo):
+    """Two tracks for the game's trains, from Basel SBB over the Rhine to the Badischer Bahnhof and on north towards
+    Germany (DB line 4000), out of OpenStreetMap's tracks: cheapest paths along running lines that never turn back on
+    themselves, the second kept off the first one's rails so the trains pass side by side. Game units; [] without data."""
+    src = os.path.join(raw, "osm_rail.json")
+    if not os.path.exists(src):
+        return []
+    els = json.load(open(src))["elements"]
+    stations = {e["tags"].get("name"): geo.local(e["lat"], e["lon"]) for e in els if e["type"] == "node" and e.get("tags")}
+    sbb, bad = stations.get("Basel SBB"), stations.get("Basel Badischer Bahnhof")
+    if not sbb or not bad:
+        return []
+    W, E, Sth, N = AREA
+    pos, adj, wtags = {}, {}, {}
+
+    def cost(t):     # running lines first; station, yard and siding tracks only where nothing else goes
+        if t.get("usage") in ("main", "branch") and not t.get("service"):
+            return 1.0
+        return {"crossover": 1.3, "siding": 3.0, "yard": 6.0, "spur": 6.0}.get(t.get("service"), 2.0)
+
+    for w in els:
+        if w["type"] != "way":
+            continue
+        t = wtags[w["id"]] = w.get("tags", {})
+        for nid, p in zip(w["nodes"], w.get("geometry") or []):
+            if p:
+                pos[nid] = geo.local(p["lat"], p["lon"])
+        for a, b in zip(w["nodes"], w["nodes"][1:]):
+            if a in pos and b in pos:
+                c = math.dist(pos[a], pos[b]) * cost(t)
+                adj.setdefault(a, []).append((b, c, w["id"]))
+                adj.setdefault(b, []).append((a, c, w["id"]))
+
+    def heading(a, b):
+        return math.atan2(pos[b][1] - pos[a][1], pos[b][0] - pos[a][0])
+
+    def bend(h1, h2):
+        return abs(math.atan2(math.sin(h1 - h2), math.cos(h1 - h2)))
+
+    def search(start, goal, avoid, back=None):
+        """Cheapest path to a node where goal() holds, turning at most 34 degrees at each node (no reversing)."""
+        best, prev, pq = {(start, None): 0.0}, {}, [(0.0, start, None)]
+        while pq:
+            d, u, pu = heapq.heappop(pq)
+            if d > best[(u, pu)]:
+                continue
+            if goal(u):
+                out, st = [u], (u, pu)
+                while st in prev:
+                    st = prev[st]
+                    out.append(st[0])
+                return out[::-1], d
+            for v, c, _ in adj.get(u, ()):
+                h = heading(u, v)
+                if bend(heading(pu, u) if pu is not None else h if back is None else back, h) > 0.6:
+                    continue
+                c *= 30 if (min(u, v), max(u, v)) in avoid else 1
+                if d + c < best.get((v, u), 1e18):
+                    best[(v, u)], prev[(v, u)] = d + c, (u, pu)
+                    heapq.heappush(pq, (d + c, v, u))
+        return None
+
+    def way_of(a, b):
+        return next(w for v, _, w in adj[a] if v == b)
+
+    def along(pts, q):   # distance along a polyline of its point nearest to q
+        best, run = (1e18, 0.0), 0.0
+        for a, b in zip(pts, pts[1:]):
+            L = math.dist(a, b) or 1e-9
+            t = max(0.0, min(1.0, ((q[0] - a[0]) * (b[0] - a[0]) + (q[1] - a[1]) * (b[1] - a[1])) / (L * L)))
+            d = math.dist(q, (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t))
+            best = min(best, (d, run + L * t))
+            run += L
+        return best[1]
+
+    def onward(nodes, metres):   # carry on along the track past the last node, as straight as the rails go
+        got = 0.0
+        while got < metres:
+            u, pu = nodes[-1], nodes[-2]
+            nxt = sorted((bend(heading(pu, u), heading(u, v)), v) for v, _, _ in adj.get(u, ()) if v != pu)
+            if not nxt or nxt[0][0] > 0.35:
+                break
+            got += math.dist(pos[u], pos[nxt[0][1]])
+            nodes.append(nxt[0][1])
+        return got
+
+    running = {n for n, es in adj.items() if any(cost(wtags[w]) == 1.0 for _, _, w in es)}
+    tracks, avoid, taken, used, short = [], set(), set(), set(), set()
+    for _ in range(2):
+        def at_sbb(n):   # a platform track at Basel SBB that the other train does not use
+            es = adj.get(n, ())
+            return (math.dist(pos[n], sbb) < 260 and any(wtags[w].get("railway:track_ref") for _, _, w in es)
+                    and not any(w in taken or w in short for _, _, w in es))
+        near = sorted((n for n in running if math.dist(pos[n], bad) < 90 and n not in used), key=lambda n: math.dist(pos[n], bad))
+        for _attempt in range(8):
+            best = None
+            for b0 in near[:12]:     # through the Badischer Bahnhof: north to the map edge, and south to Basel SBB
+                north = search(b0, lambda n: pos[n][1] > N - 5, avoid)
+                south = north and search(b0, at_sbb, avoid, back=heading(north[0][0], north[0][1]) + math.pi)
+                if south and (best is None or north[1] + south[1] < best[0]):
+                    best = (north[1] + south[1], south[0][::-1] + north[0][1:])
+            if not best:
+                break
+            nodes = best[1][::-1]          # north end first: on past the platform, so the whole train stands at it
+            if onward(nodes, 320) >= 200:
+                break
+            short |= {w for _, _, w in adj[best[1][0]] if wtags[w].get("railway:track_ref")}   # a short track: another one
+        if not best:
+            break
+        nodes.reverse()
+        pairs = list(zip(nodes, nodes[1:]))
+        avoid |= {(min(a, b), max(a, b)) for a, b in pairs}
+        taken |= {way_of(a, b) for a, b in pairs}
+        used |= set(nodes)
+        pts = [pos[n] for n in nodes]
+        (x0, y0), (x1, y1) = pts[-2], pts[-1]
+        k = 280 / (math.dist(pts[-2], pts[-1]) or 1)     # and on beyond the map edge, out of sight
+        pts.append((x1 + (x1 - x0) * k, y1 + (y1 - y0) * k))
+        tunnels, run = [], 0.0
+        for (a, b), pa, pb in zip(pairs, pts, pts[1:]):
+            L = math.dist(pa, pb)
+            if wtags[way_of(a, b)].get("tunnel") == "yes":
+                if tunnels and abs(tunnels[-1][1] - run) < 0.01:
+                    tunnels[-1][1] = run + L
+                else:
+                    tunnels.append([run, run + L])
+            run += L
+        at_bad, run, edge = along(pts, bad), 0.0, None
+        for a, b in zip(pts, pts[1:]):
+            L = math.dist(a, b)
+            if edge is None and run + L > at_bad and not (W <= b[0] <= E and Sth <= b[1] <= N):
+                lo, hi = 0.0, 1.0           # where this segment crosses the edge of the map
+                for _ in range(30):
+                    m = (lo + hi) / 2
+                    q = (a[0] + (b[0] - a[0]) * m, a[1] + (b[1] - a[1]) * m)
+                    lo, hi = (m, hi) if W <= q[0] <= E and Sth <= q[1] <= N else (lo, m)
+                edge = run + L * lo
+            run += L
+        plat = next((wtags[w].get("railway:track_ref") for _, _, w in adj[nodes[0]] if wtags[w].get("railway:track_ref")), None)
+        tracks.append({"p": [round(v / S * (1 if i % 2 == 0 else -1), 2) for x, y in rdp(pts, 0.25) for i, v in enumerate((x, y))],
+                       "sbb": round(along(pts, sbb) / S, 2), "bad": round(at_bad / S, 2), "edge": round((edge or run) / S, 2),
+                       "tunnels": [[round(a / S, 2), round(b / S, 2)] for a, b in tunnels], "platform": plat, "len": round(run / S, 1)})
+    return tracks
+
+
 def load_3d(raw, work, geo, keep_local):
     """swissBUILDINGS3D buildings in local metres (heights still above sea level), cached in the work folder
     because parsing the CityGML takes about a minute."""
@@ -464,7 +696,7 @@ def main(raw, work, out_js):
         r = simplify_ring(r, 0.25)
         return [[round(x / S, 2), round(-y / S, 2)] for x, y in r]
 
-    iconic = {"roche1": [], "roche2": None, "messe": None, "rathaus": None}
+    iconic = {"roche1": [], "roche2": None, "messe": None}
     skip_rings = [lm_rings[k] for k in HAND_MODELLED if k in lm_rings]
     bau1 = next((o for o in outlines if o["type"] == "way" and o["id"] == 680531949), None)   # Roche Tower, Bau 1
     if bau1:
@@ -473,7 +705,7 @@ def main(raw, work, out_js):
             if inside(centroid(prt["outer"][0]), bau1["outer"][0]):
                 b, top, *_ = building_heights(prt["tags"], abs(area2(prt["outer"][0])))
                 iconic["roche1"].append({"ring": game_ring(prt["outer"][0]), "base": round(b, 1), "top": round(top, 1)})
-    for key, typ, oid in (("roche2", "way", 317511699), ("messe", "way", 315916699), ("rathaus", "relation", RATHAUS_ID)):
+    for key, typ, oid in (("roche2", "way", 317511699), ("messe", "way", 315916699)):
         o = next((o for o in outlines if o["type"] == typ and o["id"] == oid), None)
         if o:
             outer = max(o["outer"], key=lambda r: abs(area2(r)))
@@ -481,6 +713,15 @@ def main(raw, work, out_js):
             iconic[key] = {"rings": [game_ring(outer)] + [game_ring(h) for h in o["inner"]], "top": round(top, 1)}
             skip_rings.append(outer)
     skip_bb = [bbox(r) for r in skip_rings]
+    facade_rings = []
+    for key, typ, oid in FACADES:
+        o = next((o for o in outlines if o["type"] == typ and o["id"] == oid), None) if typ else None
+        if o:
+            for r in o["outer"]:
+                facade_rings.append((r, bbox(r), FACADE_STYLES.index(key)))
+    lm_bb = {k: bbox(r) for k, r in lm_rings.items()}
+    lm_heights = {k: [] for k in lm_rings}       # roof heights of the 3D model inside each landmark, and its peak
+    lm_peak = {}
 
     # OSM's building type (industrial, office, ...) at a point, for wall colours
     osm_grid = {}
@@ -526,28 +767,75 @@ def main(raw, work, out_js):
                 return vals[len(vals) // 2]
         return None
 
+    # platform roofs and train sheds: swisstopo gives some of them walls down to the ground (Basel SBB's are one big
+    # building with the Passerelle). A low roof with railway under a third of it is opened up: posts, no walls
+    rail_cells = set()
+    if os.path.exists(os.path.join(raw, "osm_rail.json")):
+        for w in json.load(open(os.path.join(raw, "osm_rail.json")))["elements"]:
+            pts = [geo.local(p["lat"], p["lon"]) for p in w.get("geometry") or [] if p] if w["type"] == "way" else []
+            for a, b in zip(pts, pts[1:]):
+                n = max(1, int(math.dist(a, b) / 2))
+                for k in range(n):
+                    rail_cells.add((int((a[0] + (b[0] - a[0]) * k / n) // 4), int((a[1] + (b[1] - a[1]) * k / n) // 4)))
+    rail_near = {(x + dx, y + dy) for x, y in rail_cells for dx in (-3, 0, 3) for dy in (-3, 0, 3)}
+
+    def over_tracks(roof, g):    # a low roof (not an office block beside the line) that is mostly railway beneath
+        if min(p[2] for f in roof for p in f) - g > 15 or not any((int(p[0] // 4), int(p[1] // 4)) in rail_near for f in roof for p in f):
+            return False
+        cells = set()
+        for f in roof:
+            ring = [(p[0], p[1]) for p in f]
+            xs, ys = [q[0] for q in ring], [q[1] for q in ring]
+            for cx in range(int(min(xs) // 4), int(max(xs) // 4) + 1):
+                for cy in range(int(min(ys) // 4), int(max(ys) // 4) + 1):
+                    if (cx, cy) not in cells and inside((cx * 4 + 2, cy * 4 + 2), ring):
+                        cells.add((cx, cy))
+        hit = sum(1 for c in cells if c in rail_cells)
+        return hit >= 12 and hit >= 0.35 * len(cells)
+
     stats = Counter()
     recs = []
     for b in blds:
         roof = b["roof"]
         pts = [p for f in roof for p in f]
         c = (sum(p[0] for p in pts) / len(pts), sum(p[1] for p in pts) / len(pts))
+        for k, bb in lm_bb.items():
+            if bb[0] <= c[0] <= bb[1] and bb[2] <= c[1] <= bb[3] and inside(c, lm_rings[k]):
+                g0 = b["ground"] if b["ground"] is not None else min(p[2] for p in pts) - 3.0
+                lm_heights[k] += [p[2] - g0 for p in pts]
+                top = max(pts, key=lambda p: p[2])
+                if k not in lm_peak or top[2] - g0 > lm_peak[k][2]:
+                    lm_peak[k] = (top[0], top[1], top[2] - g0)
         if any(bb[0] <= c[0] <= bb[1] and bb[2] <= c[1] <= bb[3] and inside(c, r) for r, bb in zip(skip_rings, skip_bb)):
             stats["landmark"] += 1
             continue
+        style = next((st for r, bb, st in facade_rings if bb[0] <= c[0] <= bb[1] and bb[2] <= c[1] <= bb[3] and inside(c, r)), None)
         kind = KINDS.get(b["kind"], 0)
         g = b["ground"]
         if g is None:
             g = ground_at(*c)
             if g is None:
                 g = b["wall_min"] if b["wall_min"] is not None else min(p[2] for p in pts) - 3.0
+        top_rel = max(p[2] for p in pts) - g
+        if style is None and kind == 2:
+            style = FACADE_STYLES.index("sacral")
+        elif style is None and (kind == 1 or (kind in (0, 10) and top_rel > 40)):
+            hi = [p for p in pts if p[2] - g > top_rel - 15]   # a real tower is still wide near its top; a chimney is not
+            if max(max(p[0] for p in hi) - min(p[0] for p in hi), max(p[1] for p in hi) - min(p[1] for p in hi)) >= 12:
+                style = FACADE_STYLES.index("highrise")
         zbot = 0.0
-        if kind in (4, 5, 9):           # canopies, open buildings and covered bridges stand on posts or span a street
+        lift = 0.0
+        if style is None and kind in (0, 10) and over_tracks(roof, g):
+            kind, zbot = 5, 2.5         # on posts; the game keeps only a fascia under each roof edge
+            stats["shed"] += 1
+        elif kind in (4, 5, 9):         # canopies, open buildings and covered bridges stand on posts or span a street
             if b["wall_min"] is not None and b["wall_min"] - g > 1.5:
                 zbot = b["wall_min"] - g
-            elif kind == 4:
-                zbot = max(0.0, min(p[2] for p in pts) - g - 0.6)
-        verts, loops = sb3d.simplify_roof([[(p[0], p[1], p[2] - g) for p in f] for f in roof])
+            elif kind in (4, 5):        # a roof without walls: a platform or shelter roof on posts, 2.5 to 5 m up
+                under = min(p[2] for p in pts) - g
+                lift = min(5.0, max(2.5, under)) - under
+                zbot = under + lift - 0.5
+        verts, loops = sb3d.simplify_roof([[(p[0], p[1], p[2] - g + lift) for p in f] for f in roof])
         if not loops:
             stats["empty"] += 1
             continue
@@ -580,8 +868,8 @@ def main(raw, work, out_js):
         else:
             wall = WALLS[h % len(WALLS)]
         stats["pitched" if pitched else "flat"] += 1
-        recs.append({"c": c, "kind": kind, "roof": tile_tint(rc) if pitched else rc, "wall": hexrgb(wall),
-                     "zbot": zbot, "verts": verts, "loops": loops, "g": g})
+        recs.append({"c": c, "kind": kind if style is None else style, "roof": tile_tint(rc) if pitched else rc,
+                     "wall": hexrgb(wall), "zbot": zbot, "verts": verts, "loops": loops, "g": g, "facade": style is not None})
 
     # walls: the game drops each roof's outer edges to the ground, except where another roof (this building's or
     # a neighbour's) carries on at about the same height just outside the edge, so that wall could never be seen.
@@ -640,40 +928,138 @@ def main(raw, work, out_js):
         n_edges += len(flags)
         n_walls += sum(flags)
 
-    # pack: varints, buildings in rows of 100 m cells so neighbours follow each other, then gzip
-    recs.sort(key=lambda r: (int(r["c"][1] // 100), int(r["c"][0] // 100), r["c"][0]))
-    buf = bytearray()
-    fx = fy = 0
-    n_verts = n_idx = n_loops = 0
-    for r in recs:
-        buf.append(r["kind"])
-        buf.extend(r["roof"])
-        buf.extend(r["wall"])
-        varint(buf, int(round(r["zbot"] * 10)))
-        V = [(int(round(x * 10)), int(round(y * 10)), int(round(z * 10))) for x, y, z in r["verts"]]
-        varint(buf, len(V))
-        lx, ly, lz = fx, fy, 0
-        for x, y, z in V:
-            varint(buf, zigzag(x - lx))
-            varint(buf, zigzag(y - ly))
-            varint(buf, zigzag(z - lz))
-            lx, ly, lz = x, y, z
-        fx, fy = V[0][0], V[0][1]
-        varint(buf, len(r["loops"]))
-        for l in r["loops"]:
-            varint(buf, len(l))
-            for i in l:
-                varint(buf, i)
-        flags = r["walls"]              # one bit per outer roof edge, in loop order: does it get a wall?
-        for i in range(0, len(flags), 8):
-            byte = 0
-            for j, f in enumerate(flags[i:i + 8]):
-                byte |= f << j
-            buf.append(byte)
-        n_verts += len(V)
-        n_loops += len(r["loops"])
-        n_idx += sum(len(l) for l in r["loops"])
-    packed = gzip.compress(bytes(buf), 9, mtime=0)
+    # pack: varints, buildings in rows of 100 m cells so neighbours follow each other, then gzip. Facade buildings
+    # (their kind byte is the facade style) go in a pack of their own.
+    def pack(rs):
+        rs.sort(key=lambda r: (int(r["c"][1] // 100), int(r["c"][0] // 100), r["c"][0]))
+        buf = bytearray()
+        fx = fy = 0
+        for r in rs:
+            buf.append(r["kind"])
+            buf.extend(r["roof"])
+            buf.extend(r["wall"])
+            varint(buf, int(round(r["zbot"] * 10)))
+            V = [(int(round(x * 10)), int(round(y * 10)), int(round(z * 10))) for x, y, z in r["verts"]]
+            varint(buf, len(V))
+            lx, ly, lz = fx, fy, 0
+            for x, y, z in V:
+                varint(buf, zigzag(x - lx))
+                varint(buf, zigzag(y - ly))
+                varint(buf, zigzag(z - lz))
+                lx, ly, lz = x, y, z
+            fx, fy = V[0][0], V[0][1]
+            varint(buf, len(r["loops"]))
+            for l in r["loops"]:
+                varint(buf, len(l))
+                for i in l:
+                    varint(buf, i)
+            flags = r["walls"]              # one bit per outer roof edge, in loop order: does it get a wall?
+            for i in range(0, len(flags), 8):
+                byte = 0
+                for j, f in enumerate(flags[i:i + 8]):
+                    byte |= f << j
+                buf.append(byte)
+        return buf, gzip.compress(bytes(buf), 9, mtime=0)
+
+    frecs = [r for r in recs if r["facade"]]
+    recs = [r for r in recs if not r["facade"]]
+
+    # the Rathaus front onto the Marktplatz: the longest straight run of its walls facing the square, so the game
+    # can put the arcade, battlements, clock and flèche exactly on it
+    rathaus_front = None
+    cands = []
+    for r in frecs:
+        if FACADE_STYLES[r["kind"]] != "rathaus":
+            continue
+        v, loops, flags = r["verts"], r["loops"], r["walls"]
+        directed = {(l[k], l[(k + 1) % len(l)]) for l in loops for k in range(len(l))}
+        bnd = [(l[k], l[(k + 1) % len(l)]) for l in loops for k in range(len(l)) if (l[(k + 1) % len(l)], l[k]) not in directed]
+        for (a, b), f in zip(bnd, flags):
+            pa, pb = v[a], v[b]
+            dx, dy = pb[0] - pa[0], pb[1] - pa[1]
+            L = math.hypot(dx, dy)
+            if not f or L < 3:
+                continue
+            mx, my = (pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2
+            tx, ty = MARKT[0] - mx, MARKT[1] - my
+            tl = math.hypot(tx, ty) or 1
+            if (dy * tx - dx * ty) / (L * tl) > 0.75:          # the outward normal (dy, -dx) points at the square
+                cands.append((L, pa, pb))
+    if cands:
+        cands.sort(key=lambda c: -c[0])
+        _, pa, pb = cands[0]
+        ux, uy = (pb[0] - pa[0]) / cands[0][0], (pb[1] - pa[1]) / cands[0][0]
+        ts, zs = [0.0, cands[0][0]], [pa[2], pb[2]]
+        for L, qa, qb in cands[1:]:
+            off = [abs((q[0] - pa[0]) * uy - (q[1] - pa[1]) * ux) for q in (qa, qb)]
+            if max(off) < 1.2:                                  # on the same facade line
+                ts += [(q[0] - pa[0]) * ux + (q[1] - pa[1]) * uy for q in (qa, qb)]
+                zs += [qa[2], qb[2]]
+        t0, t1 = min(ts), max(ts)
+        rathaus_front = [round((pa[0] + ux * t0) / S, 2), round(-(pa[1] + uy * t0) / S, 2),
+                         round((pa[0] + ux * t1) / S, 2), round(-(pa[1] + uy * t1) / S, 2), round(min(zs), 1)]
+    # Basel SBB's front onto the Centralbahnplatz: the ticket hall's glazed arch between two clock towers. The towers
+    # are the two small clusters of the hall's highest roof points, the arch is the end of its barrel vault between
+    # them; the outline of the arch is read from the roof so the game can glaze it and put domes on the towers
+    sbb_front = None
+    node = geo.local(47.54762, 7.58964)
+    halls = [r for r in frecs if FACADE_STYLES[r["kind"]] == "sbb" and math.dist(r["c"], node) < 60]
+    if halls:
+        hall = max(halls, key=lambda r: max(v[2] for v in r["verts"]))
+        V = hall["verts"]
+        top = max(v[2] for v in V)
+        clusters = []
+        for v in (v for v in V if v[2] > top - 4):
+            near = [c for c in clusters if any(math.dist(v[:2], w[:2]) < 3 for w in c)]
+            merged = [v] + [w for c in near for w in c]
+            clusters = [c for c in clusters if c not in near] + [merged]
+        span = lambda c: max(math.dist(a[:2], b[:2]) for a in c for b in c)
+        small = sorted((c for c in clusters if len(c) >= 4 and 3 < span(c) < 12), key=len)[-2:]     # the domes
+        ridge = [v for c in clusters if c not in small for v in c]                                   # the vault's crown
+        if len(small) == 2 and ridge:
+            T = [(sum(v[0] for v in c) / len(c), sum(v[1] for v in c) / len(c), max(v[2] for v in c)) for c in small]
+            if T[0][0] > T[1][0]:
+                T.reverse()                                  # west tower first
+            gap = math.dist(T[0][:2], T[1][:2])
+            ux, uy = (T[1][0] - T[0][0]) / gap, (T[1][1] - T[0][1]) / gap
+            nx, ny = uy, -ux
+            if nx * (T[0][0] - hall["c"][0]) + ny * (T[0][1] - hall["c"][1]) < 0:
+                nx, ny = -nx, -ny                            # the normal looks out of the building, onto the square
+            front = max((v[0] - T[0][0]) * nx + (v[1] - T[0][1]) * ny for v in ridge)
+            planes = []
+            for l in hall["loops"]:
+                pts = [V[i] for i in l]
+                nrm = sb3d.newell(pts)
+                if nrm and nrm[2] > 0.05:
+                    planes.append(([p[:2] for p in pts], pts[0], nrm))
+
+            def roof_z(x, y):
+                z = 0.0
+                for ring, p0, n in planes:
+                    if inside((x, y), ring):
+                        z = max(z, p0[2] - (n[0] * (x - p0[0]) + n[1] * (y - p0[1])) / n[2])
+                return z
+
+            def tower_size(t):     # how far the tower's own high roof reaches along the front and out of it
+                hi = [v for v in V if math.dist(v[:2], t[:2]) < 8 and v[2] > top - 9]
+                a = [(v[0] - t[0]) * ux + (v[1] - t[1]) * uy for v in hi]
+                b = [(v[0] - t[0]) * nx + (v[1] - t[1]) * ny for v in hi]
+                return max(a) - min(a), max(b)
+
+            sizes = [tower_size(t) for t in T]
+            w = max(6.0, min(12.0, sum(sz[0] for sz in sizes) / 2))
+            prof = []
+            for k in range(25):                              # the arch: roof height just behind the front, tower to tower
+                d = w / 2 + (gap - w) * k / 24
+                prof.append(round(roof_z(T[0][0] + ux * d + nx * (front - 0.8), T[0][1] + uy * d + ny * (front - 0.8)), 1))
+            sbb_front = {"towers": [[round(t[0] / S, 2), round(-t[1] / S, 2), round(t[2], 1)] for t in T],
+                         "front": round(front / S, 2), "out": [round(nx, 4), round(-ny, 4)], "width": round(w / S, 2),
+                         "tower_out": [round(sz[1] / S, 2) for sz in sizes], "arch": prof}
+    n_verts = sum(len(r["verts"]) for r in recs)
+    n_loops = sum(len(r["loops"]) for r in recs)
+    n_idx = sum(len(l) for r in recs for l in r["loops"])
+    buf, packed = pack(recs)
+    _, fpacked = pack(frecs)
 
     # ---------- landmarks, places, trees, bridges, ferries ----------
     landmarks = {}
@@ -681,6 +1067,14 @@ def main(raw, work, out_js):
         b = obb(r)
         landmarks[k] = {"x": b["cx"] / S, "z": -b["cy"] / S, "len": b["len"] / S, "wid": b["wid"] / S,
                         "ang": b["ang"], "colour": roof_colour([r])}
+    for k, hs in lm_heights.items():
+        if hs and k in landmarks:
+            hs.sort()
+            landmarks[k]["roofs"] = [round(hs[int(len(hs) * f)], 1) for f in (0.1, 0.5, 0.9)]
+            px_, py_, ph = lm_peak[k]
+            landmarks[k]["peak"] = [round(px_ / S, 2), round(-py_ / S, 2), round(ph, 1)]
+    if rathaus_front and "rathaus" in landmarks:
+        landmarks["rathaus"]["front"] = rathaus_front
     for k, (typ, oid) in LANDMARK_TOWERS.items():
         for p in parts + outlines:
             if p["type"] == typ and p["id"] == oid and k in landmarks:
@@ -810,10 +1204,40 @@ def main(raw, work, out_js):
                     ts = sorted(0.5 + ((e[0] - o["cx"]) * math.cos(o["ang"]) + (e[1] - o["cy"]) * math.sin(o["ang"])) / o["len"] for e in ends)
                     br["water"] = [round(max(0.0, ts[0]), 3), round(min(1.0, ts[1]), 3)]
                     break
+    # the Rhine for the game's animated water: aerial pixels of the river's colour connected to points beside the
+    # bridges, the bridge decks over the water, and every enclosed hole filled (boats in the photo disappear)
+    RW, RH = GW // 2, GH // 2
+    cell = lambda x, y: (int((x - W) / 2), int((N - y) / 2))
+    cand = bytearray(RW * RH)
+    if ref:
+        for j in range(RH):
+            for i in range(RW):
+                c = pixel(*map(int, px(W + (i + 0.5) * 2, N - (j + 0.5) * 2)))
+                if (c[0] - ref[0]) ** 2 + (c[1] - ref[1]) ** 2 + (c[2] - ref[2]) ** 2 < 42 * 42:
+                    cand[j * RW + i] = 1
+    seeds, extra = [], []
+    for br in bridges:
+        if br["water"]:
+            o = br["_obb"]
+            for t in (0.3, 0.5, 0.7):
+                for side in (-1, 1):
+                    seeds.append(cell(*axis(o, br["water"][0] + (br["water"][1] - br["water"][0]) * t, side, o["wid"] / 2 + 20)))
+            ring = br["_ring"]
+            xs, ys = [p[0] for p in ring], [p[1] for p in ring]
+            u = (math.cos(o["ang"]), math.sin(o["ang"]))
+            for y in range(int(min(ys)) // 2 * 2, int(max(ys)) + 2, 2):
+                for x in range(int(min(xs)) // 2 * 2, int(max(xs)) + 2, 2):
+                    t = 0.5 + ((x - o["cx"]) * u[0] + (y - o["cy"]) * u[1]) / o["len"]
+                    if br["water"][0] <= t <= br["water"][1] and inside((x, y), ring):
+                        i, j = cell(x, y)
+                        if 0 <= i < RW and 0 <= j < RH:
+                            extra.append(j * RW + i)
+    river = river_mask(cand, RW, RH, seeds, extra) if ref else bytearray(RW * RH)
+    water_png = mask_png(river, RW, RH, work, "water-today")
     for br in bridges:
         del br["_ring"], br["id"], br["_obb"]
-    for k, (lat, lon) in {"sbb": (47.54762, 7.58964), "tinguely": (47.55917, 7.61234)}.items():
-        x, y = geo.local(lat, lon)     # station building and museum, from their OSM nodes
+    for k, (lat, lon) in {"sbb": (47.54762, 7.58964), "tinguely": (47.55917, 7.61234), "moh": (47.54611, 7.58697)}.items():
+        x, y = geo.local(lat, lon)     # station building, museum and the Meret Oppenheim Hochhaus, from OSM
         places[k] = [round(x / S, 2), round(-y / S, 2)]
     if "schuetzenmatt" not in places:
         x, y = geo.local(47.55257, 7.57448)
@@ -822,26 +1246,31 @@ def main(raw, work, out_js):
         x, y = geo.local(47.5583, 7.6092)
         places["solitude"] = [round(x / S, 2), round(-y / S, 2)]
 
+    rail = rail_tracks(raw, geo)
+
     def b64(arr):
         return base64.b64encode(arr.tobytes()).decode()
 
     data = {
         "S": S, "VS": VS,
-        "ground": {"x0": W / S, "x1": E / S, "z0": -N / S, "z1": -Sth / S, "avg": [round(c) for c in avg],
+        "ground": {"x0": W / S, "x1": E / S, "z0": -N / S, "z1": -Sth / S, "avg": [round(c) for c in avg], "water": water_png,
                    "src": "data:image/avif;base64," + ground_b64, "fallback": "data:image/jpeg;base64," + small_b64},
         "lod2": {"count": len(recs), "gz": base64.b64encode(packed).decode()},
+        "facades": {"count": len(frecs), "gz": base64.b64encode(fpacked).decode(), "styles": FACADE_STYLES},
         "trees": b64(trees), "treeInfo": b64(tree_info),
-        "towers": towers, "landmarks": landmarks, "iconic": iconic, "places": places, "bridges": bridges, "ferries": ferries,
+        "towers": towers, "landmarks": landmarks, "iconic": dict(iconic, sbb=sbb_front), "places": places, "bridges": bridges, "ferries": ferries,
+        "rail": rail,
     }
     js = "const BASEL=" + json.dumps(data, separators=(",", ":"), ensure_ascii=False) + ";\n"
     with open(out_js, "w") as f:
         f.write(js)
     print(json.dumps({"buildings": len(recs), "roof_vertices": n_verts, "roof_polygons": n_loops, "loop_indices": n_idx,
-                      "walls": [n_walls, n_edges],
+                      "walls": [n_walls, n_edges], "facade_buildings": len(frecs),
                       "packed_kB": [len(buf) // 1000, len(packed) // 1000],
                       "trees": {"register": n_register, "osm": len(tree_info) - n_register}, "stats": stats,
                       "bridges": [[b["name"], b["structure"], b["axis"][2] * S, b["water"]] for b in bridges],
                       "ferries": [x["name"] for x in ferries],
+                      "rail": [{k: v for k, v in t.items() if k != "p"} for t in rail], "sbb_front": sbb_front,
                       "towers": towers, "landmarks": {k: {kk: (round(v, 2) if isinstance(v, float) else v) for kk, v in d.items()} for k, d in landmarks.items()},
                       "places": places, "ground_px": [GW, GH], "ground_kB": [len(ground_b64) * 3 // 4 // 1000, len(small_b64) * 3 // 4 // 1000],
                       "js_kB": len(js) // 1000}, ensure_ascii=False, indent=1))

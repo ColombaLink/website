@@ -22,7 +22,8 @@ from array import array
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from build_city import (S, VS, AREA, Geo, ORIGIN_LATLON, read_bmp, write_bmp, area2, centroid,  # noqa: E402
-                        inside, rdp, simplify_ring, obb, element_rings, star_shaped, convex, tree_byte)
+                        inside, rdp, simplify_ring, obb, element_rings, star_shaped, convex, tree_byte, LANDMARKS, IN_1615,
+                        river_mask, mask_png)
 from fetch_1615 import TRACE, COLS, ROWS, MPP  # noqa: E402
 
 LEVEL = 3.3
@@ -219,18 +220,19 @@ def main(raw, work, out_js, preview=None):
         comps.setdefault(find(i), []).append(i)
     print("runs", len(ry), "shapes", len(comps), flush=True)
 
-    church_rings, special = [], {}
+    # the game models the Münster, the Rathaus, the surviving gates and the medieval churches itself, so the plan's
+    # own shapes inside their outlines are left out
+    church_rings, landmark_rings = [], []
+    wanted = {LANDMARKS[k] for k in IN_1615}
     for el in bjs:
         t = el.get("tags", {})
         kind = t.get("building")
         if kind in ("church", "cathedral", "chapel") or t.get("amenity") == "place_of_worship":
             outer, _ = element_rings(el, geo)
             church_rings += [r for r in outer if abs(area2(r)) > 150]
-        if (el["type"], el["id"]) in (("way", 137472252), ("relation", 3531078), ("relation", 7634307)):
+        if (el["type"], el["id"]) in wanted:
             outer, _ = element_rings(el, geo)
-            if outer:
-                special[el["id"]] = max(outer, key=lambda r: abs(area2(r)))
-    muenster, spalentor, rathaus = special.get(137472252), special.get(3531078), special.get(7634307)
+            landmark_rings += outer
 
     # ---------- the old city wall (canton's outline of the historic core) and its gates ----------
     ok = json.load(open(os.path.join(raw, "ortskern.json")))
@@ -334,8 +336,7 @@ def main(raw, work, out_js, preview=None):
         if len(ring) > 3:
             ring = simplify_ring(ring + [ring[0]], 0.3)
         c = centroid(ring)
-        if (muenster and inside(c, muenster)) or (spalentor and inside(c, spalentor)) or \
-                any(math.hypot(c[0] - g[0], c[1] - g[1]) < 9 for g in gate_pts):
+        if any(inside(c, r) for r in landmark_rings) or any(math.hypot(c[0] - g[0], c[1] - g[1]) < 9 for g in gate_pts):
             stats["skipped"] += 1
             continue
         area_m2 = abs(area2(ring))
@@ -375,7 +376,7 @@ def main(raw, work, out_js, preview=None):
             rh = 0.0
             stats["flat"] += 1
         hsh = (int(c[0] * 7) * 73856093 ^ int(c[1] * 7) * 19349663) & 0xFFFFFFFF
-        wall_c = "#b8392b" if (rathaus and inside(c, rathaus)) else ("#c9b49a" if church else WALLS[hsh % len(WALLS)])
+        wall_c = "#c9b49a" if church else WALLS[hsh % len(WALLS)]
         roof_c = "#7d4a3a" if church else ROOFS[(hsh >> 8) % len(ROOFS)]
         recs.append(([ring], 0.0, wall + rh, rh, rtype, hexrgb(roof_c), hexrgb(wall_c)))
 
@@ -550,6 +551,19 @@ def main(raw, work, out_js, preview=None):
                         grown += 1
     print("river pixels grown from the aerial photo:", grown, flush=True)
 
+    # the Rhine for the game's animated water: the plan's water connected to points beside the bridge
+    seeds = []
+    if bridge_ring:
+        bo = obb(bridge_ring[:-1])
+        u, v = (math.cos(bo["ang"]), math.sin(bo["ang"])), (-math.sin(bo["ang"]), math.cos(bo["ang"]))
+        for t in (-0.25, 0.0, 0.25):
+            for side in (-1, 1):
+                x = bo["cx"] + u[0] * t * bo["len"] + v[0] * side * (bo["wid"] / 2 + 25)
+                y = bo["cy"] + u[1] * t * bo["len"] + v[1] * side * (bo["wid"] / 2 + 25)
+                seeds.append((int((x - W_) / 2), int((N_ - y) / 2)))
+    river = river_mask(cls.translate(bytes([1 if k == 3 else 0 for k in range(256)])), GW, GH, seeds)
+    water_png = mask_png(river, GW, GH, work, "water-1615")
+
     # ---------- paint the ground: the plan's own pixels (0.5 m), recoloured by what they show, on a canvas over
     # the whole map with the Rhine beyond the plan from the classes above; sips then scales it to 1 m, which
     # smooths every edge ----------
@@ -711,7 +725,7 @@ def main(raw, work, out_js, preview=None):
     data = {"count": len(rings_per), "ringsPer": b64(rings_per), "ringLen": b64(ring_len), "verts": b64(verts),
             "base": b64(base_dm), "top": b64(top_dm), "roofH": b64(roof_dm), "roofType": b64(roof_type),
             "roofRGB": b64(roof_rgb), "wallRGB": b64(wall_rgb), "trees": b64(trees), "treeInfo": b64(tree_info), "gates": gate_list,
-            "places": places, "ground": {"avg": [round(c) for c in avg], "src": "data:image/avif;base64," + ground_b64,
+            "places": places, "ground": {"avg": [round(c) for c in avg], "water": water_png, "src": "data:image/avif;base64," + ground_b64,
                                          "fallback": "data:image/jpeg;base64," + small_b64}}
     js = "const BASEL1615=" + json.dumps(data, separators=(",", ":"), ensure_ascii=False) + ";\n"
     with open(out_js, "w") as f:

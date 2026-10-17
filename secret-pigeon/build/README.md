@@ -15,17 +15,22 @@ python3 -I secret-pigeon/build/assemble.py secret-pigeon/build/game.template.htm
 ```
 
 `fetch_data.py` downloads about 330 MB: the four swissBUILDINGS3D map sheets are most of it. Add part names
-(`osm`, `ortho`, `sb3d`, `trees`) to fetch only some of them.
+(`osm`, `rail`, `ortho`, `sb3d`, `trees`) to fetch only some of them.
 
 | File | Does |
 |---|---|
-| `fetch_data.py` | Downloads the swisstopo aerial photo at 1 m per pixel (WMS), swissBUILDINGS3D 3.0 (CityGML), Basel's tree register (data.bs.ch) and the OpenStreetMap landmarks, bridges, ferries and place names (Swiss Overpass mirror). |
+| `fetch_data.py` | Downloads the swisstopo aerial photo at 1 m per pixel (WMS), swissBUILDINGS3D 3.0 (CityGML), Basel's tree register (data.bs.ch) and the OpenStreetMap landmarks, bridges, ferries, railway tracks and place names (Swiss Overpass mirror). |
 | `fetch_1615.py` | Downloads the canton's "Übersichtsplan 1615" (WMS, 0.5 m pixels), the outline of the historic core inside the old wall (WFS), and OSM streets used to place the demolished gates. |
 | `sb3d.py` | Streams the CityGML, merges each building's roof triangles back into roof planes, drops vertices on straight edges and closes seams between planes. |
-| `build_city.py` | Today's city: the 3D roofs in compact gzip form (the game raises the walls from the roof edges, skipping the ones another roof hides), roof colours from the aerial photo, the 1 m ground as AVIF with a small JPEG fallback, trees by species and age, and each bridge's axis and stretch over the Rhine. |
-| `build_1615.py` | Basel in 1615: traces every house on the plan into its own outline, builds the wall, towers and gates, plants garden and orchard trees, and paints the 1 m ground from the plan's own pixels (the Rhine beyond the plan follows the aerial photo). |
+| `build_city.py` | Today's city: the 3D roofs in compact gzip form (the game raises the walls from the roof edges, skipping the ones another roof hides; platform roofs and train sheds over the tracks stand open on posts), roof colours from the aerial photo, the 1 m ground as AVIF with a small JPEG fallback, the Rhine's outline for the animated water, trees by species and age, each bridge's axis and stretch over the Rhine, the measurements of the landmarks and of Basel SBB's front, and two train tracks from Basel SBB over the Rhine to the Badischer Bahnhof and north off the map (shortest paths along OSM's running lines that never turn back). |
+| `build_1615.py` | Basel in 1615: traces every house on the plan into its own outline, builds the wall, towers and gates, plants garden and orchard trees, and paints the 1 m ground from the plan's own pixels (the Rhine beyond the plan follows the aerial photo); the river's outline from the plan gives the 1615 water. |
 | `assemble.py` | Injects both cities into the template; with a sixth argument it also writes the Artifact copy without the page wrapper. |
 
+The game itself (`game.template.html`) models the landmarks by hand on top of these measurements: the Münster and its
+cloister, the Rathaus, the three city gates, the medieval churches, the Elisabethenkirche, Basel SBB's front, the
+bridges and the Rhine ferries. It also paints the facades of the Messe, the Kunstmuseum, the two stations, Museum
+Tinguely and the Meret Oppenheim Hochhaus, and runs a DB ICE and an SBB EuroCity on the two tracks.
+
 Credits shown in the game: 3D buildings (swissBUILDINGS3D) and aerial imagery (SWISSIMAGE) © swisstopo; landmarks,
-bridges and places © OpenStreetMap contributors (ODbL); tree register (Baumkataster) and the 1615 plan and wall line:
-Quelle: Geodaten Kanton Basel-Stadt (CC BY 4.0).
+bridges, railways and places © OpenStreetMap contributors (ODbL); tree register (Baumkataster) and the 1615 plan and
+wall line: Quelle: Geodaten Kanton Basel-Stadt (CC BY 4.0).
