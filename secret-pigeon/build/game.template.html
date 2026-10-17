@@ -281,7 +281,7 @@ button{font:inherit;color:inherit}
       <button id="btn-reset" class="link-btn danger">Reset progress</button>
     </div>
     <!--@SITE_BYLINE@-->
-    <p class="credits mono">3D buildings (swissBUILDINGS3D) and aerial imagery (SWISSIMAGE) © <a href="https://www.swisstopo.admin.ch" target="_blank" rel="noopener">swisstopo</a> · Landmarks, bridges, railways, tram lines and places © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL) · Tram timetable: <a href="https://opentransportdata.swiss" target="_blank" rel="noopener">opentransportdata.swiss</a> · Trees (Baumkataster) and the 1615 plan and wall line: <a href="https://data.bs.ch" target="_blank" rel="noopener">Quelle: Geodaten Kanton Basel-Stadt</a> (CC BY 4.0)</p>
+    <p class="credits mono">3D buildings (swissBUILDINGS3D) and aerial imagery (SWISSIMAGE) © <a href="https://www.swisstopo.admin.ch" target="_blank" rel="noopener">swisstopo</a> · Landmarks, bridges, railways, roads, tram and bus lines and places © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL) · Tram and bus timetable: <a href="https://opentransportdata.swiss" target="_blank" rel="noopener">opentransportdata.swiss</a> · Trees (Baumkataster) and the 1615 plan and wall line: <a href="https://data.bs.ch" target="_blank" rel="noopener">Quelle: Geodaten Kanton Basel-Stadt</a> (CC BY 4.0)</p>
     <p id="load-msg" class="load-msg" hidden></p>
   </div>
 </main>
@@ -351,7 +351,7 @@ button{font:inherit;color:inherit}
       <button id="btn-nb-close" class="btn">Close</button>
     </div>
     <p id="nb-summary" class="muted"></p>
-    <p class="credits mono">3D buildings (swissBUILDINGS3D) and aerial imagery (SWISSIMAGE) © <a href="https://www.swisstopo.admin.ch" target="_blank" rel="noopener">swisstopo</a> · Landmarks, bridges, railways, tram lines and places © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL) · Tram timetable: <a href="https://opentransportdata.swiss" target="_blank" rel="noopener">opentransportdata.swiss</a> · Trees (Baumkataster) and the 1615 plan and wall line: <a href="https://data.bs.ch" target="_blank" rel="noopener">Quelle: Geodaten Kanton Basel-Stadt</a> (CC BY 4.0)</p>
+    <p class="credits mono">3D buildings (swissBUILDINGS3D) and aerial imagery (SWISSIMAGE) © <a href="https://www.swisstopo.admin.ch" target="_blank" rel="noopener">swisstopo</a> · Landmarks, bridges, railways, roads, tram and bus lines and places © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL) · Tram and bus timetable: <a href="https://opentransportdata.swiss" target="_blank" rel="noopener">opentransportdata.swiss</a> · Trees (Baumkataster) and the 1615 plan and wall line: <a href="https://data.bs.ch" target="_blank" rel="noopener">Quelle: Geodaten Kanton Basel-Stadt</a> (CC BY 4.0)</p>
     <div id="nb-list"></div>
   </div>
 </section>
@@ -2339,7 +2339,7 @@ const runTrains=(()=>{
       X.push(x);Z.push(z);H.push(hd);Y.push(roadDeckAt(x,z,hd,0.02));}
     const n=X.length,f=s=>Math.min(Math.max(s/STEP,0),n-1.0001);
     return {len:(n-1)*STEP,at(s,o){const g=f(s),k=Math.floor(g),u=g-k;return o.set(X[k]+(X[k+1]-X[k])*u,Y[k]+(Y[k+1]-Y[k])*u,Z[k]+(Z[k+1]-Z[k])*u);},
-      hd(s){return H[Math.round(f(s))];}};};
+      hd(s){return H[Math.round(f(s))];},X,Z,H,zones:[]};};
   const TT=3,VCATCH=7,GAP_T=0.6,TL=(BASEL.trams||[]).filter(l=>l.dirs&&l.dirs.length===2&&l.trips&&l.trips.length);
   const ease=u=>u<0.25?2.667*u*u:u>0.75?1-2.667*(1-u)*(1-u):1.333*u-0.1667;   // speed up, run, slow down for the stop
   const lines=TL.map((l,li)=>{const op=l.op==='BLT'?'BLT':'BVB',paths=l.dirs.map(d=>tramPath(d.p)),trips=[];
@@ -2360,50 +2360,315 @@ const runTrains=(()=>{
     for(let v=0;v<k;v++){const cars=[];let off=0;
       for(let c=0;c<T.n;c++){const isEnd=c===0||c===T.n-1,C=isEnd?T.end:T.mid,mesh=isEnd?TM.end:TM.mid;
         cars.push({C,off:off+C.len/2,flip:c===T.n-1,mesh,i:isEnd?ie++:im++});off+=C.len+0.04;}
-      trams.push({id:trams.length,op,cars,len:off-0.04,trip:null,s:0,shown:false});}
+      trams.push({id:trams.length,kind:'tram',op,cars,len:off-0.04,trip:null,s:0,shown:false,ob:new Float32Array(T.n*6),no:0,bb:[0,0,0,0],by:null,zp:null,zi:0,held:[]});}
     for(const x of [...TM.end,...TM.mid])if(x)for(let i=0;i<x.count;i++)x.setMatrixAt(i,NONE);}
   if(DEBUG)window.__trams=trams;
-  const occ=new Map(),CELL_T=0.5,cellKey=(x,z)=>(Math.floor(x/CELL_T)+30000)*60000+Math.floor(z/CELL_T)+30000;
+  const occ=new Map(),occUsed=[],CELL_T=0.5,cellKey=(x,z)=>(Math.floor(x/CELL_T)+30000)*60000+Math.floor(z/CELL_T)+30000;   // cell -> tram, heading, ...
   const angGap=(a,b)=>Math.abs(Math.atan2(Math.sin(a-b),Math.cos(a-b)));
   const pathOf=V=>lines[V.trip.li].paths[V.trip.dir];
   function hitAhead(V,from,to){   // the first point between from and to where another tram on (or across) this track is
     const P=pathOf(V),hd=P.hd(V.s);
-    for(let d=from;d<=to;d+=0.35){P.at(d,A);const L=occ.get(cellKey(A.x,A.z));if(L)for(const e of L)if(e.v!==V&&angGap(e.hd,hd)<2.2)return {at:d,by:e.v};}
+    for(let d=from;d<=to;d+=0.35){P.at(d,A);const L=occ.get(cellKey(A.x,A.z));if(L)for(let i=0;i<L.length;i+=2)if(L[i]!==V&&angGap(L[i+1],hd)<2.2)return {at:d,by:L[i]};}
     return null;}
-  function bodyFree(V){const P=pathOf(V);for(let d=0;d<=V.len;d+=0.5){P.at(V.s-d,A);const L=occ.get(cellKey(A.x,A.z));if(L&&L.some(e=>e.v!==V))return false;}return true;}
-  function placeTram(V){
-    let seen=false;const P=V.trip?pathOf(V):null;
+  function bodyFree(V){const P=pathOf(V);for(let d=0;d<=V.len;d+=0.5){P.at(V.s-d,A);const L=occ.get(cellKey(A.x,A.z));if(L)for(let i=0;i<L.length;i+=2)if(L[i]!==V)return false;}return true;}
+  function occTram(V){   // the track under a tram, cell by cell, for the trams behind it and across its way to see
+    if(!V.trip||!V.shown)return;
+    const P=pathOf(V),hd=P.hd(V.s);for(let d=0;d<=V.len;d+=0.5){P.at(V.s-d,A);const k=cellKey(A.x,A.z);let L=occ.get(k);if(!L)occ.set(k,L=[]);if(!L.length)occUsed.push(L);L.push(V,hd);}}
+  function placeTram(V){   // each car on its two bogies, and the ground it covers, which the buses keep clear of
+    let seen=false;const P=V.trip?pathOf(V):null;V.no=0;
     for(const c of V.cars){const [body,glass]=c.mesh;
       if(!V.trip||!V.shown){body.setMatrixAt(c.i,NONE);if(glass)glass.setMatrixAt(c.i,NONE);continue;}
       const sc=V.s-c.off;P.at(sc+c.C.pivot,A);P.at(sc-c.C.pivot,B);M.addVectors(A,B).multiplyScalar(0.5);
+      const dx=A.x-B.x,dz=A.z-B.z,L=Math.hypot(dx,dz)||1e-6;
+      addBox(V,M.x,M.z,dx/L,dz/L,c.C.len/2,TRAM_HW);
       if(!onMap(M)){body.setMatrixAt(c.i,NONE);if(glass)glass.setMatrixAt(c.i,NONE);continue;}
-      seen=true;const dx=A.x-B.x,dz=A.z-B.z;
-      q.setFromAxisAngle(UP,Math.atan2(-dz,dx)+(c.flip?Math.PI:0));qp.setFromAxisAngle(FWD,Math.atan2(A.y-B.y,Math.hypot(dx,dz)||1e-6)*(c.flip?-1:1));
+      seen=true;
+      q.setFromAxisAngle(UP,Math.atan2(-dz,dx)+(c.flip?Math.PI:0));qp.setFromAxisAngle(FWD,Math.atan2(A.y-B.y,L)*(c.flip?-1:1));
       m.compose(M,q.multiply(qp),ONE);body.setMatrixAt(c.i,m);if(glass)glass.setMatrixAt(c.i,m);}
-    if(V.trip&&V.shown){const hd=P.hd(V.s);for(let d=0;d<=V.len;d+=0.5){P.at(V.s-d,A);const k=cellKey(A.x,A.z);let L=occ.get(k);if(!L)occ.set(k,L=[]);L.push({v:V,hd});}}
     return seen;}
+  // what a tram or bus covers on the ground: a box for each car or section (centre x, z, direction x, z, half its
+  // length, half its width), and a grid of where they all are, so that one about to move can see who is in the way
+  const TRAM_HW=0.225,GC=4,GI0=Math.floor((GB.x0-130)/GC),GJ0=Math.floor((GB.z0-130)/GC),GNX=Math.ceil((GB.x1-GB.x0+260)/GC)+1,GNZ=Math.ceil((GB.z1-GB.z0+260)/GC)+1,
+    vgrid=[],gkey=(i,j)=>Math.min(GNX-1,Math.max(0,i-GI0))+Math.min(GNZ-1,Math.max(0,j-GJ0))*GNX;
+  let stamp=0;
+  function addBox(V,cx,cz,ux,uz,hl,hw){const o=V.no++*6,b=V.ob,bb=V.bb;b[o]=cx;b[o+1]=cz;b[o+2]=ux;b[o+3]=uz;b[o+4]=hl;b[o+5]=hw;
+    const rx=Math.abs(ux)*hl+Math.abs(uz)*hw,rz=Math.abs(uz)*hl+Math.abs(ux)*hw;
+    if(!o){bb[0]=cx-rx;bb[1]=cz-rz;bb[2]=cx+rx;bb[3]=cz+rz;}else{bb[0]=Math.min(bb[0],cx-rx);bb[1]=Math.min(bb[1],cz-rz);bb[2]=Math.max(bb[2],cx+rx);bb[3]=Math.max(bb[3],cz+rz);}}
+  const used=[];   // the grid's cells in use this step
+  function gridAdd(V,pad){const b=V.bb;
+    for(let i=Math.floor((b[0]-pad)/GC);i<=Math.floor((b[2]+pad)/GC);i++)for(let j=Math.floor((b[1]-pad)/GC);j<=Math.floor((b[3]+pad)/GC);j++){
+      const k=gkey(i,j);let L=vgrid[k];if(!L)vgrid[k]=L=[];if(!L.length)used.push(L);L.push(V);}}
+  function busNear(V,pad){   // is any bus within pad of a tram (the grid holds only the buses while the trams move)
+    const b=V.bb;if(!V.no)return true;
+    for(let i=Math.floor((b[0]-pad)/GC);i<=Math.floor((b[2]+pad)/GC);i++)for(let j=Math.floor((b[1]-pad)/GC);j<=Math.floor((b[3]+pad)/GC);j++){
+      const L=vgrid[gkey(i,j)];if(L&&L.length)return true;}
+    return false;}
+  const sat=(a,i,b,j)=>{   // do two boxes overlap? (they are apart if some edge direction of either separates them)
+    const dx=b[j]-a[i],dz=b[j+1]-a[i+1],ax=a[i+2],az=a[i+3],bx=b[j+2],bz=b[j+3],c=Math.abs(ax*bx+az*bz),s=Math.abs(ax*bz-az*bx);
+    return Math.abs(dx*ax+dz*az)<=a[i+4]+b[j+4]*c+b[j+5]*s&&Math.abs(dz*ax-dx*az)<=a[i+5]+b[j+4]*s+b[j+5]*c
+      &&Math.abs(dx*bx+dz*bz)<=b[j+4]+a[i+4]*c+a[i+5]*s&&Math.abs(dz*bx-dx*bz)<=b[j+5]+a[i+4]*s+a[i+5]*c;};
+  function hits(ob,n,self,only){   // the first other tram or bus (only one kind, if asked) whose boxes overlap these n boxes
+    let x0=1e9,z0=1e9,x1=-1e9,z1=-1e9;
+    for(let i=0;i<n*6;i+=6){const rx=Math.abs(ob[i+2])*ob[i+4]+Math.abs(ob[i+3])*ob[i+5],rz=Math.abs(ob[i+3])*ob[i+4]+Math.abs(ob[i+2])*ob[i+5];
+      x0=Math.min(x0,ob[i]-rx);x1=Math.max(x1,ob[i]+rx);z0=Math.min(z0,ob[i+1]-rz);z1=Math.max(z1,ob[i+1]+rz);}
+    stamp++;
+    for(let i=Math.floor(x0/GC);i<=Math.floor(x1/GC);i++)for(let j=Math.floor(z0/GC);j<=Math.floor(z1/GC);j++){const L=vgrid[gkey(i,j)];if(!L)continue;
+      for(const V of L){if(V.stamp===stamp)continue;V.stamp=stamp;
+        if(V===self||!V.no||(only&&V.kind!==only))continue;const b=V.bb;if(b[0]>x1||b[2]<x0||b[1]>z1||b[3]<z0)continue;
+        for(let a=0;a<n*6;a+=6)for(let c=0;c<V.no*6;c+=6)if(sat(ob,a,V.ob,c))return V;}}
+    return null;}
+  const pob=new Float32Array(42);
+  function tramBoxes(V,s,probe){   // a tram's cars with its front at s, the first one with the track just ahead of it
+    const P=pathOf(V);let n=0;     // (`probe` long)
+    for(const c of V.cars){const sc=s-c.off;P.at(sc+c.C.pivot,A);P.at(sc-c.C.pivot,B);
+      const dx=A.x-B.x,dz=A.z-B.z,L=Math.hypot(dx,dz)||1e-6,ux=dx/L,uz=dz/L,e=n?0:probe,o=n++*6;
+      pob[o]=(A.x+B.x+ux*e)/2;pob[o+1]=(A.z+B.z+uz*e)/2;pob[o+2]=ux;pob[o+3]=uz;pob[o+4]=c.C.len/2+e/2;pob[o+5]=TRAM_HW;}
+    return n;}
+  function tramClear(V,to){   // as far towards `to` as a tram can go without running into a bus (its cars behind cut the bends)
+    let probe=GAP_B,by=hits(pob,tramBoxes(V,to,probe),V,'bus');if(!by)return to;
+    if(by.by===V){probe=0;by=hits(pob,tramBoxes(V,to,0),V,'bus');if(!by)return to;}   // a bus waiting for this tram: only its body counts
+    V.by=by;let lo=V.s,hi=to;for(let i=0;i<5;i++){const mid=(lo+hi)/2;if(hits(pob,tramBoxes(V,mid,probe),V,'bus'))hi=mid;else lo=mid;}
+    return lo;}
+  // ---- where a bus route crosses another bus route or a tram track, joins one (the first stretch they share) or meets
+  // a bus or tram coming the other way: zones. A tram or bus goes into one only once it has it to itself (on a narrow
+  // stretch, with those going its way), together with every zone it will be in until its tail is out of it, and room
+  // to stop beyond them; so none of them can stop in a junction and lock another one out of it ----
+  const ZIN=0.85,ZOUT=0.5,ZJOIN=7,GAP_Z=0.05,zones=[];   // a zone starts well before the paths touch, so one waiting for it is clear
+  const free=e=>!e[2].n||(e[3]!==0&&e[2].side===e[3]);
+  const hold=(V,e)=>{e[2].n++;e[2].side=e[3];V.held.push(e);};
+  function dropZones(V){for(const e of V.held)if(!--e[2].n)e[2].side=0;V.held.length=0;}
+  function setZones(V,P){dropZones(V);V.zp=P.zones;V.zi=0;V.zl=P.len;}
+  function zoneRun(V,from){   // the zones from `from` on that a tram or bus will be in until its tail is out of them all,
+    const Z=V.zp,want=[];let end=-1e9;   // and where its front is then
+    for(let k=from;k<Z.length&&(k===from||Z[k][0]<end);k++)if(!V.held.includes(Z[k])){want.push(Z[k]);end=Math.max(end,Z[k][1]+V.len);}
+    return {want,end};}
+  function enterZones(V,room){   // when a tram or bus comes into view: the zones under it and on to where it can stop again
+    const Z=V.zp;if(!Z||!Z.length)return true;
+    let i=0;while(i<Z.length&&Z[i][1]<=V.s-V.len)i++;
+    if(i>=Z.length||Z[i][0]>=V.s+GAP_Z)return true;   // it is in none
+    const {want,end}=zoneRun(V,i);
+    if(!want.every(free)||(end<=V.zl-0.5&&!room(end)))return false;for(const e of want)hold(V,e);return true;}
+  function zoneDrop(V){   // zones a tram or bus no longer needs: those its tail is out of, and when it is held up, those it is not in yet
+    for(let i=V.held.length-1;i>=0;i--){const e=V.held[i];
+      if(V.s-V.len>e[1]||(V.stuck>0.6&&e[0]>V.s+GAP_Z)){if(!--e[2].n)e[2].side=0;V.held.splice(i,1);}}}
+  function zoneGate(V,to,room){   // how far towards `to` (as far as it is free to go) a tram or bus may go: up to a zone it cannot have yet
+    const Z=V.zp;if(!Z||!Z.length)return to;
+    while(V.zi<Z.length&&Z[V.zi][0]<=V.s)V.zi++;
+    let i=V.zi;while(i<Z.length&&V.held.includes(Z[i]))i++;
+    if(i>=Z.length||Z[i][0]>to+GAP_Z)return to;
+    const {want,end}=zoneRun(V,i);
+    if(want.every(free)&&(end>V.zl-0.5||room(end))){for(const e of want)hold(V,e);return to;}   // (at the end of its route it goes)
+    return Math.max(V.s,Math.min(to,Z[i][0]-GAP_Z));}
+  function buildZones(paths){   // paths: [{P, bus}] - every bus route against the other bus routes and the tram tracks
+    for(const a of paths){   // how far either side of its line a bus or tram reaches: half its width, more on a bend
+      const H=a.P.H,n=H.length,w=a.W=new Float32Array(n),hw=a.bus?0.255:0.23,k=a.bus?0.4:0.3,cap=a.bus?0.45:0.3;   // (it cuts the corner)
+      for(let i=0;i<n;i++)w[i]=hw+Math.min(cap,k*angGap(H[Math.max(0,i-2)],H[Math.min(n-1,i+2)]));}
+    const C=1.45;let x0=1e9,z0=1e9,x1=-1e9,z1=-1e9;   // a grid of every point of every path (cells as big as two reaches)
+    for(const a of paths){const {X,Z}=a.P;for(let i=0;i<X.length;i++){x0=Math.min(x0,X[i]);x1=Math.max(x1,X[i]);z0=Math.min(z0,Z[i]);z1=Math.max(z1,Z[i]);}}
+    const nx=Math.floor((x1-x0)/C)+1,nz=Math.floor((z1-z0)/C)+1,cellOf=(x,z)=>Math.floor((z-z0)/C)*nx+Math.floor((x-x0)/C),start=new Int32Array(nx*nz+1);
+    let total=0;for(const a of paths){const {X,Z}=a.P;total+=X.length;for(let i=0;i<X.length;i++)start[cellOf(X[i],Z[i])+1]++;}
+    for(let c=0;c<nx*nz;c++)start[c+1]+=start[c];
+    const fill=start.slice(),items=new Int32Array(total*2);
+    paths.forEach((a,p)=>{const {X,Z}=a.P;for(let i=0;i<X.length;i++){const o=fill[cellOf(X[i],Z[i])]++*2;items[o]=p;items[o+1]=i;}});
+    for(let p=0;p<paths.length;p++){if(!paths[p].bus)continue;const {X,Z}=paths[p].P,W=paths[p].W,near=new Map(),best=new Map();
+      for(let k=0;k<X.length;k++){best.clear();const ci=Math.floor((X[k]-x0)/C),cj=Math.floor((Z[k]-z0)/C);
+        for(let row=Math.max(0,cj-1);row<=Math.min(nz-1,cj+1);row++)for(let col=Math.max(0,ci-1);col<=Math.min(nx-1,ci+1);col++){const c=row*nx+col;
+          for(let t=start[c];t<start[c+1];t++){const q=items[t*2];if(q===p||(paths[q].bus&&q<p))continue;   // each pair once
+            const Q=paths[q],j=items[t*2+1],dx=Q.P.X[j]-X[k],dz=Q.P.Z[j]-Z[k],r=W[k]+Q.W[j]+0.06,d2=dx*dx+dz*dz;
+            if(d2<r*r){const pen=Math.sqrt(d2)-r,b=best.get(q);if(!b||pen<b[1])best.set(q,[j,pen]);}}}
+        for(const [q,[j]] of best){let m=near.get(q);if(!m)near.set(q,m=[]);m.push(k,j);}}
+      for(const [q,m] of near)pairZones(paths[p].P,paths[q].P,m);}
+    for(const a of paths)a.P.zones.sort((u,v)=>u[0]-v[0]);}
+  function pairZones(A,B,m){   // m: pairs of points (on A, on B) close enough for the two to touch; each run of them is a zone
+    for(let r0=0,r=2;r<=m.length;r+=2){
+      if(r<m.length&&m[r]-m[r-2]<=2&&Math.abs(m[r+1]-m[r-1])<=4)continue;
+      let jmin=1e9,jmax=-1e9,ang=0;
+      for(let t=r0;t<r;t+=2){jmin=Math.min(jmin,m[t+1]);jmax=Math.max(jmax,m[t+1]);ang+=angGap(A.H[m[t]],B.H[m[t+1]]);}
+      ang/=(r-r0)/2;const k0=m[r0]*STEP,k1=m[r-2]*STEP,z={n:0,side:0};zones.push(z);
+      if(ang<0.6){const j0=m[r0+1]*STEP;A.zones.push([k0-ZIN,k0+ZJOIN,z,0]);B.zones.push([j0-ZIN,j0+ZJOIN,z,0]);}   // joining: where they meet
+      else{const sd=ang>2.55?1:0;A.zones.push([k0-ZIN,k1+ZOUT,z,sd]);B.zones.push([jmin*STEP-ZIN,jmax*STEP+ZOUT,z,-sd]);}   // head on, or across
+      r0=r;}}
   // the timetable clock: seconds after midnight, from Basel's own time where that fits the sky
   const zurich=()=>{try{const p=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Zurich',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(new Date()),
     g=k=>+p.find(x=>x.type===k).value;return g('hour')*3600+g('minute')*60+g('second');}catch(e){return 8*3600;}};
   const startClock=night=>{const z=zurich();return night?(z>=20*3600?z:z<2400?z+86400:22.5*3600):(z>=6*3600&&z<20*3600?z:8*3600);};
   let clock=0,clockNight=null;
-  function resetTrams(T){for(const V of trams){V.trip=null;V.shown=false;}
+  function resetTrams(T){for(const V of trams){V.trip=null;V.shown=false;dropZones(V);}
     for(const L of lines){L.next=L.trips.findIndex(t=>t.t0>T);if(L.next<0)L.next=L.trips.length;
-      for(const t of L.trips)if(t.t0<=T&&T<=t.t1){const V=trams.find(v=>!v.trip&&v.op===L.op);if(V){V.trip=t;V.s=posAt(t,T);}}}}
+      for(const t of L.trips)if(t.t0<=T&&T<=t.t1){const V=trams.find(v=>!v.trip&&v.op===L.op);if(V){V.trip=t;V.s=posAt(t,T);setZones(V,pathOf(V));}}}}
   function runTrams(dt){
-    if(clockNight!==NIGHT){clockNight=NIGHT;clock=startClock(NIGHT);resetTrams(clock);}
-    clock+=dt*TT;if(clock>25.5*3600){clock=5*3600;resetTrams(clock);}
+    if(clockNight!==NIGHT){clockNight=NIGHT;clock=startClock(NIGHT);resetTrams(clock);resetBuses(clock);}
+    clock+=dt*TT;if(clock>25.5*3600){clock=5*3600;resetTrams(clock);resetBuses(clock);}
     for(const L of lines)while(L.next<L.trips.length&&L.trips[L.next].t0<=clock){const t=L.trips[L.next++],V=trams.find(v=>!v.trip&&v.op===L.op);
-      if(V){V.trip=t;V.s=posAt(t,clock);V.shown=false;}}
-    occ.clear();for(const V of trams){if(V.trip&&clock>V.trip.t1){V.trip=null;V.shown=false;}V.seen=placeTram(V);}   // where everyone is
+      if(V){V.trip=t;V.s=posAt(t,clock);V.shown=false;setZones(V,pathOf(V));}}
+    for(const L of occUsed)L.length=0;occUsed.length=0;
+    for(const V of trams){if(V.trip&&clock>V.trip.t1){V.trip=null;V.shown=false;dropZones(V);}occTram(V);}   // where everyone is
+    for(const L of used)L.length=0;used.length=0;for(const V of buses)if(V.no)gridAdd(V,VCATCH*dt+0.1);   // and every bus
     const want=new Map();
     for(const V of trams){if(!V.trip)continue;const sd=Math.max(V.s,posAt(V.trip,clock)),hit=hitAhead(V,V.s+0.3,sd+GAP_T);want.set(V,{sd,hit});}
     for(const [V,w] of want){let to=Math.min(w.sd,V.s+VCATCH*dt);
       if(w.hit){const o=want.get(w.hit.by);const mutual=o&&o.hit&&o.hit.by===V;   // two that see each other: the lower number goes first
         if(!(mutual&&V.id<w.hit.by.id))to=Math.min(to,w.hit.at-GAP_T);}
-      V.s=Math.max(V.s,to);
-      if(!V.shown&&bodyFree(V))V.shown=true;}   // a tram only comes into view where there is room for it
+      V.by=null;const s0=V.s,room=s=>!hits(pob,tramBoxes(V,s,0),V,'bus');
+      if(V.shown){zoneDrop(V);if(to>V.s&&busNear(V,to-V.s+GAP_B+0.1))to=tramClear(V,to);to=zoneGate(V,to,room);}
+      V.s=Math.max(V.s,to);V.stuck=V.s>s0+1e-4?0:(V.stuck||0)+dt;
+      if(!V.shown&&bodyFree(V)&&room(V.s)&&enterZones(V,room))V.shown=true;}   // a tram only comes into view where there is room for it
+    for(const V of trams){V.seen=placeTram(V);if(V.no)gridAdd(V,0);}
     for(const op in tramMeshes)for(const x of [...tramMeshes[op].end,...tramMeshes[op].mid])if(x)x.instanceMatrix.needsUpdate=true;}
+
+  // ---- the buses: every line that comes into the map today, on its routes, to the same weekday timetable as the
+  // trams. BVB's are green and battery-electric: Mercedes eCitaro G articulated buses, and on line 50 to the airport
+  // HESS lighTram 25 double-articulated ones; BLT's and AAGL's are yellow, SWEG's white. A bus serves every stop of its
+  // trip: it may not pass the next one before it has stood there (a late one only briefly). It moves only where its
+  // whole body and the road just ahead of it are clear of every other bus and tram, and the trams keep clear of the
+  // buses the same way ----
+  const M2U=1/BASEL.S,BUS_HW=0.245,GAP_B=0.35,DWELL_MIN=8;
+  // the sections, in metres from the front pivot of each (the front axle, or the joint a trailer hangs on), x forward
+  const SEC={gf:{x0:-7.15,x1:2.8,cab:'citaro',doors:[1.3,-3.2],wheels:[0,-5.9],roof:[[-5.4,-2.2],[-1.7,1.2]]},
+    lf:{x0:-6.55,x1:2.7,cab:'hess',doors:[1.35,-2.9],wheels:[0,-5.5],roof:[[-5.1,-1.9],[-1.3,0.5]],rails:true},
+    lm:{x0:-6.55,x1:-0.45,bellows:0.35,doors:[-2.6],wheels:[-5.5],roof:[[-5.4,-1.6]]},
+    gr:{x0:-7.83,x1:-0.45,bellows:0.35,tail:true,doors:[-1.6,-6.3],wheels:[-4.4],roof:[[-5.6,-1.9]]}};
+  // a bus: its first section's pivot behind the front, and each section's wheelbase and the joint behind it (metres):
+  // 18.13 m for the eCitaro G, 24.33 m for the lighTram
+  const MODELS={g:[{sec:'gf',piv:2.8,wb:5.9,j:7.5},{sec:'gr',wb:4.4}],l:[{sec:'lf',piv:2.7,wb:5.5,j:6.9},{sec:'lm',wb:5.5,j:6.9},{sec:'gr',wb:4.4}]};
+  const LIV={BVB:['#2e8b43','#f4f6f4'],BLT:['#f2c20f','#c8102e'],AAGL:['#e3cf1d','#e3cf1d'],SWEG:['#f1f2f0','#5d636a']};   // body, stripe
+  const BUS_HALF=[[1.2,0.32],[1.275,0.45],[1.275,1.05],[1.275,1.17],[1.275,2.8],[1.275,2.95],[1.24,3.1],[1.1,3.18],[0,3.22]];
+  const BUS_LOOP=[...BUS_HALF,...BUS_HALF.slice(0,-1).reverse().map(([z,y])=>[-z,y])];
+  // white takes the company's colour and magenta its stripe (per bus); the windows and doors are glass that lights up at night
+  const BODY='#ffffff',STRIPE='#ff00ff',DARK='#1d2328',ROOF='#c3c8cc',GREY='#2b2f34',GLASS='#1e262d',BLACK='#14181c';
+  const busTint=y=>y>3.05?ROOF:y>2.8?BODY:y>1.17?DARK:y>1.05?STRIPE:BODY;
+  function busGeo(o){   // one section of a bus, in metres: x forward from its front pivot, y up, z to its right
+    const P=[],N=[],C=[],F=[],col=new THREE.Color(),a=new V3(),b=new V3(),c=new V3(),n=new V3(),e=new V3();
+    const tri=(p,q,r,hex,ox,oy,oz,gl=0)=>{a.set(p[0]*M2U,p[1]*VS,p[2]*M2U);b.set(q[0]*M2U,q[1]*VS,q[2]*M2U);c.set(r[0]*M2U,r[1]*VS,r[2]*M2U);
+      n.subVectors(b,a).cross(e.subVectors(c,a));if(n.x*ox+n.y*oy+n.z*oz<0){e.copy(b);b.copy(c);c.copy(e);n.negate();}n.normalize();col.set(hex);
+      for(const v of [a,b,c]){P.push(v.x,v.y,v.z);N.push(n.x,n.y,n.z);C.push(col.r,col.g,col.b);F.push(gl);}};
+    const quad=(p,q,r,s,hex,ox,oy,oz,gl)=>{tri(p,q,r,hex,ox,oy,oz,gl);tri(p,r,s,hex,ox,oy,oz,gl);};
+    const box=(x0,x1,y0,y1,z0,z1,hex)=>{
+      quad([x1,y0,z0],[x1,y1,z0],[x1,y1,z1],[x1,y0,z1],hex,1,0,0);quad([x0,y0,z0],[x0,y1,z0],[x0,y1,z1],[x0,y0,z1],hex,-1,0,0);
+      quad([x0,y1,z0],[x1,y1,z0],[x1,y1,z1],[x0,y1,z1],hex,0,1,0);quad([x0,y0,z0],[x1,y0,z0],[x1,y0,z1],[x0,y0,z1],hex,0,-1,0);
+      quad([x0,y0,z1],[x1,y0,z1],[x1,y1,z1],[x0,y1,z1],hex,0,0,1);quad([x0,y0,z0],[x1,y0,z0],[x1,y1,z0],[x0,y1,z0],hex,0,0,-1);};
+    const L=BUS_LOOP,K=L.length,{x0,x1}=o,sd=1.285,fx=x1+0.012,bx=x0-0.012;
+    for(let i=0;i<K;i++){const p=L[i],q=L[(i+1)%K],my=(p[1]+q[1])/2;   // the body: its cross-section drawn along it
+      quad([x0,p[1],p[0]],[x1,p[1],p[0]],[x1,q[1],q[0]],[x0,q[1],q[0]],i===K-1?GREY:busTint(my),0,my-1.7,(p[0]+q[0])/2);}
+    const cap=(x,sx,f)=>{for(let i=0;i<K;i++){const p=L[i],q=L[(i+1)%K];tri([x,1.7,0],[x,p[1],p[0]],[x,q[1],q[0]],f((p[1]+q[1]+1.7)/3),sx,0,0);}};
+    if(o.cab){   // the front: a black face, most of it windscreen, with the destination display over it
+      cap(x1,1,()=>BLACK);quad([fx,0.32,-1.2],[fx,0.32,1.2],[fx,0.98,1.26],[fx,0.98,-1.26],BODY,1,0,0);
+      quad([fx,1.0,-1.16],[fx,1.0,1.16],[fx,2.86,1.16],[fx,2.86,-1.16],GLASS,1,0,0,1);
+      const dx=o.cab==='hess'?x1+0.065:fx;quad([dx,2.93,-0.95],[dx,2.93,0.95],[dx,3.13,0.95],[dx,3.13,-0.95],'#ff9b26',1,0,0,0.6);
+      for(const z of [-1,1]){quad([fx,0.55,z*0.78],[fx,0.55,z*1.12],[fx,0.7,z*1.12],[fx,0.7,z*0.78],'#f6f7f8',1,0,0,1);   // headlights
+        box(x1-0.32,x1-0.12,2.1,2.5,z*1.27,z*1.42,BLACK);}   // mirrors
+      box(x1-0.06,x1+0.03,0.32,0.5,-1.24,1.24,GREY);
+      if(o.cab==='citaro'){quad([fx+0.002,0.93,-1.24],[fx+0.002,0.93,1.24],[fx+0.002,1.0,1.24],[fx+0.002,1.0,-1.24],'#dfe3e6',1,0,0);   // its silver frame
+        for(const z of [-1,1])quad([fx+0.002,1.0,z*1.16],[fx+0.002,1.0,z*1.24],[fx+0.002,3.0,z*1.24],[fx+0.002,3.0,z*1.16],'#dfe3e6',1,0,0);}
+      else{quad([fx+0.002,0.92,-1.26],[fx+0.002,0.92,1.26],[fx+0.002,1.0,1.26],[fx+0.002,1.0,-1.26],'#eef0f1',1,0,0);   // HESS: a white line under
+        box(x1-0.9,x1+0.06,2.9,3.3,-1.24,1.24,BLACK);}}   // the windscreen, a black visor over it
+    else cap(x1,1,()=>GREY);
+    if(o.tail){cap(x0,-1,()=>BODY);   // the back: rear window, lights, bumper
+      quad([bx,1.35,-1.0],[bx,1.35,1.0],[bx,2.68,1.0],[bx,2.68,-1.0],GLASS,-1,0,0,1);
+      for(const z of [-1,1])quad([bx,0.62,z*0.95],[bx,0.62,z*1.2],[bx,1.25,z*1.2],[bx,1.25,z*0.95],'#b3121b',-1,0,0);
+      box(x0-0.03,x0+0.06,0.32,0.55,-1.24,1.24,GREY);}
+    else cap(x0,-1,()=>GREY);
+    if(o.bellows)for(let k=0;k<5;k++)box(x1+(o.bellows-x1)*k/5,x1+(o.bellows-x1)*(k+1)/5,0.42,3.08,-1.2,1.2,k%2?'#4d5256':'#61666b');   // the joint's bellows
+    const W0=1.19,W1=2.78,wa=x0+(o.tail?0.35:0.15),wb=x1-(o.cab?0.45:0.15);
+    for(const z of [-1,1]){let runs=[[wa,wb]];   // one band of windows down each side, and the doors on the right, glazed to the floor
+      if(z>0)for(const d of o.doors){const da=d-0.62,db=d+0.62;runs=runs.flatMap(([u,v])=>db<=u||da>=v?[[u,v]]:[[u,da],[db,v]].filter(([p,q])=>q-p>0.1));
+        quad([da,0.36,sd],[db,0.36,sd],[db,W1,sd],[da,W1,sd],GLASS,0,0,1,1);}
+      for(const [u,v] of runs)quad([u,W0,z*sd],[v,W0,z*sd],[v,W1,z*sd],[u,W1,z*sd],GLASS,0,0,z,1);}
+    for(const w of o.wheels){box(w-0.5,w+0.5,0,0.33,-1.15,1.15,'#15171a');
+      for(const z of [-1,1]){quad([w-0.56,0.33,z*sd],[w+0.56,0.33,z*sd],[w+0.56,1.02,z*sd],[w-0.56,1.02,z*sd],'#15171a',0,0,z);
+        const h=z*(sd+0.004);quad([w-0.2,0.38,h],[w+0.2,0.38,h],[w+0.2,0.72,h],[w-0.2,0.72,h],'#b9bec3',0,0,z);}}
+    for(const [xa,xb] of o.roof)box(xa,xb,3.18,3.47,-0.88,0.88,'#d5d9dc');   // the batteries and air conditioning, under fairings
+    if(o.rails)for(const z of [-0.42,0.42])box(-0.2,1.7,3.22,3.36,z-0.05,z+0.05,BLACK);   // where the charging mast's pantograph meets it
+    const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(N,3));
+    g.setAttribute('color',new THREE.Float32BufferAttribute(C,3));g.setAttribute('glass',new THREE.Float32BufferAttribute(F,1));return g;}
+  const busMat=new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.45,metalness:0.12,emissive:0xffd59a,emissiveIntensity:0});
+  busMat.onBeforeCompile=(sh)=>{   // one material and one draw for every bus of a section type: colours per bus, glass glows at night
+    sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nattribute float glass;\nattribute vec3 stripe;\nvarying float vGlass;')
+      .replace('#include <color_vertex>','#include <color_vertex>\n\tvGlass = glass;\n#ifdef USE_INSTANCING_COLOR\n\tvColor.rgb = all( greaterThan( color, vec3( 0.99 ) ) ) ? instanceColor.rgb : ( color.r > 0.99 && color.g < 0.01 && color.b > 0.99 ) ? stripe : color;\n#endif');
+    sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying float vGlass;')
+      .replace('vec3 totalEmissiveRadiance = emissive;','vec3 totalEmissiveRadiance = emissive * vGlass;')
+      .replace('#include <roughnessmap_fragment>','#include <roughnessmap_fragment>\n\troughnessFactor = mix( roughnessFactor, 0.22, vGlass );')
+      .replace('#include <metalnessmap_fragment>','#include <metalnessmap_fragment>\n\tmetalnessFactor = mix( metalnessFactor, 0.35, vGlass );');};
+  nightGlow.push(busMat);
+  const busLines=(BASEL.buses||[]).filter(l=>l.routes&&l.routes.length&&l.trips&&l.trips.length).map((l,li)=>{
+    const paths=l.routes.map(r=>tramPath(r.p)),trips=[];
+    for(let k=0;k<l.trips.length;k+=3){const pat=l.pats[l.trips[k+1]];trips.push({li,dir:l.trips[k],pat,t0:l.trips[k+2],t1:l.trips[k+2]+pat[pat.length-1]});}
+    return {ref:l.ref,op:l.op,model:l.op==='BVB'&&l.ref==='50'?'l':'g',paths,trips,next:0,liv:(LIV[l.op]||LIV.SWEG).map(c=>new THREE.Color(c))};});
+  buildZones([...lines.flatMap(L=>L.paths.map(P=>({P,bus:false}))),...busLines.flatMap(L=>L.paths.map(P=>({P,bus:true})))]);
+  // as many buses of each model as the timetable ever has out at once, with ten minutes' grace for a late one
+  const busNeed={g:0,l:0};
+  for(const md in busNeed){const ev=[];for(const L of busLines)if(L.model===md)for(const t of L.trips)ev.push([t.t0,1],[t.t1+600,-1]);
+    ev.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);let n=0;for(const [,d] of ev){n+=d;busNeed[md]=Math.max(busNeed[md],n);}}
+  const buses=[],busMesh={},nSec={};
+  for(const md in busNeed)for(let v=0;v<busNeed[md];v++){const defs=MODELS[md];
+    buses.push({id:buses.length,kind:'bus',model:md,secs:defs.map(D=>{const i=nSec[D.sec]||0;nSec[D.sec]=i+1;return {D,i};}),
+      len:(defs[0].piv+defs.reduce((t,D)=>t+(D.j||0),0)-SEC[defs[defs.length-1].sec].x0)*M2U,
+      trip:null,s:0,k:0,until:null,shown:false,ob:new Float32Array(defs.length*6),no:0,bb:[0,0,0,0],by:null,zp:null,zi:0,held:[]});}
+  for(const sec in nSec){const g=busGeo(SEC[sec]),k=nSec[sec];g.setAttribute('stripe',new THREE.InstancedBufferAttribute(new Float32Array(k*3),3));
+    const im=busMesh[sec]=mk(g,busMat,k),c0=new THREE.Color(LIV.BVB[0]);for(let i=0;i<k;i++){im.setMatrixAt(i,NONE);im.setColorAt(i,c0);}}
+  if(DEBUG)window.__buses=buses;
+  const Fp=new V3(),Rp=new V3(),Jp=new V3(),bob=new Float32Array(30);
+  function layBus(V,P,s,ob,draw,probe){   // bus V with its front at s on path P: a box for each section in ob, and with
+    const defs=MODELS[V.model];let n=0,dist=0;   // probe one for the road just ahead; with draw, where to draw each section
+    for(let k=0;k<defs.length;k++){const D=defs[k],X=SEC[D.sec];
+      if(k)Fp.copy(Jp);else{dist=D.piv;P.at(s-dist*M2U,Fp);}   // a trailer hangs on the joint of the section before it
+      P.at(s-(dist+D.wb)*M2U,Rp);   // and every section has its (back) wheels on the road
+      let ux=Fp.x-Rp.x,uz=Fp.z-Rp.z;const L=Math.hypot(ux,uz)||1e-6;ux/=L;uz/=L;
+      const xa=X.x0*M2U,xb=(X.bellows||X.x1)*M2U,o=n++*6;
+      ob[o]=Fp.x+ux*(xa+xb)/2;ob[o+1]=Fp.z+uz*(xa+xb)/2;ob[o+2]=ux;ob[o+3]=uz;ob[o+4]=(xb-xa)/2;ob[o+5]=BUS_HW;
+      if(draw){const im=busMesh[D.sec],i=V.secs[k].i;M.set(ob[o],0,ob[o+1]);
+        if(onMap(M)){q.setFromAxisAngle(UP,Math.atan2(-uz,ux));qp.setFromAxisAngle(FWD,Math.atan2(Fp.y-Rp.y,L));m.compose(Fp,q.multiply(qp),ONE);im.setMatrixAt(i,m);}
+        else im.setMatrixAt(i,NONE);}
+      if(D.j){Jp.set(Fp.x-ux*D.j*M2U,Fp.y+(Rp.y-Fp.y)*D.j/D.wb,Fp.z-uz*D.j*M2U);dist+=D.j;}}
+    if(probe>0){const o=n++*6,ux=ob[2],uz=ob[3],e=ob[4]+probe/2;
+      ob[o]=ob[0]+ux*e;ob[o+1]=ob[1]+uz*e;ob[o+2]=ux;ob[o+3]=uz;ob[o+4]=probe/2;ob[o+5]=BUS_HW*0.8;}
+    return n;}
+  function placeBus(V,P){   // draw a bus where it is, and note the ground it covers (none when it is not out)
+    V.no=0;
+    if(V.trip&&V.shown){const n=layBus(V,P,V.s,bob,true,0);for(let i=0;i<n*6;i+=6)addBox(V,bob[i],bob[i+1],bob[i+2],bob[i+3],bob[i+4],bob[i+5]);}
+    else for(const S of V.secs)busMesh[S.D.sec].setMatrixAt(S.i,NONE);}
+  const blocked=(V,P,s,probe)=>hits(bob,layBus(V,P,s,bob,false,probe),V,null);
+  function busClear(V,P,to){   // as far towards `to` as a bus can go with nobody in the way
+    let by=blocked(V,P,to,GAP_B);if(!by)return to;
+    let probe=GAP_B;
+    if(by.by===V&&by.kind==='bus'&&V.id<by.id){probe=0;by=blocked(V,P,to,0);if(!by)return to;}   // two buses waiting for each other: one squeezes on
+    V.by=by;let lo=V.s,hi=to;for(let i=0;i<5;i++){const mid=(lo+hi)/2;if(blocked(V,P,mid,probe))hi=mid;else lo=mid;}
+    return lo;}
+  function startTrip(V,L,t,T){V.trip=t;V.s=Math.max(posAt(t,T),V.len);V.shown=false;V.no=0;V.until=null;V.by=null;V.k=0;setZones(V,L.paths[t.dir]);
+    const p=t.pat;while(V.k*3<p.length&&p[V.k*3]<V.s-0.05)V.k++;   // it starts with all of it on its route: stops behind it are passed
+    const [body,stripe]=L.liv;
+    for(const S of V.secs){const im=busMesh[S.D.sec],at=im.geometry.attributes.stripe;im.setColorAt(S.i,body);at.setXYZ(S.i,stripe.r,stripe.g,stripe.b);
+      im.instanceColor.needsUpdate=true;at.needsUpdate=true;}}
+  function resetBuses(T){for(const V of buses){V.trip=null;V.shown=false;dropZones(V);placeBus(V,null);}
+    for(const L of busLines){L.next=L.trips.findIndex(t=>t.t0>T);if(L.next<0)L.next=L.trips.length;
+      for(const t of L.trips)if(t.t0<=T&&T<=t.t1){const V=buses.find(v=>!v.trip&&v.model===L.model);if(V)startTrip(V,L,t,T);}}}
+  const isStop=(p,k)=>p[k*3+2]>p[k*3+1];   // the timetable has it stand there (not just come in at the edge of the map)
+  function runBuses(dt){
+    for(const L of busLines)while(L.next<L.trips.length&&L.trips[L.next].t0<=clock){const t=L.trips[L.next++],V=buses.find(v=>!v.trip&&v.model===L.model);
+      if(V)startTrip(V,L,t,clock);}
+    for(const V of buses){if(!V.trip)continue;
+      const P=busLines[V.trip.li].paths[V.trip.dir],p=V.trip.pat,n=p.length/3;
+      while(V.k<n&&!isStop(p,V.k))V.k++;
+      if(V.k<n&&V.s>=p[V.k*3]-0.03){   // at its next stop: it stands for as long as the timetable says, or a moment when late
+        if(V.until===null)V.until=Math.max(clock+DWELL_MIN,V.trip.t0+p[V.k*3+2]);
+        if(clock>=V.until){V.k++;V.until=null;while(V.k<n&&!isStop(p,V.k))V.k++;}}
+      if((V.k>=n&&V.s>=p[n*3-3]-0.05)||clock>V.trip.t1+600){V.trip=null;V.shown=false;dropZones(V);placeBus(V,P);continue;}   // done (or hopelessly late)
+      let to=Math.min(Math.max(V.s,posAt(V.trip,clock)),V.k<n?p[V.k*3]:p[n*3-3],V.s+VCATCH*dt);
+      V.by=null;const room=s=>!blocked(V,P,Math.min(s,P.len),GAP_B),s0=V.s;
+      if(V.shown){zoneDrop(V);if(to>V.s)to=busClear(V,P,to);to=zoneGate(V,to,room);}
+      V.s=Math.max(V.s,to);V.stuck=V.s>s0+1e-4?0:(V.stuck||0)+dt;
+      if(!V.shown&&!blocked(V,P,V.s,0)&&enterZones(V,room)){V.shown=true;placeBus(V,P);gridAdd(V,VCATCH*dt+0.1);}   // it comes out where there is room for it
+      else placeBus(V,P);}
+    for(const sec in busMesh)busMesh[sec].instanceMatrix.needsUpdate=true;}
+  if(DEBUG)window.__traffic={get clock(){return clock;},set(T){clock=T;resetTrams(T);resetBuses(T);},
+    tick(dt){runTrams(dt);runBuses(dt);},
+    overlaps(){   // pairs of buses, or a bus and a tram, whose bodies overlap now (there should be none)
+      const out=[],all=[...buses,...trams].filter(V=>V.no);
+      for(let a=0;a<all.length;a++)for(let b=a+1;b<all.length;b++){const U=all[a],W=all[b];if(U.kind==='tram'&&W.kind==='tram')continue;
+        let hit=false;for(let i=0;i<U.no*6&&!hit;i+=6)for(let j=0;j<W.no*6&&!hit;j+=6)hit=sat(U.ob,i,W.ob,j);
+        if(hit)out.push([U.kind+U.id,W.kind+W.id]);}
+      return out;},
+    lines:busLines,trams,buses,zones};
   const onMap=o=>o.x>GB.x0+0.5&&o.x<GB.x1-0.5&&o.z>GB.z0+0.5&&o.z<GB.z1-0.5;
   function place(T){   // each car rides on its two bogies, so it follows curves and leans up the bridge ramps
     let seen=false;
@@ -2416,7 +2681,7 @@ const runTrains=(()=>{
       m.compose(M,q.multiply(qp),ONE);body.setMatrixAt(c.i,m);if(glass)glass.setMatrixAt(c.i,m);}
     for(const x of T.meshes)x.instanceMatrix.needsUpdate=true;
     T.seen=seen;}
-  return (dt)=>{runTrams(Math.min(dt,0.1));for(const T of trains){
+  return (dt)=>{const d=Math.min(dt,0.1);runTrams(d);runBuses(d);for(const T of trains){
     if(T.wait>0){T.wait-=dt;if(T.wait<=0)T.leg=(T.leg+1)%T.legs.length;}
     else{const L=T.legs[T.leg],r=L.to-T.s,dist=Math.abs(r),vt=Math.min(T.seen?VMAX:30,Math.sqrt(2*ACC*dist));
       T.v=T.v<vt?Math.min(vt,T.v+ACC*dt*(T.seen?1:6)):vt;

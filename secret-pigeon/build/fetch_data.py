@@ -1,7 +1,7 @@
 """Download the raw map data for Secret Pigeon's Basel.
 
-Usage: python3 -I secret-pigeon/build/fetch_data.py <output-dir> [osm] [rail] [tram] [timetable] [streets] [ortho] [sb3d]
-       [trees]
+Usage: python3 -I secret-pigeon/build/fetch_data.py <output-dir> [osm] [rail] [tram] [bus] [timetable] [streets] [ortho]
+       [sb3d] [trees]
   (no part names: all of them)
 
 Writes into <output-dir>:
@@ -12,7 +12,9 @@ Writes into <output-dir>:
                        map: the lines loop out of it and back in)
   osm_streets.json     the shopping streets between Barfüsserplatz and Marktplatz, for the shop fronts
   osm_tram.json        the tram tracks and the tram lines (route relations: colours, operators, stops)
-  gtfs.zip             Switzerland's public transport timetable (GTFS, opentransportdata.swiss), for the trams' times
+  osm_bus.json         the bus lines (route relations, without the long-distance coaches) and the roads around them
+  gtfs.zip             Switzerland's public transport timetable (GTFS, opentransportdata.swiss), for the trams' and
+                       buses' times
   ortho/E-N.jpg        swisstopo SWISSIMAGE at 1 m per pixel, one file per LV95 kilometre (WMS)
   sb3d/*.citygml.zip   swisstopo swissBUILDINGS3D 3.0 (CityGML, LOD2 roofs), newest release of each map sheet
   trees_bs.json        Basel's public tree register (species and age), Geodaten Kanton Basel-Stadt
@@ -94,12 +96,24 @@ def fetch_tram(out):
 out body geom;""", os.path.join(out, "osm_tram.json"))
 
 
+def fetch_bus(out):
+    """The bus lines (route relations: ways in driving order, stops; not the long-distance coaches) and the roads
+    around them: their tags tell which side a bus keeps to, and a line without a route is driven along them."""
+    s, w, n, e = BBOX
+    bb = f"{s - 0.006},{w - 0.02},{n + 0.004},{e + 0.006}"     # like the trams: the lines run on out of the map
+    overpass(f"""[out:json][timeout:300][bbox:{bb}];
+relation["route"="bus"]["network"!~"flix",i]["operator"!~"flix",i];
+out body geom;
+way["highway"~"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street|service|road|busway|bus_guideway)(_link)?$"]["area"!="yes"]["service"!~"^(parking_aisle|driveway|drive-through)$"];
+out body geom;""", os.path.join(out, "osm_bus.json"))
+
+
 GTFS_PACKAGE = "https://ckan.opendata.swiss/api/3/action/package_show?id=fahrplan-2026-gtfs2020"
 
 
 def fetch_timetable(out):
     """Switzerland's official public transport timetable (GTFS, opentransportdata.swiss): the newest daily file,
-    about 300 MB. The build keeps only Basel's trams from it."""
+    about 300 MB. The build keeps only Basel's trams and buses from it."""
     res = json.loads(get(GTFS_PACKAGE))["result"]["resources"]
     zips = [r for r in res if (r.get("format") or "").upper() == "ZIP" and "gtfs" in (r.get("url") or "").lower()]
     newest = max(zips, key=lambda r: r.get("created") or "")
@@ -188,8 +202,8 @@ def fetch_trees(out):
     print(f"wrote {path} ({len(json.loads(body))} trees)", flush=True)
 
 
-PARTS = {"osm": fetch_osm, "rail": fetch_rail, "tram": fetch_tram, "timetable": fetch_timetable, "streets": fetch_streets,
-         "ortho": fetch_ortho, "sb3d": fetch_buildings, "trees": fetch_trees}
+PARTS = {"osm": fetch_osm, "rail": fetch_rail, "tram": fetch_tram, "bus": fetch_bus, "timetable": fetch_timetable,
+         "streets": fetch_streets, "ortho": fetch_ortho, "sb3d": fetch_buildings, "trees": fetch_trees}
 
 if __name__ == "__main__":
     if len(sys.argv) < 2 or any(a not in PARTS for a in sys.argv[2:]):
