@@ -11,6 +11,8 @@ Coordinates: swiss LV95 metres relative to the Mittlere Brücke. Game x = east /
 heights are multiplied by VS (a mild vertical exaggeration so landmarks read from the air).
 """
 import base64
+import csv
+import datetime
 import gzip
 import heapq
 import json
@@ -20,6 +22,7 @@ import re
 import struct
 import subprocess
 import sys
+import zipfile
 from array import array
 from collections import Counter
 
@@ -585,10 +588,118 @@ def rail_lines(raw, geo):
     return [[round(v / S * (1 if i % 2 == 0 else -1), 2) for x, y in rdp(r, 0.3) for i, v in enumerate((x, y))] for r in runs]
 
 
-def tram_network(raw, geo):
-    """Basel's trams, out of OpenStreetMap: every tram track in the map, and for each line its colour on the network
-    map, its operator and one route each way with the stops (the pair of variants that runs longest in the map),
-    trimmed to the map plus a stretch either side. Game units; empty without the data."""
+TT_DATE = "20261021"     # the timetable's day for the trams: an ordinary Wednesday
+TT_AGENCIES = ("Basler Verkehrsbetriebe", "Baselland Transport")
+
+
+def gtfs_trams(raw, work):
+    """Basel's tram trips on TT_DATE from Switzerland's timetable (GTFS, opentransportdata.swiss): for each line, each
+    trip's stops as (lat, lon, arrival, departure) in seconds after midnight. The timetable is big (its stop times
+    alone are 3.7 GB unpacked), so it is read as a stream once and the result kept in the work folder."""
+    src = os.path.join(raw, "gtfs.zip")
+    if not os.path.exists(src):
+        return {}
+    key = [os.path.getsize(src), TT_DATE]
+    cache = os.path.join(work, "tram-timetable.json")
+    if os.path.exists(cache):
+        c = json.load(open(cache))
+        if c.get("key") == key:
+            return c["lines"]
+    z = zipfile.ZipFile(src)
+
+    def table(name, keep_line=None):   # rows as dicts; keep_line skips most lines before they are parsed
+        with z.open(name) as f:
+            head = next(csv.reader([f.readline().decode("utf-8-sig")]))
+            for raw_line in f:
+                line = raw_line.decode("utf-8")
+                if keep_line is None or keep_line(line):
+                    yield dict(zip(head, next(csv.reader([line]))))
+
+    hms = lambda t: sum(int(v) * m for v, m in zip(t.split(":"), (3600, 60, 1)))
+    agencies = {r["agency_id"] for r in table("agency.txt") if r["agency_name"] in TT_AGENCIES}
+    routes = {r["route_id"]: r["route_short_name"] for r in table("routes.txt") if r["agency_id"] in agencies and r["route_type"] in ("0", "900")}
+    first = lambda l: l.split(",", 1)[0].strip('"')      # every field is quoted
+    trips = {r["trip_id"]: (routes[r["route_id"]], r["service_id"]) for r in table("trips.txt", lambda l: first(l) in routes)}
+    services = {sid for _, sid in trips.values()}
+    day = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")[datetime.date(int(TT_DATE[:4]), int(TT_DATE[4:6]), int(TT_DATE[6:])).weekday()]
+    active = {r["service_id"] for r in table("calendar.txt") if r["service_id"] in services and r["start_date"] <= TT_DATE <= r["end_date"] and r[day] == "1"}
+    for r in table("calendar_dates.txt", lambda l: TT_DATE in l):
+        if r["service_id"] in services and r["date"] == TT_DATE:
+            (active.add if r["exception_type"] == "1" else active.discard)(r["service_id"])
+    keep = {t for t, (_, sid) in trips.items() if sid in active}
+    times = {}
+    for r in table("stop_times.txt", lambda l: first(l) in keep):
+        times.setdefault(r["trip_id"], []).append((int(r["stop_sequence"]), r["stop_id"], hms(r["arrival_time"]), hms(r["departure_time"])))
+    want = {sid for v in times.values() for _, sid, _, _ in v}
+    stops = {r["stop_id"]: (float(r["stop_lat"]), float(r["stop_lon"])) for r in table("stops.txt") if r["stop_id"] in want}
+    lines = {}
+    for tid, seq in times.items():
+        seq.sort()
+        lines.setdefault(trips[tid][0], []).append([[*stops[sid], a, d] for _, sid, a, d in seq if sid in stops])
+    with open(cache, "w") as f:
+        json.dump({"key": key, "lines": lines}, f, separators=(",", ":"))
+    return lines
+
+
+def timetable_runs(trips, lines, geo, along):
+    """Each timetabled trip laid on one of the line's two routes: the trip's stops that lie on the route, in order,
+    with times smoothed (the timetable gives whole minutes, so stops that share a minute are spread by distance) and
+    a short stop at each. A trip that carries on beyond the route's ends enters or leaves at the end, out of sight;
+    one that starts or ends on the route stands at its terminus for a while. Returns the distinct patterns (stops
+    as distance in game units, arrival and departure in seconds after the trip's start) and the trips that use
+    them as (route, pattern, start in seconds after midnight)."""
+    totals = [sum(math.dist(a, b) for a, b in zip(l, l[1:])) for l in lines]
+    pats, index, runs = [], {}, []
+    for trip in trips:
+        best = None
+        for di, line in enumerate(lines):
+            kept = []
+            for i, (lat, lon, a, d) in enumerate(trip):
+                dist, al = along(line, geo.local(lat, lon))
+                if dist < 35 and (not kept or al > kept[-1][1] + 5):
+                    kept.append((i, al, a, d))
+            if len(kept) >= 3 and (best is None or len(kept) > len(best[1])):
+                best = (di, kept)
+        if not best:
+            continue
+        di, kept = best
+        sd, t = [k[1] for k in kept], [(k[2] + k[3]) / 2 for k in kept]
+        v = max(3.0, (sd[-1] - sd[0]) / max(60.0, t[-1] - t[0]))      # the trip's own pace, metres a second
+        firsts = [k for k in range(len(t)) if k == 0 or t[k] != t[k - 1]]
+        sm = list(t)
+        for g, k0 in enumerate(firsts):
+            k1 = firsts[g + 1] if g + 1 < len(firsts) else None
+            for k in range(k0, k1 if k1 is not None else len(t)):
+                sm[k] = (t[k0] + (t[k1] - t[k0]) * (sd[k] - sd[k0]) / max(1e-6, sd[k1] - sd[k0]) if k1 is not None
+                         else t[k0] + (sd[k] - sd[k0]) / v)
+        dw = []                                     # a stop: up to 20 s, never more than a third of the runs either side
+        for k in range(len(sm)):
+            gaps = ([sm[k] - sm[k - 1]] if k > 0 else []) + ([sm[k + 1] - sm[k]] if k + 1 < len(sm) else [])
+            dw.append(min(20.0, 0.35 * min(gaps or [60.0])))
+        pts = [[sd[k], sm[k] - dw[k] / 2, sm[k] + dw[k] / 2] for k in range(len(sm))]
+        if kept[0][0] > 0 and sd[0] < 800:          # it comes from further back: in at the route's start
+            pts.insert(0, [0.0, pts[0][1] - sd[0] / v, pts[0][1] - sd[0] / v])
+        else:                                       # it starts here: waiting at the terminus first
+            pts[0][1] -= 60
+        if kept[-1][0] < len(trip) - 1 and totals[di] - sd[-1] < 800:
+            pts.append([totals[di], pts[-1][2] + (totals[di] - sd[-1]) / v, pts[-1][2] + (totals[di] - sd[-1]) / v])
+        else:
+            pts[-1][2] += 45
+        t0 = pts[0][1]
+        pat = tuple(v for q in pts for v in (round(q[0] / S, 2), round(q[1] - t0, 1), round(q[2] - t0, 1)))
+        if pat not in index:
+            index[pat] = len(pats)
+            pats.append(list(pat))
+        runs.append([di, index[pat], round(t0)])
+    runs.sort(key=lambda r: r[2])
+    return pats, runs
+
+
+def tram_network(raw, work, geo):
+    """Basel's trams, out of OpenStreetMap and the timetable: every tram track in the map, and for each line that
+    runs today its colour on the network map, its operator, one route each way with the stops (the pair of
+    variants that runs longest in the map, trimmed to the map plus a stretch either side) and every trip of an
+    ordinary weekday on them. Game units; empty without the data."""
     src = os.path.join(raw, "osm_tram.json")
     if not os.path.exists(src):
         return [], []
@@ -655,6 +766,7 @@ def tram_network(raw, geo):
         parts = name.split(":", 1)[-1].split("→")
         return (parts[0].strip(), parts[-1].strip()) if len(parts) == 2 else (name, name)
 
+    timetable = gtfs_trams(raw, work)
     lines = {}
     for r in els:
         if r["type"] == "relation" and r.get("tags", {}).get("ref"):
@@ -673,9 +785,10 @@ def tram_network(raw, geo):
         if best is None:      # no variant back the other way: drive the longest one in reverse
             r1, c1 = max(variants, key=lambda v: v[1][2])
             best = (0, (r1, c1), (r1, (c1[0][::-1], c1[1], c1[2])))
-        dirs = []
+        dirs, routes = [], []
         for r, (line, stops, _) in best[1:]:
             line = rdp(line, 0.5)
+            routes.append(line)
             ds = sorted({round(dd / S, 2) for dist, dd in (along(line, q) for q in stops) if dist < 25})
             merged = []
             for dd in ds:                # a stop's two positions (one per platform edge) count once
@@ -684,7 +797,11 @@ def tram_network(raw, geo):
             dirs.append({"p": [round(v / S * (1 if i % 2 == 0 else -1), 2) for x, y in line for i, v in enumerate((x, y))],
                          "stops": merged, "name": r["tags"].get("name", "")})
         t = best[1][0]["tags"]
-        out.append({"ref": ref, "colour": t.get("colour") or "#888888", "op": t.get("operator") or "", "dirs": dirs})
+        if not timetable.get(ref):
+            continue                                # not in today's timetable
+        pats, runs = timetable_runs(timetable[ref], routes, geo, along)
+        out.append({"ref": ref, "colour": t.get("colour") or "#888888", "op": t.get("operator") or "", "dirs": dirs,
+                    "pats": pats, "trips": [v for r in runs for v in r]})
     return [[round(v / S * (1 if i % 2 == 0 else -1), 2) for x, y in rdp(r, 0.3) for i, v in enumerate((x, y))] for r in tracks], out
 
 
@@ -1525,7 +1642,7 @@ def main(raw, work, out_js):
         places["solitude"] = [round(x / S, 2), round(-y / S, 2)]
 
     rail = rail_tracks(raw, geo)
-    tram_tracks, trams = tram_network(raw, geo)
+    tram_tracks, trams = tram_network(raw, work, geo)
 
     def b64(arr):
         return base64.b64encode(arr.tobytes()).decode()
@@ -1552,7 +1669,7 @@ def main(raw, work, out_js):
                       "ferries": [x["name"] for x in ferries],
                       "rail": [{k: v for k, v in t.items() if k != "p"} for t in rail], "sbb_front": sbb_front,
                       "awnings": len(awnings) // 4, "market": market and len(market["square"]),
-                      "trams": [[t["ref"], t["op"], t["colour"], [[d["name"], len(d["p"]) // 2, len(d["stops"])] for d in t["dirs"]]] for t in trams],
+                      "trams": [[t["ref"], t["op"], t["colour"], len(t["pats"]), len(t["trips"]) // 3, [[d["name"], len(d["p"]) // 2, len(d["stops"])] for d in t["dirs"]]] for t in trams],
                       "tram_tracks": len(tram_tracks),
                       "towers": towers, "landmarks": {k: {kk: (round(v, 2) if isinstance(v, float) else v) for kk, v in d.items()} for k, d in landmarks.items()},
                       "places": places, "ground_px": [GW, GH], "ground_kB": [len(ground_b64) * 3 // 4 // 1000, len(small_b64) * 3 // 4 // 1000],

@@ -1,6 +1,7 @@
 """Download the raw map data for Secret Pigeon's Basel.
 
-Usage: python3 -I secret-pigeon/build/fetch_data.py <output-dir> [osm] [rail] [tram] [streets] [ortho] [sb3d] [trees]
+Usage: python3 -I secret-pigeon/build/fetch_data.py <output-dir> [osm] [rail] [tram] [timetable] [streets] [ortho] [sb3d]
+       [trees]
   (no part names: all of them)
 
 Writes into <output-dir>:
@@ -11,6 +12,7 @@ Writes into <output-dir>:
                        map: the lines loop out of it and back in)
   osm_streets.json     the shopping streets between Barfüsserplatz and Marktplatz, for the shop fronts
   osm_tram.json        the tram tracks and the tram lines (route relations: colours, operators, stops)
+  gtfs.zip             Switzerland's public transport timetable (GTFS, opentransportdata.swiss), for the trams' times
   ortho/E-N.jpg        swisstopo SWISSIMAGE at 1 m per pixel, one file per LV95 kilometre (WMS)
   sb3d/*.citygml.zip   swisstopo swissBUILDINGS3D 3.0 (CityGML, LOD2 roofs), newest release of each map sheet
   trees_bs.json        Basel's public tree register (species and age), Geodaten Kanton Basel-Stadt
@@ -92,6 +94,27 @@ def fetch_tram(out):
 out body geom;""", os.path.join(out, "osm_tram.json"))
 
 
+GTFS_PACKAGE = "https://ckan.opendata.swiss/api/3/action/package_show?id=fahrplan-2026-gtfs2020"
+
+
+def fetch_timetable(out):
+    """Switzerland's official public transport timetable (GTFS, opentransportdata.swiss): the newest daily file,
+    about 300 MB. The build keeps only Basel's trams from it."""
+    res = json.loads(get(GTFS_PACKAGE))["result"]["resources"]
+    zips = [r for r in res if (r.get("format") or "").upper() == "ZIP" and "gtfs" in (r.get("url") or "").lower()]
+    newest = max(zips, key=lambda r: r.get("created") or "")
+    path = os.path.join(out, "gtfs.zip")
+    req = urllib.request.Request(newest["url"], headers={"User-Agent": UA})
+    with urllib.request.urlopen(req, timeout=600) as r, open(path + ".part", "wb") as f:
+        while True:
+            chunk = r.read(1 << 20)
+            if not chunk:
+                break
+            f.write(chunk)
+    os.replace(path + ".part", path)
+    print(f"wrote {path} ({os.path.getsize(path) / 1e6:.0f} MB, {newest['url'].rsplit('/', 1)[-1]})", flush=True)
+
+
 SHOPPING = ["Gerbergasse", "Falknerstrasse", "Freie Strasse", "Streitgasse", "Barfüssergasse", "Eisengasse", "Marktgasse"]
 
 
@@ -165,8 +188,8 @@ def fetch_trees(out):
     print(f"wrote {path} ({len(json.loads(body))} trees)", flush=True)
 
 
-PARTS = {"osm": fetch_osm, "rail": fetch_rail, "tram": fetch_tram, "streets": fetch_streets, "ortho": fetch_ortho,
-         "sb3d": fetch_buildings, "trees": fetch_trees}
+PARTS = {"osm": fetch_osm, "rail": fetch_rail, "tram": fetch_tram, "timetable": fetch_timetable, "streets": fetch_streets,
+         "ortho": fetch_ortho, "sb3d": fetch_buildings, "trees": fetch_trees}
 
 if __name__ == "__main__":
     if len(sys.argv) < 2 or any(a not in PARTS for a in sys.argv[2:]):

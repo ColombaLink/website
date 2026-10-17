@@ -15,14 +15,15 @@ python3 -I secret-pigeon/build/assemble.py secret-pigeon/build/game.template.htm
 ```
 
 `fetch_data.py` downloads about 330 MB: the four swissBUILDINGS3D map sheets are most of it. Add part names
-(`osm`, `rail`, `tram`, `streets`, `ortho`, `sb3d`, `trees`) to fetch only some of them.
+(`osm`, `rail`, `tram`, `timetable`, `streets`, `ortho`, `sb3d`, `trees`) to fetch only some of them. The
+timetable is Switzerland's whole public transport timetable (GTFS, about 300 MB); the build keeps Basel's trams from it.
 
 | File | Does |
 |---|---|
-| `fetch_data.py` | Downloads the swisstopo aerial photo at 1 m per pixel (WMS), swissBUILDINGS3D 3.0 (CityGML), Basel's tree register (data.bs.ch) and the OpenStreetMap landmarks, bridges, ferries, railway tracks, tram tracks and lines, shopping streets and place names (Swiss Overpass mirror). |
+| `fetch_data.py` | Downloads the swisstopo aerial photo at 1 m per pixel (WMS), swissBUILDINGS3D 3.0 (CityGML), Basel's tree register (data.bs.ch) and the OpenStreetMap landmarks, bridges, ferries, railway tracks, tram tracks and lines, shopping streets and place names (Swiss Overpass mirror), and Switzerland's public transport timetable (GTFS, opentransportdata.swiss). |
 | `fetch_1615.py` | Downloads the canton's "Übersichtsplan 1615" (WMS, 0.5 m pixels), the outline of the historic core inside the old wall (WFS), and OSM streets used to place the demolished gates. |
 | `sb3d.py` | Streams the CityGML, merges each building's roof triangles back into roof planes, drops vertices on straight edges and closes seams between planes. |
-| `build_city.py` | Today's city: the 3D roofs in compact gzip form (the game raises the walls from the roof edges, skipping the ones another roof hides; platform roofs and train sheds over the tracks stand open on posts), roof colours from the aerial photo, the 1 m ground as AVIF with a small JPEG fallback, the Rhine's outline for the animated water, trees by species and age, each bridge's axis and stretch over the Rhine, the measurements of the landmarks and of Basel SBB's front, the shop houses and their awnings, every railway and tram track, each tram line's route both ways with its stops, colour and operator, two train tracks from Basel SBB over the Rhine to the Badischer Bahnhof and north off the map, and one from its French platforms towards France (shortest paths along OSM's running lines that never turn back). |
+| `build_city.py` | Today's city: the 3D roofs in compact gzip form (the game raises the walls from the roof edges, skipping the ones another roof hides; platform roofs and train sheds over the tracks stand open on posts), roof colours from the aerial photo, the 1 m ground as AVIF with a small JPEG fallback, the Rhine's outline for the animated water, trees by species and age, each bridge's axis and stretch over the Rhine, the measurements of the landmarks and of Basel SBB's front, the shop houses and their awnings, every railway and tram track, each tram line's route both ways with its stops, colour and operator and every trip of an ordinary weekday on it (from the timetable, with the stops laid on the route), two train tracks from Basel SBB over the Rhine to the Badischer Bahnhof and north off the map, and one from its French platforms towards France (shortest paths along OSM's running lines that never turn back). |
 | `build_1615.py` | Basel in 1615: traces every house on the plan into its own outline, builds the wall, towers and gates, plants garden and orchard trees, and paints the 1 m ground from the plan's own pixels (the Rhine beyond the plan follows the aerial photo); the river's outline from the plan gives the 1615 water. |
 | `assemble.py` | Injects both cities into the template; with a sixth argument it also writes the Artifact copy without the page wrapper. |
 
@@ -32,9 +33,9 @@ the three city gates, the medieval churches, the Elisabethenkirche, Basel SBB's 
 ferries. It also paints the facades of the Messe, the Kunstmuseum, the two stations, Museum Tinguely, the Meret
 Oppenheim Hochhaus and the shop houses from Barfüsserplatz to Marktplatz (with awnings, and market stalls on the
 Marktplatz by day), lays every railway and tram track in the map, runs a DB ICE and an SBB EuroCity towards Germany and a TGV
-Lyria towards France, and runs Basel's thirteen tram lines on a timetable: roughly one every 7½ minutes each way (eight times
-faster than life, half as many at night), each tram waiting while the track ahead is taken.
+Lyria towards France, and runs Basel's twelve tram lines to their real weekday timetable, three times faster than life and from the
+time it is in Basel, every trip stopping at each of its stations; a tram that would run into another waits behind it.
 
 Credits shown in the game: 3D buildings (swissBUILDINGS3D) and aerial imagery (SWISSIMAGE) © swisstopo; landmarks,
-bridges, railways, tram lines and places © OpenStreetMap contributors (ODbL); tree register (Baumkataster) and the 1615 plan and
+bridges, railways, tram lines and places © OpenStreetMap contributors (ODbL); tram timetable: opentransportdata.swiss; tree register (Baumkataster) and the 1615 plan and
 wall line: Quelle: Geodaten Kanton Basel-Stadt (CC BY 4.0).

@@ -274,7 +274,7 @@ button{font:inherit;color:inherit}
       <button id="btn-mute" class="link-btn">Sound: on</button>
       <button id="btn-reset" class="link-btn danger">Reset progress</button>
     </div>
-    <p class="credits mono">3D buildings (swissBUILDINGS3D) and aerial imagery (SWISSIMAGE) © <a href="https://www.swisstopo.admin.ch" target="_blank" rel="noopener">swisstopo</a> · Landmarks, bridges, railways, tram lines and places © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL) · Trees (Baumkataster) and the 1615 plan and wall line: <a href="https://data.bs.ch" target="_blank" rel="noopener">Quelle: Geodaten Kanton Basel-Stadt</a> (CC BY 4.0)</p>
+    <p class="credits mono">3D buildings (swissBUILDINGS3D) and aerial imagery (SWISSIMAGE) © <a href="https://www.swisstopo.admin.ch" target="_blank" rel="noopener">swisstopo</a> · Landmarks, bridges, railways, tram lines and places © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL) · Tram timetable: <a href="https://opentransportdata.swiss" target="_blank" rel="noopener">opentransportdata.swiss</a> · Trees (Baumkataster) and the 1615 plan and wall line: <a href="https://data.bs.ch" target="_blank" rel="noopener">Quelle: Geodaten Kanton Basel-Stadt</a> (CC BY 4.0)</p>
     <p id="load-msg" class="load-msg" hidden></p>
   </div>
 </main>
@@ -343,7 +343,7 @@ button{font:inherit;color:inherit}
       <button id="btn-nb-close" class="btn">Close</button>
     </div>
     <p id="nb-summary" class="muted"></p>
-    <p class="credits mono">3D buildings (swissBUILDINGS3D) and aerial imagery (SWISSIMAGE) © <a href="https://www.swisstopo.admin.ch" target="_blank" rel="noopener">swisstopo</a> · Landmarks, bridges, railways, tram lines and places © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL) · Trees (Baumkataster) and the 1615 plan and wall line: <a href="https://data.bs.ch" target="_blank" rel="noopener">Quelle: Geodaten Kanton Basel-Stadt</a> (CC BY 4.0)</p>
+    <p class="credits mono">3D buildings (swissBUILDINGS3D) and aerial imagery (SWISSIMAGE) © <a href="https://www.swisstopo.admin.ch" target="_blank" rel="noopener">swisstopo</a> · Landmarks, bridges, railways, tram lines and places © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL) · Tram timetable: <a href="https://opentransportdata.swiss" target="_blank" rel="noopener">opentransportdata.swiss</a> · Trees (Baumkataster) and the 1615 plan and wall line: <a href="https://data.bs.ch" target="_blank" rel="noopener">Quelle: Geodaten Kanton Basel-Stadt</a> (CC BY 4.0)</p>
     <div id="nb-list"></div>
   </div>
 </section>
@@ -2265,10 +2265,11 @@ const runTrains=(()=>{
     trains.push(Object.assign(T,{legs:[{to:fr.edge+1,dwell:20},{to:0.5,dwell:24}],leg:1,s:0.5,wait:10}));}
   const A=new V3(),B=new V3(),M=new V3(),q=new THREE.Quaternion(),qp=new THREE.Quaternion(),m=new THREE.Matrix4(),
     ONE=new V3(1,1,1),NONE=new THREE.Matrix4().makeScale(0,0,0),UP=new V3(0,1,0),FWD=new V3(0,0,1);
-  // ---- the trams: every line on its route both ways, BVB's green trams and BLT's yellow ones, the line's colour on
-  // the sign over the windscreen and along the roof. The timetable sends one roughly every 7½ minutes each way (the clock runs
-  // eight times faster here, and at night every other tram stays in the depot), the lines spread out over each
-  // interval; and no tram drives into another: each looks ahead along its track and waits while the way is taken ----
+  // ---- the trams: every line that runs today on its route both ways, BVB's green trams and BLT's yellow ones, the
+  // line's colour on the sign over the windscreen and along the roof. They run to the real timetable of an ordinary
+  // weekday (opentransportdata.swiss), three times faster than life, from the time it is in Basel now (or a morning
+  // or late-evening hour to suit the sky); every trip stops at each of its stations. Where the timetable puts two
+  // trams on one piece of track (a busy stop, a junction) the later one waits behind, so they never overlap ----
   const TRAMH=[[0.2,0.06],[0.23,0.1],[0.23,0.14],[0.23,0.2],[0.23,0.8],[0.205,0.9],[0.13,0.95],[0,0.96]];
   const TLIV={BVB:{body:'#2e8b43',skirt:'#2b2f33',roof:'#d4d8db',nose:'#2e8b43',door:'#20302a',bands:[],skirtY:0.1,roofY:0.88},
     BLT:{body:'#f2c20f',skirt:'#33363b',roof:'#d2d5d8',nose:'#f2c20f',door:'#2b2f33',bands:[[0.14,0.2,'#c8102e']],skirtY:0.1,roofY:0.88}};
@@ -2286,58 +2287,69 @@ const runTrains=(()=>{
     const n=X.length,f=s=>Math.min(Math.max(s/STEP,0),n-1.0001);
     return {len:(n-1)*STEP,at(s,o){const g=f(s),k=Math.floor(g),u=g-k;return o.set(X[k]+(X[k+1]-X[k])*u,Y[k]+(Y[k+1]-Y[k])*u,Z[k]+(Z[k+1]-Z[k])*u);},
       hd(s){return H[Math.round(f(s))];}};};
-  const trams=[],VT=3.4,ACC_T=1.1,HEAD_DAY=56,TL=(BASEL.trams||[]).filter(l=>l.dirs&&l.dirs.length===2);
-  const tramMeshes={};
-  {const need={BVB:0,BLT:0};const lines=TL.map((l,li)=>{const op=l.op==='BLT'?'BLT':'BVB',paths=l.dirs.map(d=>tramPath(d.p));
-      const cycle=(paths[0].len+paths[1].len)/2.7+12,n=Math.max(2,Math.min(9,Math.round(cycle/HEAD_DAY)));need[op]+=n;return {l,li,op,paths,n};});
-    for(const op of ['BVB','BLT'])if(need[op]){const T=TCARS[op],L=TLIV[op],[gE,wE]=carGeo(T.end,L,true),[gM,wM]=carGeo(T.mid,L,false),k=need[op];
-      tramMeshes[op]={end:[mk(gE,tramMat,2*k),mk(wE,glassMat,2*k)],mid:[mk(gM,tramMat,(T.n-2)*k),mk(wM,glassMat,(T.n-2)*k)],ie:0,im:0};}
-    for(const {l,li,op,paths,n} of lines){const col=new THREE.Color(l.colour),T=TCARS[op],TM=tramMeshes[op];
-      for(let k=0;k<n;k++){const cars=[];let off=0;
-        for(let c=0;c<T.n;c++){const isEnd=c===0||c===T.n-1,C=isEnd?T.end:T.mid,mesh=isEnd?TM.end:TM.mid,i=isEnd?TM.ie++:TM.im++;
-          cars.push({C,off:off+C.len/2,flip:c===T.n-1,mesh,i});off+=C.len+0.04;mesh[0].setColorAt(i,col);}
-        const tr={id:trams.length,idx:k,line:l.ref,paths,stops:l.dirs.map(d=>d.stops),cars,len:off-0.04,dir:0,s:off-0.04,si:0,v:0,wait:0,hidden:true,parked:false,blockT:0,ghost:0};
-        // its place in the timetable: run it on its own for its share of the cycle, the lines spread over the interval
-        const age=k*((paths[0].len+paths[1].len)/2.7+12)/n+li*HEAD_DAY/TL.length;
-        tr.hidden=false;for(let t=0;t<age;t+=0.5)stepTram(tr,0.5,false);
-        trams.push(tr);}}
-    for(const op in tramMeshes)for(const x of [tramMeshes[op].end[0],tramMeshes[op].mid[0]])x.instanceColor.needsUpdate=true;}
-  function stepTram(T,dt,check){   // the timetable's run: to the next stop and wait there, to the end of the line and turn
-    if(T.parked)return;
-    if(T.wait>0){T.wait-=dt;return;}
-    const P=T.paths[T.dir],stops=T.stops[T.dir];
-    if(T.s>=P.len-0.02){T.dir^=1;T.s=T.len;T.si=0;T.v=0;T.wait=T.hidden?0:6;return;}   // the other way, after a break
-    while(T.si<stops.length&&stops[T.si]<T.s-0.05)T.si++;
-    const target=T.si<stops.length?stops[T.si]:P.len,fast=T.hidden?4:1;
-    let vt=Math.min(VT*fast,Math.sqrt(2*ACC_T*fast*Math.max(0,target-T.s)));
-    if(check&&!T.hidden&&T.ghost<=0&&tramBlocked(T)){vt=0;T.blockT+=dt;if(T.blockT>8){T.ghost=3;T.blockT=0;}}else T.blockT=0;
-    if(T.ghost>0)T.ghost-=dt;
-    T.v=T.v<vt?Math.min(vt,T.v+ACC_T*fast*dt):Math.max(vt,T.v-3*dt);
-    T.s=Math.min(P.len,T.s+T.v*dt);
-    if(target-T.s<0.03&&T.v<0.4){T.s=Math.max(T.s,target);T.v=0;if(T.si<stops.length){T.si++;T.wait=T.hidden?0:2.5+(T.id%3)*0.5;}}
-  }
+  const TT=3,VCATCH=7,GAP_T=0.6,TL=(BASEL.trams||[]).filter(l=>l.dirs&&l.dirs.length===2&&l.trips&&l.trips.length);
+  const ease=u=>u<0.25?2.667*u*u:u>0.75?1-2.667*(1-u)*(1-u):1.333*u-0.1667;   // speed up, run, slow down for the stop
+  const lines=TL.map((l,li)=>{const op=l.op==='BLT'?'BLT':'BVB',paths=l.dirs.map(d=>tramPath(d.p)),trips=[];
+    for(let k=0;k<l.trips.length;k+=3){const pat=l.pats[l.trips[k+1]];trips.push({li,dir:l.trips[k],pat,t0:l.trips[k+2],t1:l.trips[k+2]+pat[pat.length-1]});}
+    return {l,li,op,paths,trips,col:new THREE.Color(l.colour),next:0};});
+  const posAt=(tr,T)=>{const p=tr.pat,tau=T-tr.t0;   // where the timetable has this trip at time T
+    if(tau<=p[1])return p[0];
+    for(let k=0;k+3<p.length;k+=3){if(tau<=p[k+2])return p[k];if(tau<p[k+4])return p[k]+(p[k+3]-p[k])*ease((tau-p[k+2])/(p[k+4]-p[k+2]));}
+    return p[p.length-3];};
+  // the vehicles: as many of each kind as the timetable ever has out at once
+  const need={BVB:0,BLT:0};
+  for(const op of ['BVB','BLT']){const ev=[];for(const L of lines)if(L.op===op)for(const t of L.trips)ev.push([t.t0,1],[t.t1+1,-1]);
+    ev.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);let n=0;for(const [,d] of ev){n+=d;need[op]=Math.max(need[op],n);}}
+  const tramMeshes={},trams=[];
+  for(const op of ['BVB','BLT'])if(need[op]){const T=TCARS[op],L=TLIV[op],[gE,wE]=carGeo(T.end,L,true),[gM,wM]=carGeo(T.mid,L,false),k=need[op];
+    const TM=tramMeshes[op]={end:[mk(gE,tramMat,2*k),mk(wE,glassMat,2*k)],mid:[mk(gM,tramMat,(T.n-2)*k),mk(wM,glassMat,(T.n-2)*k)]};
+    let ie=0,im=0;
+    for(let v=0;v<k;v++){const cars=[];let off=0;
+      for(let c=0;c<T.n;c++){const isEnd=c===0||c===T.n-1,C=isEnd?T.end:T.mid,mesh=isEnd?TM.end:TM.mid;
+        cars.push({C,off:off+C.len/2,flip:c===T.n-1,mesh,i:isEnd?ie++:im++});off+=C.len+0.04;}
+      trams.push({id:trams.length,op,cars,len:off-0.04,trip:null,s:0,shown:false});}
+    for(const x of [...TM.end,...TM.mid])if(x)for(let i=0;i<x.count;i++)x.setMatrixAt(i,NONE);}
   if(DEBUG)window.__trams=trams;
   const occ=new Map(),CELL_T=0.5,cellKey=(x,z)=>(Math.floor(x/CELL_T)+30000)*60000+Math.floor(z/CELL_T)+30000;
   const angGap=(a,b)=>Math.abs(Math.atan2(Math.sin(a-b),Math.cos(a-b)));
-  function tramBlocked(T){   // someone ahead on this track (or crossing it): not a tram passing the other way
-    const P=T.paths[T.dir],hd=P.hd(T.s),reach=0.7+T.v*T.v/6;
-    for(let d=0.3;d<=reach;d+=0.4){P.at(T.s+d,A);const L=occ.get(cellKey(A.x,A.z));
-      if(L)for(const e of L)if(e.id!==T.id&&angGap(e.hd,hd)<2.2)return true;}
-    return false;}
-  function placeTram(T){
-    let seen=false;const P=T.paths[T.dir];
-    for(const c of T.cars){const [body,glass]=c.mesh,sc=T.s-c.off;
-      if(T.parked){body.setMatrixAt(c.i,NONE);if(glass)glass.setMatrixAt(c.i,NONE);continue;}
-      P.at(sc+c.C.pivot,A);P.at(sc-c.C.pivot,B);M.addVectors(A,B).multiplyScalar(0.5);
+  const pathOf=V=>lines[V.trip.li].paths[V.trip.dir];
+  function hitAhead(V,from,to){   // the first point between from and to where another tram on (or across) this track is
+    const P=pathOf(V),hd=P.hd(V.s);
+    for(let d=from;d<=to;d+=0.35){P.at(d,A);const L=occ.get(cellKey(A.x,A.z));if(L)for(const e of L)if(e.v!==V&&angGap(e.hd,hd)<2.2)return {at:d,by:e.v};}
+    return null;}
+  function bodyFree(V){const P=pathOf(V);for(let d=0;d<=V.len;d+=0.5){P.at(V.s-d,A);const L=occ.get(cellKey(A.x,A.z));if(L&&L.some(e=>e.v!==V))return false;}return true;}
+  function placeTram(V){
+    let seen=false;const P=V.trip?pathOf(V):null;
+    for(const c of V.cars){const [body,glass]=c.mesh;
+      if(!V.trip||!V.shown){body.setMatrixAt(c.i,NONE);if(glass)glass.setMatrixAt(c.i,NONE);continue;}
+      const sc=V.s-c.off;P.at(sc+c.C.pivot,A);P.at(sc-c.C.pivot,B);M.addVectors(A,B).multiplyScalar(0.5);
       if(!onMap(M)){body.setMatrixAt(c.i,NONE);if(glass)glass.setMatrixAt(c.i,NONE);continue;}
       seen=true;const dx=A.x-B.x,dz=A.z-B.z;
       q.setFromAxisAngle(UP,Math.atan2(-dz,dx)+(c.flip?Math.PI:0));qp.setFromAxisAngle(FWD,Math.atan2(A.y-B.y,Math.hypot(dx,dz)||1e-6)*(c.flip?-1:1));
       m.compose(M,q.multiply(qp),ONE);body.setMatrixAt(c.i,m);if(glass)glass.setMatrixAt(c.i,m);}
-    T.hidden=!seen;
-    if(seen&&!T.parked){const hd=P.hd(T.s);for(let d=0;d<=T.len;d+=0.5){P.at(T.s-d,A);const k=cellKey(A.x,A.z);let L=occ.get(k);if(!L)occ.set(k,L=[]);L.push({id:T.id,hd});}}}
+    if(V.trip&&V.shown){const hd=P.hd(V.s);for(let d=0;d<=V.len;d+=0.5){P.at(V.s-d,A);const k=cellKey(A.x,A.z);let L=occ.get(k);if(!L)occ.set(k,L=[]);L.push({v:V,hd});}}
+    return seen;}
+  // the timetable clock: seconds after midnight, from Basel's own time where that fits the sky
+  const zurich=()=>{try{const p=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Zurich',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(new Date()),
+    g=k=>+p.find(x=>x.type===k).value;return g('hour')*3600+g('minute')*60+g('second');}catch(e){return 8*3600;}};
+  const startClock=night=>{const z=zurich();return night?(z>=20*3600?z:z<2400?z+86400:22.5*3600):(z>=6*3600&&z<20*3600?z:8*3600);};
+  let clock=0,clockNight=null;
+  function resetTrams(T){for(const V of trams){V.trip=null;V.shown=false;}
+    for(const L of lines){L.next=L.trips.findIndex(t=>t.t0>T);if(L.next<0)L.next=L.trips.length;
+      for(const t of L.trips)if(t.t0<=T&&T<=t.t1){const V=trams.find(v=>!v.trip&&v.op===L.op);if(V){V.trip=t;V.s=posAt(t,T);}}}}
   function runTrams(dt){
-    occ.clear();for(const T of trams){T.parked=NIGHT&&T.idx%2===1;placeTram(T);}   // where everyone is, then who may move
-    for(const T of trams)stepTram(T,dt,true);
+    if(clockNight!==NIGHT){clockNight=NIGHT;clock=startClock(NIGHT);resetTrams(clock);}
+    clock+=dt*TT;if(clock>25.5*3600){clock=5*3600;resetTrams(clock);}
+    for(const L of lines)while(L.next<L.trips.length&&L.trips[L.next].t0<=clock){const t=L.trips[L.next++],V=trams.find(v=>!v.trip&&v.op===L.op);
+      if(V){V.trip=t;V.s=posAt(t,clock);V.shown=false;}}
+    occ.clear();for(const V of trams){if(V.trip&&clock>V.trip.t1){V.trip=null;V.shown=false;}V.seen=placeTram(V);}   // where everyone is
+    const want=new Map();
+    for(const V of trams){if(!V.trip)continue;const sd=Math.max(V.s,posAt(V.trip,clock)),hit=hitAhead(V,V.s+0.3,sd+GAP_T);want.set(V,{sd,hit});}
+    for(const [V,w] of want){let to=Math.min(w.sd,V.s+VCATCH*dt);
+      if(w.hit){const o=want.get(w.hit.by);const mutual=o&&o.hit&&o.hit.by===V;   // two that see each other: the lower number goes first
+        if(!(mutual&&V.id<w.hit.by.id))to=Math.min(to,w.hit.at-GAP_T);}
+      V.s=Math.max(V.s,to);
+      if(!V.shown&&bodyFree(V))V.shown=true;}   // a tram only comes into view where there is room for it
     for(const op in tramMeshes)for(const x of [...tramMeshes[op].end,...tramMeshes[op].mid])if(x)x.instanceMatrix.needsUpdate=true;}
   const onMap=o=>o.x>GB.x0+0.5&&o.x<GB.x1-0.5&&o.z>GB.z0+0.5&&o.z<GB.z1-0.5;
   function place(T){   // each car rides on its two bogies, so it follows curves and leans up the bridge ramps
@@ -2364,7 +2376,8 @@ const G1_TODAY={x:T1.x,z:T1.z,h:T1.top},G2_TODAY={x:T2.x,z:T2.z,h:T2.top};
 const towerA_today=addAntenna(G1_TODAY,'Roche Tower',TODAY,'today'),towerB_today=addAntenna(G2_TODAY,'Messeturm',TODAY,'today');
 landmarkLabel('Mittlere Brücke',null,'#b4553f',0,9,0,0.8,'today');
 if(PL.sbb)landmarkLabel('Basel SBB',null,'#3b82c4',PL.sbb[0],12,PL.sbb[1],0.9,'today');
-if(PL.moh)landmarkLabel('Meret Oppenheim Hochhaus',null,'#7d8287',PL.moh[0],cityToday.topAt(PL.moh[0],PL.moh[1])+4,PL.moh[1],0.8,'today');
+const roofsAround=(x,z,r)=>{let t=0;for(let dx=-r;dx<=r;dx+=0.4)for(let dz=-r;dz<=r;dz+=0.4)t=Math.max(t,cityToday.topAt(x+dx,z+dz));return t;};
+if(PL.moh)landmarkLabel('Meret Oppenheim Hochhaus',null,'#7d8287',PL.moh[0],roofsAround(PL.moh[0],PL.moh[1],4)+3,PL.moh[1],0.8,'today');   // over its top, not its plinth
 landmarkLabel('Schützenmattpark',null,'#4caf6a',PL.schuetzenmatt[0],10,PL.schuetzenmatt[1],0.8,'today');
 
 /* ---------- Basel in 1615, built the first time the time machine is used ---------- */
