@@ -48,7 +48,13 @@ LANDMARK_TOWERS = {"elisabethen": ("way", 407463501)}      # the Elisabethenkirc
 FACADES = [("rathaus", "relation", 7634307), ("messe1", "way", 315916587), ("kunstmuseum", "relation", 5279724),
            ("kunstneubau", "way", 295287955), ("sbb", "way", 100712891), ("badbf", "way", 100789428),
            ("tinguely", "way", 317500933), ("messe1", "relation", 18445990), ("moh", "way", 562039631),
-           ("highrise", None, None), ("sacral", None, None)]     # the last two: every other high-rise and church
+           ("highrise", None, None), ("sacral", None, None),     # every other high-rise and church
+           ("shops1", None, None), ("shops2", None, None), ("shops3", None, None), ("shops4", None, None)]
+SHOP_STYLES = ["shops1", "shops2", "shops3", "shops4"]   # houses with shop fronts along the streets below
+# the shopping streets from Barfüsserplatz to Marktplatz (OSM names, half their width in metres) and the two squares
+SHOP_STREETS = {"Gerbergasse": 4.5, "Falknerstrasse": 6.0, "Freie Strasse": 5.0, "Streitgasse": 4.0,
+                "Barfüssergasse": 4.0, "Eisengasse": 5.0, "Marktgasse": 4.5}
+SQUARES = {"Marktplatz": ("way", 193681195), "Barfüsserplatz": ("way", 193681190)}
 FACADE_STYLES = sorted({f[0] for f in FACADES}, key=[f[0] for f in FACADES].index)
 # landmarks that stood in 1615 too: build_1615.py leaves the plan's own shapes out inside their outlines
 IN_1615 = ["muenster", "kreuzgang", "spalentor", "stalbantor", "stjohannstor", "rathaus", "barfuesser", "martins",
@@ -390,9 +396,10 @@ def mask_png(mask, w, h, work, name, feather=48):
 
 
 def rail_tracks(raw, geo):
-    """Two tracks for the game's trains, from Basel SBB over the Rhine to the Badischer Bahnhof and on north towards
-    Germany (DB line 4000), out of OpenStreetMap's tracks: cheapest paths along running lines that never turn back on
-    themselves, the second kept off the first one's rails so the trains pass side by side. Game units; [] without data."""
+    """Tracks for the game's trains, out of OpenStreetMap's: two from Basel SBB over the Rhine to the Badischer Bahnhof
+    and on north towards Germany (DB line 4000), the second kept off the first one's rails so the trains pass side by
+    side, and one from the French platforms towards France. Cheapest paths along running lines that never turn back on
+    themselves, in game units; [] without the data."""
     src = os.path.join(raw, "osm_rail.json")
     if not os.path.exists(src):
         return []
@@ -475,6 +482,41 @@ def rail_tracks(raw, geo):
             nodes.append(nxt[0][1])
         return got
 
+    inside = lambda q: W <= q[0] <= E and Sth <= q[1] <= N
+
+    def export(nodes, to):   # a track in game units: where it stops, runs in tunnels and finally leaves the map
+        nonlocal avoid, taken, used
+        pairs = list(zip(nodes, nodes[1:]))
+        avoid |= {(min(a, b), max(a, b)) for a, b in pairs}
+        taken |= {way_of(a, b) for a, b in pairs}
+        used |= set(nodes)
+        pts = [pos[n] for n in nodes]
+        (x0, y0), (x1, y1) = pts[-2], pts[-1]
+        k = 280 / (math.dist(pts[-2], pts[-1]) or 1)     # and on beyond the map edge, out of sight
+        pts.append((x1 + (x1 - x0) * k, y1 + (y1 - y0) * k))
+        tunnels, run, edge = [], 0.0, None
+        for i, (a, b) in enumerate(zip(pts, pts[1:])):
+            L = math.dist(a, b)
+            if i < len(pairs) and wtags[way_of(*pairs[i])].get("tunnel") == "yes":
+                if tunnels and abs(tunnels[-1][1] - run) < 0.01:
+                    tunnels[-1][1] = run + L
+                else:
+                    tunnels.append([run, run + L])
+            if inside(a) and not inside(b):
+                lo, hi = 0.0, 1.0           # where this segment crosses the edge of the map; the last crossing counts
+                for _ in range(30):
+                    m = (lo + hi) / 2
+                    lo, hi = (m, hi) if inside((a[0] + (b[0] - a[0]) * m, a[1] + (b[1] - a[1]) * m)) else (lo, m)
+                edge = run + L * lo
+            run += L
+        plat = next((wtags[w].get("railway:track_ref") for _, _, w in adj[nodes[0]] if wtags[w].get("railway:track_ref")), None)
+        out = {"to": to, "p": [round(v / S * (1 if i % 2 == 0 else -1), 2) for x, y in rdp(pts, 0.25) for i, v in enumerate((x, y))],
+               "sbb": 0.0 if to == "fr" else round(along(pts, sbb) / S, 2), "edge": round((edge or run) / S, 2),
+               "tunnels": [[round(a / S, 2), round(b / S, 2)] for a, b in tunnels], "platform": plat, "len": round(run / S, 1)}
+        if to == "de":
+            out["bad"] = round(along(pts, bad) / S, 2)
+        return out
+
     running = {n for n, es in adj.items() if any(cost(wtags[w]) == 1.0 for _, _, w in es)}
     tracks, avoid, taken, used, short = [], set(), set(), set(), set()
     for _ in range(2):
@@ -499,39 +541,151 @@ def rail_tracks(raw, geo):
         if not best:
             break
         nodes.reverse()
-        pairs = list(zip(nodes, nodes[1:]))
-        avoid |= {(min(a, b), max(a, b)) for a, b in pairs}
-        taken |= {way_of(a, b) for a, b in pairs}
-        used |= set(nodes)
-        pts = [pos[n] for n in nodes]
-        (x0, y0), (x1, y1) = pts[-2], pts[-1]
-        k = 280 / (math.dist(pts[-2], pts[-1]) or 1)     # and on beyond the map edge, out of sight
-        pts.append((x1 + (x1 - x0) * k, y1 + (y1 - y0) * k))
-        tunnels, run = [], 0.0
-        for (a, b), pa, pb in zip(pairs, pts, pts[1:]):
-            L = math.dist(pa, pb)
-            if wtags[way_of(a, b)].get("tunnel") == "yes":
-                if tunnels and abs(tunnels[-1][1] - run) < 0.01:
-                    tunnels[-1][1] = run + L
-                else:
-                    tunnels.append([run, run + L])
-            run += L
-        at_bad, run, edge = along(pts, bad), 0.0, None
-        for a, b in zip(pts, pts[1:]):
-            L = math.dist(a, b)
-            if edge is None and run + L > at_bad and not (W <= b[0] <= E and Sth <= b[1] <= N):
-                lo, hi = 0.0, 1.0           # where this segment crosses the edge of the map
-                for _ in range(30):
-                    m = (lo + hi) / 2
-                    q = (a[0] + (b[0] - a[0]) * m, a[1] + (b[1] - a[1]) * m)
-                    lo, hi = (m, hi) if W <= q[0] <= E and Sth <= q[1] <= N else (lo, m)
-                edge = run + L * lo
-            run += L
-        plat = next((wtags[w].get("railway:track_ref") for _, _, w in adj[nodes[0]] if wtags[w].get("railway:track_ref")), None)
-        tracks.append({"p": [round(v / S * (1 if i % 2 == 0 else -1), 2) for x, y in rdp(pts, 0.25) for i, v in enumerate((x, y))],
-                       "sbb": round(along(pts, sbb) / S, 2), "bad": round(at_bad / S, 2), "edge": round((edge or run) / S, 2),
-                       "tunnels": [[round(a / S, 2), round(b / S, 2)] for a, b in tunnels], "platform": plat, "len": round(run / S, 1)})
+        tracks.append(export(nodes, "de"))
+
+    # the TGV to France: from the French platforms at Basel SBB (a terminus, so the train leaves the way it came) west
+    # through the Schützenmatt and Kannenfeld tunnels, past Basel St. Johann and north off the map towards Saint-Louis
+    def at_french(n):
+        return any(wtags[w].get("railway:track_ref") in ("30", "31", "32", "33", "34", "35") for _, _, w in adj.get(n, ()))
+
+    best = None
+    for n0 in (n for n in running if pos[n][1] > N - 5 and any(wtags[w].get("ref") == "510" for _, _, w in adj[n])):
+        got = search(n0, at_french, avoid)
+        if got and (best is None or got[1] < best[1]):
+            best = got
+    if best:
+        nodes = best[0]
+        onward(nodes, 450)                 # along the platform to the buffer stop
+        tracks.append(export(nodes[::-1], "fr"))
     return tracks
+
+
+def rail_lines(raw, geo):
+    """Every railway track inside the map (main lines, stations, yards), for the game to lay: polylines in game units,
+    cut where they leave the map or go into a tunnel."""
+    src = os.path.join(raw, "osm_rail.json")
+    if not os.path.exists(src):
+        return []
+    W, E, Sth, N = AREA
+    runs = []
+    for w in json.load(open(src))["elements"]:
+        if w["type"] != "way" or w.get("tags", {}).get("tunnel") in ("yes", "building_passage"):
+            continue
+        cur = []
+        for p in w.get("geometry") or []:
+            q = geo.local(p["lat"], p["lon"]) if p else None
+            if q and W <= q[0] <= E and Sth <= q[1] <= N:
+                cur.append(q)
+                continue
+            if len(cur) > 1:
+                runs.append(cur)
+            cur = []
+        if len(cur) > 1:
+            runs.append(cur)
+    return [[round(v / S * (1 if i % 2 == 0 else -1), 2) for x, y in rdp(r, 0.3) for i, v in enumerate((x, y))] for r in runs]
+
+
+def tram_network(raw, geo):
+    """Basel's trams, out of OpenStreetMap: every tram track in the map, and for each line its colour on the network
+    map, its operator and one route each way with the stops (the pair of variants that runs longest in the map),
+    trimmed to the map plus a stretch either side. Game units; empty without the data."""
+    src = os.path.join(raw, "osm_tram.json")
+    if not os.path.exists(src):
+        return [], []
+    W, E, Sth, N = AREA
+    inside = lambda q: W <= q[0] <= E and Sth <= q[1] <= N
+    els = json.load(open(src))["elements"]
+    tracks = []
+    for w in els:
+        if w["type"] != "way":
+            continue
+        cur = []
+        for p in w.get("geometry") or []:
+            q = geo.local(p["lat"], p["lon"]) if p else None
+            if q and inside(q):
+                cur.append(q)
+                continue
+            if len(cur) > 1:
+                tracks.append(cur)
+            cur = []
+        if len(cur) > 1:
+            tracks.append(cur)
+
+    def chain(rel):   # the route's ways in order, joined end to end; its stops; None if the chain has a gap
+        segs = [[geo.local(p["lat"], p["lon"]) for p in m["geometry"] if p] for m in rel["members"]
+                if m["type"] == "way" and m.get("role", "") in ("", "forward", "backward") and m.get("geometry")]
+        segs = [sg for sg in segs if len(sg) > 1]
+        if not segs:
+            return None
+        line = list(segs[0])
+        if len(segs) > 1 and min(math.dist(line[0], q) for q in (segs[1][0], segs[1][-1])) < min(math.dist(line[-1], q) for q in (segs[1][0], segs[1][-1])):
+            line.reverse()
+        for sg in segs[1:]:
+            if math.dist(line[-1], sg[-1]) < math.dist(line[-1], sg[0]):
+                sg = sg[::-1]
+            if math.dist(line[-1], sg[0]) > 40:
+                return None
+            line += sg[1:]
+        stops = [geo.local(m["lat"], m["lon"]) for m in rel["members"]
+                 if m["type"] == "node" and m.get("role", "").startswith("stop") and "lat" in m]
+        ins = [i for i, q in enumerate(line) if inside(q)]
+        if not ins:
+            return None
+        run, d = [0.0], 0.0
+        for a, b in zip(line, line[1:]):
+            d += math.dist(a, b)
+            run.append(d)
+        a0, a1 = run[ins[0]] - 300, run[ins[-1]] + 300       # the map's stretch and 300 m either side
+        cut = [q for q, r in zip(line, run) if a0 <= r <= a1]
+        if len(cut) < 2:
+            return None
+        return cut, stops, run[ins[-1]] - run[ins[0]]
+
+    def along(pts, q):
+        best, run = (1e18, 0.0), 0.0
+        for a, b in zip(pts, pts[1:]):
+            L = math.dist(a, b) or 1e-9
+            t = max(0.0, min(1.0, ((q[0] - a[0]) * (b[0] - a[0]) + (q[1] - a[1]) * (b[1] - a[1])) / (L * L)))
+            best = min(best, (math.dist(q, (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)), run + L * t))
+            run += L
+        return best
+
+    def ends(rel):
+        name = rel.get("tags", {}).get("name", "")
+        parts = name.split(":", 1)[-1].split("→")
+        return (parts[0].strip(), parts[-1].strip()) if len(parts) == 2 else (name, name)
+
+    lines = {}
+    for r in els:
+        if r["type"] == "relation" and r.get("tags", {}).get("ref"):
+            c = chain(r)
+            if c:
+                lines.setdefault(r["tags"]["ref"], []).append((r, c))
+    out = []
+    for ref, variants in sorted(lines.items(), key=lambda kv: int(kv[0]) if kv[0].isdigit() else 99):
+        best = None
+        for r1, c1 in variants:
+            for r2, c2 in variants:
+                if ends(r1) == ends(r2)[::-1] and ends(r1)[0] != ends(r1)[1]:
+                    score = c1[2] + c2[2]
+                    if best is None or score > best[0]:
+                        best = (score, (r1, c1), (r2, c2))
+        if best is None:      # no variant back the other way: drive the longest one in reverse
+            r1, c1 = max(variants, key=lambda v: v[1][2])
+            best = (0, (r1, c1), (r1, (c1[0][::-1], c1[1], c1[2])))
+        dirs = []
+        for r, (line, stops, _) in best[1:]:
+            line = rdp(line, 0.5)
+            ds = sorted({round(dd / S, 2) for dist, dd in (along(line, q) for q in stops) if dist < 25})
+            merged = []
+            for dd in ds:                # a stop's two positions (one per platform edge) count once
+                if not merged or dd - merged[-1] > 6:
+                    merged.append(dd)
+            dirs.append({"p": [round(v / S * (1 if i % 2 == 0 else -1), 2) for x, y in line for i, v in enumerate((x, y))],
+                         "stops": merged, "name": r["tags"].get("name", "")})
+        t = best[1][0]["tags"]
+        out.append({"ref": ref, "colour": t.get("colour") or "#888888", "op": t.get("operator") or "", "dirs": dirs})
+    return [[round(v / S * (1 if i % 2 == 0 else -1), 2) for x, y in rdp(r, 0.3) for i, v in enumerate((x, y))] for r in tracks], out
 
 
 def load_3d(raw, work, geo, keep_local):
@@ -793,6 +947,49 @@ def main(raw, work, out_js):
         hit = sum(1 for c in cells if c in rail_cells)
         return hit >= 12 and hit >= 0.35 * len(cells)
 
+    # the shopping streets and squares, sampled every metre: a house with a corner within reach of one gets shop fronts
+    shop_samples = {}
+
+    def sample(pts, reach):
+        for a, b in zip(pts, pts[1:]):
+            n = max(1, int(math.dist(a, b)))
+            for k in range(n + 1):
+                q = (a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n)
+                shop_samples.setdefault((int(q[0] // 10), int(q[1] // 10)), []).append((q, reach))
+
+    streets_path = os.path.join(raw, "osm_streets.json")
+    shop_lines = []
+    if os.path.exists(streets_path):
+        for w in json.load(open(streets_path))["elements"]:
+            hw = SHOP_STREETS.get(w.get("tags", {}).get("name"))
+            if w["type"] == "way" and hw:
+                line = [geo.local(p["lat"], p["lon"]) for p in w.get("geometry") or [] if p]
+                sample(line, hw + 3.5)
+                shop_lines.append((line, hw))
+    squares = {}
+    for el in xjs:
+        for name, (typ, oid) in SQUARES.items():
+            if el["type"] == typ and el["id"] == oid:
+                outer, _ = element_rings(el, geo)
+                if outer:
+                    squares[name] = max(outer, key=lambda r: abs(area2(r)))
+                    sample(squares[name] + squares[name][:1], 3.5)
+                    shop_lines.append((squares[name] + squares[name][:1], 0.0))
+
+    def fronts_shops(pts):
+        xs, ys = [p[0] for p in pts], [p[1] for p in pts]
+        if not any((i, j) in shop_samples for i in range(int(min(xs) // 10) - 1, int(max(xs) // 10) + 2)
+                   for j in range(int(min(ys) // 10) - 1, int(max(ys) // 10) + 2)):
+            return False
+        for p in pts:
+            cx, cy = int(p[0] // 10), int(p[1] // 10)
+            for dx in (-1, 0, 1):
+                for dy in (-1, 0, 1):
+                    for q, reach in shop_samples.get((cx + dx, cy + dy), ()):
+                        if math.dist(p[:2], q) < reach:
+                            return True
+        return False
+
     stats = Counter()
     recs = []
     for b in blds:
@@ -823,6 +1020,9 @@ def main(raw, work, out_js):
             hi = [p for p in pts if p[2] - g > top_rel - 15]   # a real tower is still wide near its top; a chimney is not
             if max(max(p[0] for p in hi) - min(p[0] for p in hi), max(p[1] for p in hi) - min(p[1] for p in hi)) >= 12:
                 style = FACADE_STYLES.index("highrise")
+        if style is None and kind in (0, 10) and top_rel < 40 and fronts_shops(pts):
+            style = FACADE_STYLES.index(SHOP_STYLES[int(abs(c[0] * 7.31 + c[1] * 3.17)) % len(SHOP_STYLES)])
+            stats["shops"] += 1
         zbot = 0.0
         lift = 0.0
         if style is None and kind in (0, 10) and over_tracks(roof, g):
@@ -998,6 +1198,70 @@ def main(raw, work, out_js):
         t0, t1 = min(ts), max(ts)
         rathaus_front = [round((pa[0] + ux * t0) / S, 2), round(-(pa[1] + uy * t0) / S, 2),
                          round((pa[0] + ux * t1) / S, 2), round(-(pa[1] + uy * t1) / S, 2), round(min(zs), 1)]
+        # the roof height just behind the front, every 1/48 of it: the tall south wing, the old front building and the
+        # tower each have their own height, so the game can tell them apart
+        planes = []
+        for r in frecs:
+            if FACADE_STYLES[r["kind"]] == "rathaus":
+                for l in r["loops"]:
+                    pts = [r["verts"][i] for i in l]
+                    nrm = sb3d.newell(pts)
+                    if nrm and nrm[2] > 0.05:
+                        planes.append(([p[:2] for p in pts], pts[0], nrm))
+        nx, ny = uy, -ux                                     # the front's outward normal, onto the square
+        if nx * (MARKT[0] - pa[0]) + ny * (MARKT[1] - pa[1]) < 0:
+            nx, ny = -nx, -ny
+        prof = []
+        for k in range(49):
+            t = t0 + (t1 - t0) * k / 48
+            q = (pa[0] + ux * t - nx * 1.0, pa[1] + uy * t - ny * 1.0)
+            prof.append(round(max([p0[2] - (n[0] * (q[0] - p0[0]) + n[1] * (q[1] - p0[1])) / n[2]
+                                   for ring, p0, n in planes if inside(q, ring)] or [0.0]), 1))
+        rathaus_front.append(prof)
+    # awnings over the shop windows: along every wall of a shop house that faces one of the streets or squares,
+    # one every 6.5 m, as (x, z, the angle its front faces) in game units
+    awnings = []
+
+    def street_side(m, nrm):     # is this wall's midpoint at a street edge, looking onto it?
+        for line, hw in shop_lines:
+            for a, b in zip(line, line[1:]):
+                L = math.dist(a, b) or 1e-9
+                t = max(0.0, min(1.0, ((m[0] - a[0]) * (b[0] - a[0]) + (m[1] - a[1]) * (b[1] - a[1])) / (L * L)))
+                q = (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)
+                d = math.dist(m, q)
+                if d < hw + 3.5 and d > 0.3 and ((q[0] - m[0]) * nrm[0] + (q[1] - m[1]) * nrm[1]) / d > 0.55:
+                    return True
+        return False
+
+    for r in frecs:
+        if FACADE_STYLES[r["kind"]] not in SHOP_STYLES:
+            continue
+        v, loops, flags = r["verts"], r["loops"], r["walls"]
+        directed = {(l[k], l[(k + 1) % len(l)]) for l in loops for k in range(len(l))}
+        bnd = [(l[k], l[(k + 1) % len(l)]) for l in loops for k in range(len(l)) if (l[(k + 1) % len(l)], l[k]) not in directed]
+        for (a, b), f in zip(bnd, flags):
+            pa, pb = v[a], v[b]
+            L = math.dist(pa[:2], pb[:2])
+            if not f or L < 3.5:
+                continue
+            nrm = ((pb[1] - pa[1]) / L, -(pb[0] - pa[0]) / L)      # outward, as for the Rathaus front
+            if not street_side(((pa[0] + pb[0]) / 2, (pa[1] + pb[1]) / 2), nrm):
+                continue
+            n = max(1, int(L / 6.5))
+            for k in range(n):
+                t = (k + 0.5) / n
+                x, y = pa[0] + (pb[0] - pa[0]) * t + nrm[0] * 0.05, pa[1] + (pb[1] - pa[1]) * t + nrm[1] * 0.05
+                awnings += [round(x / S, 2), round(-y / S, 2), round(math.atan2(nrm[0], -nrm[1]), 3), round(min(L / n, 6.0) / S, 2)]
+    market = None
+    if "Marktplatz" in squares:
+        avoid = []
+        for el in xjs:
+            t = el.get("tags", {})
+            if el["type"] == "way" and t.get("name") == "Marktplatz" and t.get("railway") == "platform" and t.get("area") == "yes":
+                outer, _ = element_rings(el, geo)
+                avoid += [[[round(x / S, 2), round(-y / S, 2)] for x, y in o] for o in outer]
+        market = {"square": [[round(x / S, 2), round(-y / S, 2)] for x, y in squares["Marktplatz"]], "avoid": avoid}
+
     # Basel SBB's front onto the Centralbahnplatz: the ticket hall's glazed arch between two clock towers. The towers
     # are the two small clusters of the hall's highest roof points, the arch is the end of its barrel vault between
     # them; the outline of the arch is read from the roof so the game can glaze it and put domes on the towers
@@ -1247,6 +1511,7 @@ def main(raw, work, out_js):
         places["solitude"] = [round(x / S, 2), round(-y / S, 2)]
 
     rail = rail_tracks(raw, geo)
+    tram_tracks, trams = tram_network(raw, geo)
 
     def b64(arr):
         return base64.b64encode(arr.tobytes()).decode()
@@ -1259,7 +1524,8 @@ def main(raw, work, out_js):
         "facades": {"count": len(frecs), "gz": base64.b64encode(fpacked).decode(), "styles": FACADE_STYLES},
         "trees": b64(trees), "treeInfo": b64(tree_info),
         "towers": towers, "landmarks": landmarks, "iconic": dict(iconic, sbb=sbb_front), "places": places, "bridges": bridges, "ferries": ferries,
-        "rail": rail,
+        "rail": rail, "tracks": rail_lines(raw, geo), "awnings": awnings, "market": market,
+        "tramTracks": tram_tracks, "trams": trams,
     }
     js = "const BASEL=" + json.dumps(data, separators=(",", ":"), ensure_ascii=False) + ";\n"
     with open(out_js, "w") as f:
@@ -1271,6 +1537,9 @@ def main(raw, work, out_js):
                       "bridges": [[b["name"], b["structure"], b["axis"][2] * S, b["water"]] for b in bridges],
                       "ferries": [x["name"] for x in ferries],
                       "rail": [{k: v for k, v in t.items() if k != "p"} for t in rail], "sbb_front": sbb_front,
+                      "awnings": len(awnings) // 4, "market": market and len(market["square"]),
+                      "trams": [[t["ref"], t["op"], t["colour"], [[d["name"], len(d["p"]) // 2, len(d["stops"])] for d in t["dirs"]]] for t in trams],
+                      "tram_tracks": len(tram_tracks),
                       "towers": towers, "landmarks": {k: {kk: (round(v, 2) if isinstance(v, float) else v) for kk, v in d.items()} for k, d in landmarks.items()},
                       "places": places, "ground_px": [GW, GH], "ground_kB": [len(ground_b64) * 3 // 4 // 1000, len(small_b64) * 3 // 4 // 1000],
                       "js_kB": len(js) // 1000}, ensure_ascii=False, indent=1))

@@ -274,7 +274,7 @@ button{font:inherit;color:inherit}
       <button id="btn-mute" class="link-btn">Sound: on</button>
       <button id="btn-reset" class="link-btn danger">Reset progress</button>
     </div>
-    <p class="credits mono">3D buildings (swissBUILDINGS3D) and aerial imagery (SWISSIMAGE) © <a href="https://www.swisstopo.admin.ch" target="_blank" rel="noopener">swisstopo</a> · Landmarks, bridges, railways and places © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL) · Trees (Baumkataster) and the 1615 plan and wall line: <a href="https://data.bs.ch" target="_blank" rel="noopener">Quelle: Geodaten Kanton Basel-Stadt</a> (CC BY 4.0)</p>
+    <p class="credits mono">3D buildings (swissBUILDINGS3D) and aerial imagery (SWISSIMAGE) © <a href="https://www.swisstopo.admin.ch" target="_blank" rel="noopener">swisstopo</a> · Landmarks, bridges, railways, tram lines and places © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL) · Trees (Baumkataster) and the 1615 plan and wall line: <a href="https://data.bs.ch" target="_blank" rel="noopener">Quelle: Geodaten Kanton Basel-Stadt</a> (CC BY 4.0)</p>
     <p id="load-msg" class="load-msg" hidden></p>
   </div>
 </main>
@@ -343,7 +343,7 @@ button{font:inherit;color:inherit}
       <button id="btn-nb-close" class="btn">Close</button>
     </div>
     <p id="nb-summary" class="muted"></p>
-    <p class="credits mono">3D buildings (swissBUILDINGS3D) and aerial imagery (SWISSIMAGE) © <a href="https://www.swisstopo.admin.ch" target="_blank" rel="noopener">swisstopo</a> · Landmarks, bridges, railways and places © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL) · Trees (Baumkataster) and the 1615 plan and wall line: <a href="https://data.bs.ch" target="_blank" rel="noopener">Quelle: Geodaten Kanton Basel-Stadt</a> (CC BY 4.0)</p>
+    <p class="credits mono">3D buildings (swissBUILDINGS3D) and aerial imagery (SWISSIMAGE) © <a href="https://www.swisstopo.admin.ch" target="_blank" rel="noopener">swisstopo</a> · Landmarks, bridges, railways, tram lines and places © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL) · Trees (Baumkataster) and the 1615 plan and wall line: <a href="https://data.bs.ch" target="_blank" rel="noopener">Quelle: Geodaten Kanton Basel-Stadt</a> (CC BY 4.0)</p>
     <div id="nb-list"></div>
   </div>
 </section>
@@ -627,6 +627,7 @@ const messeMat=new THREE.MeshStandardMaterial({map:messeTex,emissiveMap:glowTex(
 const capWhite=new THREE.MeshStandardMaterial({color:0xe6e9e8,roughness:.8});
 const capDark=new THREE.MeshStandardMaterial({color:0x39424c,roughness:.7});
 const nightGlow=[rocheMat,messeMat];
+const dayOnly=[];          // packed away at night (the market)
 
 /* a footprint extruded with a repeating facade texture: uUnit / vUnit are game units per texture tile */
 function signedArea(r){let a=0;for(let i=0;i<r.length;i++){const p=r[i],q=r[(i+1)%r.length];a+=p[0]*q[1]-q[0]*p[1];}return a/2;}
@@ -1201,6 +1202,12 @@ function bridgeStyle(br){
 }
 const PIERS={steelArch:[0.31,0.69],girderWall:[0.18,0.82],girderCols:[0.24,0.76],railTruss:[0.24,0.76],doubleDeck:[0.29,0.68]};
 const RAIL_DECKS=[];     // the deck heights of the bridges trains run on, for them to climb onto
+const BRIDGE_DECKS=[];   // and of every bridge today: trams cross the Rhine on the road bridges
+const roadDeckAt=(x,z,hd,base)=>{let y=base;for(const d of BRIDGE_DECKS){if(Math.abs(Math.sin(hd-d.ang))>0.45)continue;   // along it, not under it
+  const dx=x-d.cx,dz=z-d.cz,u=dx*Math.cos(d.ang)-dz*Math.sin(d.ang),v=dx*Math.sin(d.ang)+dz*Math.cos(d.ang);
+  if(Math.abs(u)<=d.L/2&&Math.abs(v)<=d.W/2+0.1)y=Math.max(y,d.deckY(u)+0.012);}return y;};
+const railDeckAt=(x,z,base,lift)=>{let y=base;for(const d of RAIL_DECKS){const dx=x-d.cx,dz=z-d.cz,u=dx*Math.cos(d.ang)-dz*Math.sin(d.ang),v=dx*Math.sin(d.ang)+dz*Math.cos(d.ang);
+  if(Math.abs(u)<=d.L/2&&Math.abs(v)<=d.W/2+0.3)y=Math.max(y,d.deckY(u)+lift);}return y;};
 const railAt=(()=>{      // how a bridge meets the railway: 'on' (the track runs along its deck), 'over' (it crosses the track) or null
   const pts=[];for(const t of BASEL.rail||[])for(let i=0;i+3<t.p.length;i+=2){const ax=t.p[i],az=t.p[i+1],bx=t.p[i+2],bz=t.p[i+3],n=Math.max(1,Math.ceil(Math.hypot(bx-ax,bz-az)/0.5));
     for(let j=0;j<n;j++)pts.push(ax+(bx-ax)*j/n,az+(bz-az)*j/n,Math.atan2(-(bz-az),bx-ax));}
@@ -1219,6 +1226,7 @@ function buildBridge(br,B,era){
   const sm=(e,v)=>{const t=Math.min(1,Math.max(0,v/e));return t*t*(3-2*t);};
   const deckY=x=>{const t=(x+L/2)/L;return 0.12+(H-0.12)*sm(ra,t)*sm(rb,1-t);};
   if(style==='railTruss'||rail==='on')RAIL_DECKS.push({cx,cz,ang,L,W,deckY});
+  if(era==='today')BRIDGE_DECKS.push({cx,cz,ang,L,W,deckY});
   const N=Math.max(8,Math.ceil(L/0.35)),xs=Array.from({length:N+1},(_,i)=>-L/2+L*i/N);
   const xw0=-L/2+t0*L,xw1=-L/2+t1*L,ne=Math.cos(ang)+Math.sin(ang)>0?1:-1;   // which end is the north-east (Kleinbasel) one
   const up=(()=>{const M=BASEL.landmarks.muenster,dx=M.x-cx,dz=M.z-cz;return Math.sign(dx*Math.sin(ang)+dz*Math.cos(ang))||1;})();  // upstream side
@@ -1288,7 +1296,6 @@ function buildBridge(br,B,era){
   }
   if(style==='railTruss')for(const s of [-1,1])B.add(ribbon(xs,deckY,x=>deckY(x)+1.2,s*(W/2-0.05),2.4),BR.railTruss,Mb);
   roadOn(style==='railTruss'?BR.planks:BR.road,x=>deckY(x)+0.005,-W/2+0.15,W/2-0.15);
-  if(style==='railTruss')for(const z of [-0.15,0.15])B.add(strip(xs,x=>deckY(x)+0.03,z-0.025,z+0.025,3),BR.steel,Mb);
   if(style!=='railTruss')railing(BR.rail,0.3,0.05);
   if(water&&style!=='railTruss')lamps(style==='steelArch'?4.6:6,1.6,0);
   for(const p of piers){
@@ -1503,6 +1510,7 @@ const LMK={
 const ALBAN_TOWER={x:204.7,z:152.5,h:11};   // the St. Alban-Tor's roof top: the 1615 gateway stands on it
 
 const roofBrown=tileRoof('#8a4b37'),roofBrownDark=tileRoof('#6e4434');
+const rathausTiles=glazedTiles(['#3a6b50','#c9a640','#9a3b2b','#2a3033'],4,4);   // the Rathaus roofs: small glazed tiles
 /* ---------- painted facades for buildings that keep swisstopo's shape: the Rathaus, Messe Basel's hall with the
    City Lounge, the Kunstmuseum (old and new), Basel SBB, the Badischer Bahnhof, Museum Tinguely and the Meret
    Oppenheim Hochhaus ---------- */
@@ -1547,6 +1555,27 @@ const FACADE_STYLES=(()=>{
       x.fillStyle='rgba(20,22,25,.35)';x.fillRect(X+4,Y+4,ww+8,44);          // the deep frame's shadow
       x.fillStyle='#d5d8da';x.fillRect(X-5,Y-5,ww+10,46);x.fillStyle='#262c31';x.fillRect(X,Y,ww,36);
       x.fillStyle='rgba(200,220,235,.22)';x.fillRect(X,Y,ww,8);if(pair){x.fillStyle='#d5d8da';x.fillRect(X+ww/2-2,Y,4,36);}}},384,512,1,1,{roughness:.55,metalness:.15});
+  // the shop houses from Barfüsserplatz to Marktplatz: shop windows under a sign band (which lights up at night),
+  // then plastered upper floors (G is where the ground floor ends); four colourings so neighbours differ. A tile is
+  // 8 m wide and 34 m (ten floors) high
+  const shops=(plaster,line,shutter,sign,letters,seed0)=>glowMat((x,glow)=>{const w=192,h=1136,G=h-151;let seed=seed0;const r=()=>(seed=seed*16807%2147483647)/2147483647;
+    wallBg(x,w,h,glow,plaster,line);
+    if(!glow){x.fillStyle='rgba(60,50,40,.28)';x.fillRect(0,0,w,14);x.fillRect(0,G-8,w,8);}
+    for(let f=0;f<9;f++)for(let k=0;k<3;k++){const cx=32+k*64,top=G-(f+1)*107.5+22,lit=r()<0.3,warm=r()<0.6;
+      if(glow){if(lit){x.fillStyle=warm?'#ffd28a':'#fff0d0';x.fillRect(cx-14,top,28,56);}continue;}
+      if(shutter){x.fillStyle=shutter;x.fillRect(cx-29,top-2,13,60);x.fillRect(cx+16,top-2,13,60);}
+      x.fillStyle='#f2efe8';x.fillRect(cx-17,top-3,34,63);x.fillStyle='#2c3238';x.fillRect(cx-14,top,28,56);
+      x.fillStyle='#f2efe8';x.fillRect(cx-1,top,2,56);x.fillRect(cx-14,top+20,28,2);x.fillStyle='rgba(60,50,40,.35)';x.fillRect(cx-19,top+60,38,4);}
+    x.fillStyle=sign;x.fillRect(0,G,w,24);                                   // the sign band, lit at night
+    if(!glow){x.fillStyle=letters;for(let i=0;i<9;i++){const lw=3+r()*7;x.fillRect(40+i*12,G+7,lw,10);}}else for(let i=0;i<9;i++)r();
+    x.fillStyle=glow?'#000':'#2b2f33';x.fillRect(0,G+24,w,113);
+    for(const [x0,x1] of [[10,82],[110,182],[88,104]]){const g=x.createLinearGradient(0,G+27,0,G+137);
+      if(glow){x.fillStyle='#fff1d6';x.fillRect(x0,G+28,x1-x0,105);continue;}
+      g.addColorStop(0,'#4d5d68');g.addColorStop(1,'#1f272d');x.fillStyle=g;x.fillRect(x0,G+28,x1-x0,105);
+      x.fillStyle='rgba(255,255,255,.16)';x.beginPath();x.moveTo(x0,G+28);x.lineTo(x0+18,G+28);x.lineTo(x0,G+67);x.fill();}
+    if(!glow){for(const x0 of [14,114])for(let i=0;i<4;i++){x.fillStyle=['#c0392b','#e0b84a','#3d7a5a','#d8d2c4','#7a4f8a'][(i+(x0>100?2:0))%5];x.fillRect(x0+i*17,G+97+r()*14,12,36);}
+      x.fillStyle='#8f877b';x.fillRect(0,G+137,w,14);}else for(let i=0;i<8;i++)r();},192,1136);
+  const shopRoofs={pitched:roofBrown,flat:roofGrey,u:1.6,v:9.47};
   // every other high-rise: a curtain wall, eight floors and eight bays a tile; any other church: sandstone and lancets
   const highrise=glowMat((x,glow)=>{const w=256,h=256;x.fillStyle=glow?'#000':'#c3c9ce';x.fillRect(0,0,w,h);
     for(let f=0;f<8;f++)for(let b=0;b<8;b++){const lit=rng()<0.3;
@@ -1556,7 +1585,7 @@ const FACADE_STYLES=(()=>{
   return {
     highrise:{wall:highrise,pitched:roofGrey,flat:roofDark,u:2.4,v:7.8},
     sacral:{wall:sacral,pitched:roofBrown,flat:roofGrey,u:1.4,v:5.6},
-    rathaus:{wall:rathaus,pitched:tileMat,flat:roofDark,u:3.0,v:2.6},
+    rathaus:{wall:rathaus,pitched:rathausTiles,flat:roofDark,u:3.0,v:2.6},
     messe1:{wall:woven,pitched:roofGrey,flat:roofGrey,u:1.6,v:1.6},
     kunstmuseum:{wall:kunst,pitched:roofGrey,flat:roofGrey,u:3.2,v:6.0},
     kunstneubau:{wall:brick,pitched:roofDark,flat:roofDark,u:3.0,v:7.6},
@@ -1564,6 +1593,10 @@ const FACADE_STYLES=(()=>{
     badbf:{wall:badbf,pitched:copperFlat,flat:roofGrey,u:3.0,v:4.6},
     tinguely:{wall:tinguely,pitched:roofGrey,flat:roofGrey,u:2.0,v:1.6},
     moh:{wall:moh,pitched:roofGrey,flat:roofDark,u:3.6,v:6.94},
+    shops1:{wall:shops('#e8d7a6',null,'#4f6f4a','#a3262b','#f3e7c8',101),...shopRoofs},
+    shops2:{wall:shops('#d6d3cc','rgba(95,90,80,.22)',null,'#1f3d63','#e9eef5',202),...shopRoofs},
+    shops3:{wall:shops('#e3b9a3',null,null,'#1d1f22','#d8b04a',303),...shopRoofs},
+    shops4:{wall:shops('#efebe1',null,'#7d8288','#2f6b4f','#f4f1e6',404),...shopRoofs},
   };
 })();
 
@@ -1583,17 +1616,47 @@ const timberM=stdMat({color:0x5b4130,roughness:.9,flatShading:true});
 const redSandM=stdMat({map:scaled(speckled('#a9574a','rgba(70,30,22,.45)',24),1.5)});
 const greyStoneM=stdMat({map:scaled(speckled('#b9b2a4','rgba(80,72,60,.4)',24),1.5)});
 
-/* the Rathaus (1504–1514, facade paintings 1608–1611, tower 1900): Basel red, three arcade arches onto the Marktplatz,
-   murals, a clock, gilded battlements and a gilded flèche on the glazed tile roof, the painted oriel on the left */
-const rathausFront=glowMat((x,glow)=>{const w=1024,h=448;wallBg(x,w,h,glow,'#b8392b');
-  if(!glow){x.fillStyle='#e2b94e';x.fillRect(0,6,w,8);x.fillRect(0,272,w,6);x.fillStyle='#7c241b';x.fillRect(0,170,w,5);
-    for(let k=0;k<14;k++){const X=k*73+20;x.fillStyle=['#f1e2c0','#2f5f8f','#3f7a4f','#e2b94e','#8a2a20'][k%5];   // the painted figures
-      x.fillRect(X,196,16,58);x.beginPath();x.arc(X+8,188,9,0,Math.PI*2);x.fill();x.strokeStyle='#e8c862';x.lineWidth=2;x.strokeRect(X-6,174,28,90);}}
-  for(let k=0;k<12;k++)if(Math.abs(k-5.5)>1.2)crossWin(x,k*84+26,40,44,92,glow,'#f1e7d4');
-  for(let k=0;k<3;k++){const X=w/2-200+k*140;   // the arcade
-    x.fillStyle=glow?'#000':'#e2b94e';lancet(x,X-8,h-176,136,176);x.fillStyle=glow?'#3a2410':'#2a2320';lancet(x,X,h-166,120,166);}
-  for(const X of [70,190,w-250,w-130])crossWin(x,X,h-150,56,96,glow,'#f1e7d4');
-},1024,448);
+/* the Rathaus, after photos: the old front building (1504–1514, paintings 1608–1611) with three arcade arches, two
+   painted storeys, the great clock in its Gothic frame, a green garland under battlements with the city's arms and a
+   gilded openwork turret on the ridge; the taller north wing (1900) with a glazed oriel up its middle; the slim tower
+   (1900) at the south end with a white gallery, four pinnacles and a gilded finial. Basel red throughout, the roofs
+   in small glazed tiles. swisstopo's roof heights along the front tell the three parts apart */
+const RATHAUS_RED='#b8402d';
+const rathausFront=glowMat((x,glow)=>{const w=1024,h=1024;wallBg(x,w,h,glow,RATHAUS_RED);   // the old front building
+  if(!glow){
+    x.fillStyle='#2f6b45';x.fillRect(0,66,w,30);x.fillStyle='#5f9a5a';for(let i=0;i<w;i+=18){x.beginPath();x.ellipse(i+9,81,9,11,0.6,0,Math.PI*2);x.fill();}  // the garland
+    x.fillStyle='#e2b94e';x.fillRect(0,112,w,8);x.fillRect(0,372,w,7);x.fillRect(0,630,w,9);                 // gilded string courses
+    for(let k=0;k<7;k++){const X=8+k*146,Y=388;   // painted figures between the windows of the first storey
+      x.fillStyle='rgba(226,185,78,.9)';x.fillRect(X+52,Y,40,232);x.fillStyle=['#f1e2c0','#2f5f8f','#3f7a4f','#7a3b6e','#e0a83c'][k%5];
+      x.fillRect(X+60,Y+64,24,150);x.beginPath();x.arc(X+72,Y+44,15,0,Math.PI*2);x.fill();}
+    for(let k=0;k<10;k++){x.fillStyle=['#3f7a4f','#e2b94e','#2f5f8f'][k%3];x.fillRect(40+k*100,142,22,206);}  // pilasters, second storey
+    x.fillStyle='#d9c27a';x.fillRect(0,642,w,26);x.fillStyle='#8a2c20';for(let i=0;i<w;i+=40)x.fillRect(i+8,648,24,14);}   // frieze over the arcade
+  for(const f of [[140,212],[400,214]])for(const X of [70,210,350,640,780,920])   // paired windows, two storeys
+    {x.fillStyle=glow?'#000':'#e8d9b5';x.fillRect(X-44,f[0]-6,88,f[1]+12);
+     for(const dx of [-38,4]){x.fillStyle=glow?'#ffd88a':'#29313e';x.fillRect(X+dx,f[0],34,f[1]);
+       if(!glow){x.fillStyle='rgba(150,180,210,.25)';x.fillRect(X+dx,f[0],34,40);x.fillStyle='#e8d9b5';x.fillRect(X+dx,f[0]+f[1]*0.35,34,5);}}}
+  if(!glow){x.strokeStyle='#e2b94e';x.lineWidth=10;x.beginPath();x.moveTo(432,560);x.lineTo(432,300);x.lineTo(512,180);x.lineTo(592,300);x.lineTo(592,560);x.stroke();   // the clock's frame
+    for(const X of [422,602]){x.fillStyle='#e2b94e';x.beginPath();x.moveTo(X-10,300);x.lineTo(X,226);x.lineTo(X+10,300);x.fill();}
+    for(const X of [380,644]){x.fillStyle='#e9dfc8';x.fillRect(X-12,330,24,90);x.beginPath();x.arc(X,316,13,0,Math.PI*2);x.fill();}}
+  for(let k=0;k<3;k++){const X=170+k*250;   // the arcade: three pointed arches in gilded frames
+    x.fillStyle=glow?'#000':'#e2b94e';lancet(x,X-14,694,218,330);x.fillStyle=glow?'#5a3a1a':'#241d1a';lancet(x,X,708,190,316);}
+  for(const X of [70,954]){x.fillStyle=glow?'#000':'#e8d9b5';x.fillRect(X-30,760,60,200);x.fillStyle=glow?'#ffd88a':'#29313e';x.fillRect(X-24,766,48,188);}
+},1024,1024);
+const rathausWing=glowMat((x,glow)=>{const w=384,h=1024;wallBg(x,w,h,glow,RATHAUS_RED);   // the north wing; the oriel covers the middle
+  if(!glow){x.fillStyle='#e2b94e';x.fillRect(0,0,w,12);x.fillStyle='#d9c27a';x.fillRect(0,790,w,14);}
+  for(let f=0;f<4;f++)for(const X of [84,300]){const Y=86+f*178;   // three-light windows in sandstone frames, four storeys
+    x.fillStyle=glow?'#000':'#e8d9b5';x.fillRect(X-62,Y-8,124,128);
+    for(let k=0;k<3;k++){x.fillStyle=glow?'#ffd88a':'#29313e';x.fillRect(X-54+k*38,Y,32,112);}}
+  for(const X of [84,300]){x.fillStyle=glow?'#000':'#e8d9b5';x.fillRect(X-40,840,80,140);x.fillStyle=glow?'#ffd88a':'#29313e';x.fillRect(X-32,848,64,124);}
+},384,1024);
+const rathausOriel=glowMat((x,glow)=>{const w=256,h=512;x.fillStyle=glow?'#000':'#9a3b2b';x.fillRect(0,0,w,h);   // glazed panels and windows
+  for(let f=0;f<3;f++){const Y=20+f*168;
+    for(let k=0;k<6;k++){const X=4+k*42;
+      if(!glow){x.fillStyle=['#2f6b45','#c9a640','#2f5f8f'][(k+f)%3];x.fillRect(X,Y,38,46);x.fillStyle='#e2b94e';x.fillRect(X+15,Y+6,8,34);}
+      x.fillStyle=glow?'#ffd88a':'#29313e';x.fillRect(X+4,Y+56,30,96);}}
+},256,512);
+const baselArms=stdMat({map:canvasTexture(48,64,(x)=>{x.fillStyle='#f2efe6';x.beginPath();x.moveTo(2,2);x.lineTo(46,2);x.lineTo(46,34);x.quadraticCurveTo(44,56,24,62);x.quadraticCurveTo(4,56,2,34);x.closePath();x.fill();
+  x.fillStyle='#111';x.fillRect(21,14,6,40);x.beginPath();x.arc(24,16,8,Math.PI,0);x.fill();x.fillRect(16,48,16,5);},false)});
 function rathaus(L,era,parent){
   const f=facing(L,PL.markt[0],PL.markt[1],true),B=Batch();
   let fw=f.wide*0.98,Mf=frameOf(L.x+Math.sin(f.ang)*f.deep/2,L.z+Math.cos(f.ang)*f.deep/2,f.ang);
@@ -1607,25 +1670,45 @@ function rathaus(L,era,parent){
   if(era==='1615'){   // no tower yet: the front building with its paintings and the older wings behind
     const d=Math.min(f.deep*0.45,3.0),rest=f.deep-d;
     B.addGroups(boxC,[wall,wall,red,red,wall,wall],M4(Mf,0,eave/2,-d/2,fw,eave,d));
-    B.add(prismGeo,tileMat,M4(Mf,0,eave,-d/2,d+0.25,ridge-eave,fw+0.1,0,Math.PI/2,0));
+    B.add(prismGeo,rathausTiles,M4(Mf,0,eave,-d/2,d+0.25,ridge-eave,fw+0.1,0,Math.PI/2,0));
     const back=stdMat({map:scaled(speckled('#e1cfae','rgba(110,90,60,.2)',20),2)});
     B.addGroups(boxC,[back,back,roofBrown,roofBrown,back,back],M4(Mf,0,hM(6),-d-rest/2,fw*0.92,hM(12),rest*0.95));
     B.add(prismGeo,roofBrown,M4(Mf,0,hM(12),-d-rest/2,rest*0.95,hM(6),fw*0.92,0,Math.PI/2,0));
     colliders1615.push({...aabbOf(L,0.95),h:ridge});
+    B.add(planeGeo,rathausFront,M4(Mf,0,eave/2,0.07,fw,eave,1));
+    LMK.merlons(B,Mf,red,-fw/2+0.15,0.12,fw/2-0.15,0.12,eave,0.42,0.5,null);
+    LMK.clock(B,Mf,clockFace('#1f3c78'),0,eave*0.6,0.11,0.3,0);
+    B.build(parent);
+    landmarkLabel('Rathaus',null,'#b8392b',L.x,ridge+5,L.z,0.9,era);
+    return;
   }
-  const x0=-fw/2,x1=fw/2,fx=0,fl=fw;
-  B.add(planeGeo,rathausFront,M4(Mf,fx,eave/2,0.07,fl,eave,1));
-  LMK.merlons(B,Mf,red,x0+0.15,0.12,x1-0.15,0.12,eave,0.4,0.55,goldMat);
-  LMK.clock(B,Mf,clockFace('#2b5f9e'),fx,eave*0.69,0.11,0.32,0);
-  const ox=x0+fl*0.1;B.add(boxC,wall,M4(Mf,ox,eave*0.55,0.32,0.8,eave*0.4,0.5));B.add(cone4,tileMat,M4(Mf,ox,eave*0.75,0.32,0.95,1.1,0.75));
-  B.add(boxC,goldMat,M4(Mf,fx,ridge-0.2,-1.5,0.42,1.0,0.42));B.add(cone6,goldMat,M4(Mf,fx,ridge+0.3,-1.5,0.3,hM(12),0.3));
-  if(era!=='1615'&&L.peak){   // the 1900 tower: gilded pinnacles and finial on its crown
-    const Mt=frameOf(L.peak[0],L.peak[1],L.ang),top=hM(L.peak[2]);
-    for(const [dx,dz] of [[-1,-1],[1,-1],[1,1],[-1,1]])LMK.pinnacle(B,Mt,red,dx*0.6,top-1.6,dz*0.6,0.16,0.6,0.9,goldMat);
-    B.add(cone6,goldMat,M4(Mt,0,top-0.2,0,0.1,1.2,0.1));
-  }
+  // today: where along the front the old building starts and the tower begins, from the roof heights behind it
+  const prof=L.front&&L.front[5];let t0=0.28,t1=0.84;
+  if(prof){const n=prof.length-1,a=prof.findIndex((h,k)=>k>0&&h>0&&h<20),b=prof.findIndex((h,k)=>k>0&&h>30);
+    if(a>0)t0=(a-0.5)/n;if(b>a)t1=(b-0.5)/n;}
+  const xa=-fw/2+fw*t0,xb=-fw/2+fw*t1,xm=(xa+xb)/2,xw=(-fw/2+xa)/2,wing=hM(prof?Math.max(...prof.slice(1,Math.max(2,Math.round(t0*(prof.length-1))))):22.4);
+  // the old front building: its painted front, battlements with the city's arms, the clock, the gilded ridge turret
+  B.add(planeGeo,rathausFront,M4(Mf,xm,eave/2,0.07,xb-xa,eave,1));
+  const step=0.5,nM=Math.max(2,Math.round((xb-xa-0.2)/step));
+  for(let k=0;k<nM;k++){const x=xa+0.1+(xb-xa-0.2)*(k+0.5)/nM;B.add(boxGeo,red,M4(Mf,x,eave,0.1,step*0.6,0.42,0.18));
+    if(k%2===0)B.add(planeGeo,baselArms,M4(Mf,x,eave+0.2,0.2,0.18,0.26,1));}
+  B.add(boxC,red,M4(Mf,xm,eave-0.03,0.05,xb-xa,0.06,0.3));
+  LMK.clock(B,Mf,clockFace('#1f3c78'),xm,eave*0.55,0.11,0.3,0);
+  const rt=hM(L.roofs?L.roofs[1]:22);B.add(cyl8,goldMat,M4(Mf,xm,rt-0.3,-1.3,0.2,0.75,0.2));
+  LMK.spire(B,Mf,goldMat,goldMat,xm,rt+0.45,-1.3,0.22,hM(10),8,true);
+  // the north wing: its own front, the glazed oriel on a corbel with a tiled cap, two little gables on the roof edge
+  B.add(planeGeo,rathausWing,M4(Mf,xw,wing/2,0.07,xa+fw/2,wing,1));
+  B.add(cyl6,rathausOriel,M4(Mf,xw,hM(7),0.07,0.42,hM(12),0.42,0,Math.PI/6,0));
+  B.add(cone6,red,M4(Mf,xw,hM(7),0.07,0.42,hM(2.4),0.42,Math.PI,Math.PI/6,0));
+  B.add(cone6,rathausTiles,M4(Mf,xw,hM(19),0.07,0.46,hM(3.4),0.46,0,Math.PI/6,0));B.add(cone6,goldMat,M4(Mf,xw,hM(22.3),0.07,0.04,0.5,0.04));
+  for(const dx of [-0.6,0.6]){LMK.gable(B,Mf,red,xw+dx,wing,-0.2,0.55,0.9,0.5,0);B.add(cone4,goldMat,M4(Mf,xw+dx,wing+0.9,-0.2,0.05,0.35,0.05));}
+  // the tower: a white gallery under its crown, four pinnacles round the tiled spire and a gilded finial
+  if(L.peak){const Mt=frameOf(L.peak[0],L.peak[1],L.ang),top=hM(L.peak[2]),tw=Math.min(1.7,Math.max(1.1,(fw/2-xb)*1.05));
+    B.add(boxC,whiteMat,M4(Mt,0,top-hM(14.5),0,tw+0.16,hM(1.1),tw+0.16));B.add(boxC,whiteMat,M4(Mt,0,top-hM(10.2),0,tw+0.1,hM(0.6),tw+0.1));
+    for(const [dx,dz] of [[-1,-1],[1,-1],[1,1],[-1,1]])LMK.pinnacle(B,Mt,red,dx*tw*0.42,top-1.6,dz*tw*0.42,0.16,0.6,0.9,goldMat);
+    B.add(cone6,goldMat,M4(Mt,0,top-0.2,0,0.08,1.6,0.08));B.add(sphere8,goldMat,M4(Mt,0,top+0.5,0,0.1,0.1,0.1));}
   B.build(parent);
-  landmarkLabel('Rathaus',null,'#b8392b',L.x,(era==='1615'?ridge:hM(L.peak?L.peak[2]:45))+5,L.z,0.9,era);
+  landmarkLabel('Rathaus',null,'#b8392b',L.x,hM(L.peak?L.peak[2]:45)+5,L.z,0.9,era);
 }
 
 /* Basel SBB (Emil Faesch and Emanuel La Roche, 1907), after photos: the ticket hall's huge glazed arch under a green
@@ -1989,19 +2072,111 @@ BASEL.ferries.forEach((f,k)=>{
   const rope=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new V3(),new V3()]),cableMat);TODAY.add(rope);
   ferries.push({boat,a,b,ph:k*1.7,pulley,rope,mastH,sag,heading:Math.atan2(-(b.z-a.z),b.x-a.x)});
 });
-/* the trains: a DB ICE and an SBB EuroCity on the two tracks the build found in OpenStreetMap, from Basel SBB east
-   under the Gellert, over the rail bridges beside the Schwarzwaldbrücke and through the Badischer Bahnhof, then north
-   off the map towards Germany. They stop at both stations, wait out of sight and come back. Into the tunnel they dip
-   under the ground; where the line leaves the map they hurry, so they are soon back in view */
+/* the railway: every track in the map from OpenStreetMap (main lines, stations and yards) as a strip of grey ballast,
+   concrete sleepers and two rails, on the bridges at their deck height; strips that meet at a switch sit a hair apart
+   so they don't flicker */
+if(BASEL.tracks&&BASEL.tracks.length){
+  const TILE=0.24,HW=0.35,pos=[],uv=[],idx=[];   // a tile is two sleepers (1.2 m) long; the bed is 3.5 m wide
+  const tex=canvasTexture(64,128,(x,w,h)=>{x.fillStyle='#7e776e';x.fillRect(0,0,w,h);
+    for(let i=0;i<1400;i++){x.fillStyle=rng()<0.5?'rgba(20,15,10,.2)':'rgba(255,250,240,.14)';x.fillRect(rng()*w,rng()*h,2,2);}
+    for(const e of [0,h-10]){x.fillStyle='rgba(60,55,45,.35)';x.fillRect(0,e,w,10);}
+    for(const u of [9,41]){x.fillStyle='#96928b';x.fillRect(u,16,14,96);x.fillStyle='rgba(0,0,0,.28)';x.fillRect(u+12,16,2,96);}
+    for(const v of [38,90]){x.fillStyle='rgba(110,70,40,.45)';x.fillRect(0,v-5,w,10);x.fillStyle='#3a3d41';x.fillRect(0,v-2,w,5);x.fillStyle='#cfd3d7';x.fillRect(0,v-1,w,2);}});
+  BASEL.tracks.forEach((r,ri)=>{
+    const P=[];for(let i=0;i<r.length;i+=2){const x=r[i],z=r[i+1];
+      if(P.length){const [px,pz]=P[P.length-1],n=Math.ceil(Math.hypot(x-px,z-pz)/2);for(let k=1;k<n;k++)P.push([px+(x-px)*k/n,pz+(z-pz)*k/n]);}P.push([x,z]);}
+    const base=pos.length/3,lift=0.015+(ri%4)*0.002;let u=0;
+    P.forEach(([x,z],i)=>{const a=P[Math.max(0,i-1)],b=P[Math.min(P.length-1,i+1)],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1,nx=-(b[1]-a[1])/l,nz=(b[0]-a[0])/l;
+      if(i)u+=Math.hypot(x-P[i-1][0],z-P[i-1][1])/TILE;
+      const y=railDeckAt(x,z,lift,lift-0.005);pos.push(x+nx*HW,y,z+nz*HW,x-nx*HW,y,z-nz*HW);uv.push(u,0,u,1);
+      if(i){const k=base+(i-1)*2;idx.push(k,k+2,k+1,k+1,k+2,k+3);}});
+  });
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
+  g.setIndex(idx);g.computeVertexNormals();g.computeBoundingSphere();
+  TODAY.add(new THREE.Mesh(g,stdMat({map:tex,roughness:.9,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-2})));
+}
+
+/* the tram tracks: metre-gauge grooved rails set into the street, across the bridges at their deck height */
+if(BASEL.tramTracks&&BASEL.tramTracks.length){
+  const TILE=0.3,HW=0.17,pos=[],uv=[],idx=[];
+  const tex=canvasTexture(32,64,(x,w,h)=>{x.fillStyle='#6d6a66';x.fillRect(0,0,w,h);
+    for(let i=0;i<260;i++){x.fillStyle=rng()<0.5?'rgba(0,0,0,.14)':'rgba(255,255,255,.1)';x.fillRect(rng()*w,rng()*h,2,2);}
+    for(const v of [13,51]){x.fillStyle='#2c2e31';x.fillRect(0,v-2,w,5);x.fillStyle='#c9cdd1';x.fillRect(0,v-1,w,2);}});
+  BASEL.tramTracks.forEach((r,ri)=>{
+    const P=[];for(let i=0;i<r.length;i+=2){const x=r[i],z=r[i+1];
+      if(P.length){const [px,pz]=P[P.length-1],n=Math.ceil(Math.hypot(x-px,z-pz)/1.5);for(let k=1;k<n;k++)P.push([px+(x-px)*k/n,pz+(z-pz)*k/n]);}P.push([x,z]);}
+    const base=pos.length/3,lift=0.016+(ri%3)*0.002;let u=0;
+    P.forEach(([x,z],i)=>{const a=P[Math.max(0,i-1)],b=P[Math.min(P.length-1,i+1)],l=Math.hypot(b[0]-a[0],b[1]-a[1])||1,nx=-(b[1]-a[1])/l,nz=(b[0]-a[0])/l;
+      if(i)u+=Math.hypot(x-P[i-1][0],z-P[i-1][1])/TILE;
+      const y=roadDeckAt(x,z,Math.atan2(-(b[1]-a[1]),b[0]-a[0]),lift);pos.push(x+nx*HW,y,z+nz*HW,x-nx*HW,y,z-nz*HW);uv.push(u,0,u,1);
+      if(i){const k=base+(i-1)*2;idx.push(k,k+2,k+1,k+1,k+2,k+3);}});
+  });
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
+  g.setIndex(idx);g.computeVertexNormals();g.computeBoundingSphere();
+  TODAY.add(new THREE.Mesh(g,stdMat({map:tex,roughness:.9,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-2})));
+}
+
+/* the shopping streets from Barfüsserplatz to Marktplatz: striped awnings over the shop windows (the build finds
+   the walls that face the street), and the morning market on the Marktplatz: stalls with produce under canvas roofs */
+const stripes=canvasTexture(64,32,(x,w,h)=>{for(let i=0;i<w;i+=8){x.fillStyle=(i/8)%2?'#d4d4d4':'#ffffff';x.fillRect(i,0,8,h);}});
+if(BASEL.awnings&&BASEL.awnings.length){
+  const A=BASEL.awnings,n=A.length/4,pos=[],uv=[];
+  const quad=(a,b,c,d)=>{for(const q of [a,b,c,a,c,d]){pos.push(q[0],q[1],q[2]);uv.push(q[0]+0.5,q[3]);}};
+  quad([-0.5,1.0,0,0],[0.5,1.0,0,0],[0.5,0.82,0.26,1],[-0.5,0.82,0.26,1]);       // the canvas, sloping out
+  quad([-0.5,0.82,0.26,0],[0.5,0.82,0.26,0],[0.5,0.76,0.26,1],[-0.5,0.76,0.26,1]);  // its hanging edge
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.computeVertexNormals();
+  const tex=scaled(stripes,4,1),im=new THREE.InstancedMesh(g,stdMat({map:tex,side:THREE.DoubleSide,roughness:.9}),n);
+  const COLS=['#a3262b','#2f6b4f','#1f3d63','#8a5a2b','#6b2d4f','#c9a227','#3b3e44','#b5562b'].map(c=>new THREE.Color(c));
+  for(let i=0;i<n;i++){im.setMatrixAt(i,M4(null,A[i*4],0,A[i*4+1],A[i*4+3]*0.8,1,1,0,A[i*4+2],0));im.setColorAt(i,COLS[(i*5+(i>>3))%COLS.length]);}
+  im.computeBoundingSphere();TODAY.add(im);
+}
+if(BASEL.market){
+  const sq=BASEL.market.square,av=BASEL.market.avoid||[],stalls=[];
+  const inRing=(r,x,z)=>{let c=false;for(let i=0,j=r.length-1;i<r.length;j=i++){const [xi,zi]=r[i],[xj,zj]=r[j];if((zi>z)!==(zj>z)&&x<(xj-xi)*(z-zi)/(zj-zi)+xi)c=!c;}return c;};
+  const edgeDist=(r,x,z)=>{let d=1e9;for(let i=0,j=r.length-1;i<r.length;j=i++){const [ax,az]=r[j],[bx,bz]=r[i],L2=(bx-ax)**2+(bz-az)**2||1e-9,
+    t=Math.max(0,Math.min(1,((x-ax)*(bx-ax)+(z-az)*(bz-az))/L2));d=Math.min(d,Math.hypot(x-ax-(bx-ax)*t,z-az-(bz-az)*t));}return d;};
+  let best=0,ux=1,uz=0,cx=0,cz=0;for(const [x,z] of sq){cx+=x/sq.length;cz+=z/sq.length;}
+  for(let i=0,j=sq.length-1;i<sq.length;j=i++){const L=Math.hypot(sq[i][0]-sq[j][0],sq[i][1]-sq[j][1]);if(L>best){best=L;ux=(sq[i][0]-sq[j][0])/L;uz=(sq[i][1]-sq[j][1])/L;}}
+  for(let a=-14;a<=14;a++)for(let b=-6;b<=6;b++){const x=cx+ux*a*1.15-uz*b*1.05,z=cz+uz*a*1.15+ux*b*1.05;   // rows along the square, aisles between
+    if(inRing(sq,x,z)&&edgeDist(sq,x,z)>0.45&&!av.some(r=>inRing(r,x,z)||edgeDist(r,x,z)<0.5))stalls.push([x,z]);}
+  stalls.sort((p,q)=>Math.hypot(p[0]-cx,p[1]-cz)-Math.hypot(q[0]-cx,q[1]-cz));stalls.length=Math.min(stalls.length,22);
+  const n=stalls.length,ang=Math.atan2(-uz,ux),grp=new THREE.Group();
+  const mk=(geo,mat,count)=>{const im=new THREE.InstancedMesh(geo,mat,count);grp.add(im);return im;};
+  const tables=mk(boxGeo,stdMat({color:0x8a6a4a}),n),goods=mk(boxGeo,stdMat({roughness:.7}),n),roofs=mk(prismGeo,stdMat({map:scaled(stripes,3,1),side:THREE.DoubleSide,roughness:.9}),n),posts=mk(cyl6,greyMat,n*4);
+  const FRUIT=['#c0392b','#e67e22','#f1c40f','#3d9a4a','#7d3c98','#d35400','#8bc34a'].map(c=>new THREE.Color(c)),CANVAS=['#ffffff','#c0392b','#2f6b4f','#e67e22','#1f3d63'].map(c=>new THREE.Color(c));
+  stalls.forEach(([x,z],i)=>{const M=frameOf(x,z,ang);
+    tables.setMatrixAt(i,M4(M,0,0,0,0.6,hM(0.85),0.34));goods.setMatrixAt(i,M4(M,0,hM(0.85),0,0.54,0.05,0.28));goods.setColorAt(i,FRUIT[(i*3)%FRUIT.length]);
+    roofs.setMatrixAt(i,M4(M,0,hM(2.3),-0.21,0.72,0.14,0.48));roofs.setColorAt(i,CANVAS[i%CANVAS.length]);
+    for(const [k,[px,pz]] of [[-0.32,-0.2],[0.32,-0.2],[0.32,0.2],[-0.32,0.2]].entries())posts.setMatrixAt(i*4+k,M4(M,px,0,pz,0.012,hM(2.3),0.012));});
+  for(const im of grp.children)im.computeBoundingSphere();
+  TODAY.add(grp);dayOnly.push(grp);
+}
+
+/* the trains, on the tracks the build found in OpenStreetMap: a DB ICE and an SBB EuroCity from Basel SBB east under
+   the Gellert, over the rail bridges beside the Schwarzwaldbrücke and through the Badischer Bahnhof, then north off
+   the map towards Germany; and a TGV Lyria from the French platforms west through the Schützenmatt and Kannenfeld
+   tunnels, past Basel St. Johann and off the map towards France. They stop at the stations, wait out of sight and
+   come back. Into tunnels they dip under the ground; where the line leaves the map they hurry, so they are soon back */
 const trains=[];
 const runTrains=(()=>{
   if(!BASEL.rail||!BASEL.rail.length)return ()=>{};
-  const CAR=5.2,GAP=0.16,BOG=1.85,NOSE=1.15,STEP=0.5,ACC=0.8,VMAX=9;
-  const half=[[0.25,0.14],[0.29,0.19],[0.29,0.25],[0.29,0.32],[0.29,0.88],[0.255,0.99],[0.17,1.05],[0,1.07]];
-  const loop=[...half,...half.slice(0,-1).reverse().map(([z,y])=>[-z,y])];     // the car's cross-section, z across and y up
-  const LIVERY={ice:{body:'#f2f2ef',band:'#c8102e',skirt:'#3b3f45',roof:'#c9cdd1',nose:'#f2f2ef',door:'#c3c8ce'},
-    ec:{body:'#f4f4f2',band:'#2e3338',skirt:'#3b3f45',roof:'#c4c8cc',nose:'#d2201c',door:'#d2201c'}};
-  const tint=(L,y)=>y<0.19?L.skirt:y<0.25?L.body:y<0.32?L.band:y>0.985?L.roof:L.body;
+  const GAP=0.16,STEP=0.5,ACC=0.8,VMAX=9;
+  // cross-sections (half of each, z across and y up): ICE and EuroCity cars, a TGV power car, a TGV Duplex double-decker
+  const SINGLE=[[0.25,0.14],[0.29,0.19],[0.29,0.25],[0.29,0.32],[0.29,0.88],[0.255,0.99],[0.17,1.05],[0,1.07]];
+  const POWER=[[0.25,0.12],[0.29,0.17],[0.29,0.24],[0.29,0.31],[0.29,0.9],[0.25,1.02],[0.16,1.09],[0,1.11]];
+  const DUPLEX=[[0.25,0.08],[0.295,0.12],[0.295,0.17],[0.295,0.24],[0.295,1.04],[0.255,1.16],[0.16,1.22],[0,1.24]];
+  const loopOf=half=>[...half,...half.slice(0,-1).reverse().map(([z,y])=>[-z,y])];
+  const LIVERY={
+    ice:{body:'#f2f2ef',skirt:'#3b3f45',roof:'#c9cdd1',nose:'#f2f2ef',door:'#c3c8ce',bands:[[0.25,0.32,'#c8102e']],skirtY:0.19,roofY:0.985},
+    ec:{body:'#f4f4f2',skirt:'#3b3f45',roof:'#c4c8cc',nose:'#d2201c',door:'#d2201c',bands:[[0.25,0.32,'#2e3338']],skirtY:0.19,roofY:0.985},
+    tgv:{body:'#f3f3f5',skirt:'#33363d',roof:'#bfc4ca',nose:'#f3f3f5',door:'#8f97a0',chin:'#c8102e',bands:[[0.17,0.24,'#c8102e']],skirtY:0.15,roofY:1.1}};
+  // car types: length, cross-section, cab nose (length, how it narrows and drops, where the windscreen is), bogie
+  // pivots from the middle (a Duplex shares its bogies with the next car), window rows and doors
+  const car=o=>({len:5.2,half:SINGLE,pivot:1.85,nose:1.15,nz:0.6,ny:0.5,ne:1.3,shield:[0.3,0.85,0.8],rows:[[0.5,0.8]],pane:0.62,door:[0.2,0.84],...o});
+  const CARS={ice:car({}),
+    tgvPower:car({len:4.4,half:POWER,pivot:1.55,nose:1.75,nz:0.74,ny:0.7,ne:1.05,shield:[0.18,0.6,0.66],rows:[],door:null,grilles:true}),
+    tgvDuplex:car({len:3.74,half:DUPLEX,pivot:1.82,rows:[[0.27,0.46],[0.66,0.9]],pane:0.55,door:[0.15,0.6],jacobs:true})};
+  const tint=(L,y)=>{for(const [a,b,c] of L.bands)if(y>=a&&y<b)return c;return y<L.skirtY?L.skirt:y>L.roofY?L.roof:L.body;};
   function Geo(){   // flat-shaded triangles with a colour each; `out` says which way the face looks
     const P=[],N=[],C=[],col=new THREE.Color(),a=new V3(),b=new V3(),c=new V3(),n=new V3(),e=new V3();
     const tri=(p,q,r,hex,out)=>{a.set(...p);b.set(...q);c.set(...r);n.subVectors(b,a).cross(e.subVectors(c,a));
@@ -2014,38 +2189,49 @@ const runTrains=(()=>{
         quad(pt(0,0),pt(1,0),pt(1,1),pt(0,1),hex,out);}};
     const build=()=>{const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));
       g.setAttribute('normal',new THREE.Float32BufferAttribute(N,3));g.setAttribute('color',new THREE.Float32BufferAttribute(C,3));return g;};
-    return {tri,quad,box,build};
+    return {tri,quad,box,build,empty:()=>!P.length};
   }
-  const prism=(G,x0,x1,L)=>{for(let i=0;i<loop.length;i++){const p=loop[i],q=loop[(i+1)%loop.length],my=(p[1]+q[1])/2;
+  const prism=(G,loop,x0,x1,L)=>{for(let i=0;i<loop.length;i++){const p=loop[i],q=loop[(i+1)%loop.length],my=(p[1]+q[1])/2;
     G.quad([x0,p[1],p[0]],[x1,p[1],p[0]],[x1,q[1],q[0]],[x0,q[1],q[0]],i===loop.length-1?L.skirt:tint(L,my),new V3(0,my-0.6,(p[0]+q[0])/2));}};
-  const cap=(G,x,sx)=>{for(let i=0;i<loop.length;i++){const p=loop[i],q=loop[(i+1)%loop.length];G.tri([x,0.6,0],[x,p[1],p[0]],[x,q[1],q[0]],'#4a4f55',new V3(sx,0,0));}};
-  const noseAt=(s)=>{const zs=1-0.6*s*s,ys=1-0.5*Math.pow(s,1.3),x=CAR/2-NOSE+NOSE*s;return loop.map(([z,y])=>[x,0.14+(y-0.14)*ys,z*zs]);};
-  const nose=(G,L)=>{   // the cab: the body narrows and slopes down to a blunt tip; the windscreen wraps over the top
-    const K=6;let prev=noseAt(0);
-    for(let k=1;k<=K;k++){const cur=noseAt(k/K),s=(k-0.5)/K;
+  const cap=(G,loop,x,sx)=>{for(let i=0;i<loop.length;i++){const p=loop[i],q=loop[(i+1)%loop.length];G.tri([x,0.6,0],[x,p[1],p[0]],[x,q[1],q[0]],'#4a4f55',new V3(sx,0,0));}};
+  const noseAt=(C,loop,s)=>{const zs=1-C.nz*s*s,ys=1-C.ny*Math.pow(s,C.ne),x=C.len/2-C.nose+C.nose*s,y0=loop[0][1];
+    return loop.map(([z,y])=>[x,y0+(y-y0)*ys,z*zs]);};
+  const nose=(G,C,L,loop)=>{   // the cab: the body narrows and slopes down to the tip; the windscreen wraps over the top
+    const K=7,[s0,s1,oy0]=C.shield;let prev=noseAt(C,loop,0);
+    for(let k=1;k<=K;k++){const cur=noseAt(C,loop,k/K),s=(k-0.5)/K;
       for(let i=0;i<loop.length;i++){const j=(i+1)%loop.length,oy=(loop[i][1]+loop[j][1])/2,bottom=i===loop.length-1;
-        const hex=bottom||oy<0.19?L.skirt:s>0.3&&s<0.85&&oy>0.8?'#15191e':oy>0.25&&oy<0.32?L.band:L.nose;
-        G.quad(prev[i],cur[i],cur[j],prev[j],hex,new V3((prev[i][0]+cur[j][0])/2-(CAR/2-NOSE-1),(prev[i][1]+cur[j][1])/2-0.5,(prev[i][2]+cur[j][2])/2));}
+        const hex=bottom||oy<L.skirtY?L.skirt:s>s0&&s<s1&&oy>oy0?'#15191e':L.chin&&s>0.4&&oy<0.45?L.chin:tint(L,oy)===L.body?L.nose:tint(L,oy);
+        G.quad(prev[i],cur[i],cur[j],prev[j],hex,new V3((prev[i][0]+cur[j][0])/2-(C.len/2-C.nose-1),(prev[i][1]+cur[j][1])/2-0.5,(prev[i][2]+cur[j][2])/2));}
       prev=cur;}
     const cy=prev.reduce((a,p)=>a+p[1],0)/prev.length;
-    for(let i=0;i<loop.length;i++)G.tri([CAR/2,cy,0],prev[i],prev[(i+1)%loop.length],L.nose,new V3(1,0,0));};
-  const panes=(G,x0,x1)=>{const n=Math.max(1,Math.round((x1-x0)/0.62)),w=(x1-x0)/n;
+    for(let i=0;i<loop.length;i++)G.tri([C.len/2,cy,0],prev[i],prev[(i+1)%loop.length],L.chin||L.nose,new V3(1,0,0));};
+  const panes=(G,x0,x1,y0,y1,side,pitch)=>{const n=Math.max(1,Math.round((x1-x0)/pitch)),w=(x1-x0)/n;
     for(let k=0;k<n;k++){const a=x0+k*w+0.06,b=x0+(k+1)*w-0.06;
-      for(const z of [-1,1])G.quad([a,0.5,z*0.2915],[b,0.5,z*0.2915],[b,0.8,z*0.2915],[a,0.8,z*0.2915],'#fff',new V3(0,0,z));}};
-  const carGeo=(L,end)=>{   // a car with its cab at +x (end cars) or gangways at both ends; body and windows apart
-    const G=Geo(),W=Geo(),x1=end?CAR/2-NOSE:CAR/2;
-    prism(G,-CAR/2,x1,L);cap(G,-CAR/2,-1);if(end)nose(G,L);else cap(G,CAR/2,1);
-    for(const x of [-BOG,BOG])G.box(x-0.55,x+0.55,0.02,0.16,-0.22,0.22,'#2b2f34');
-    G.box(-CAR/2,-CAR/2-GAP/2-0.01,0.2,0.98,-0.23,0.23,'#2b2f34');if(!end)G.box(CAR/2,CAR/2+GAP/2+0.01,0.2,0.98,-0.23,0.23,'#2b2f34');
-    for(const x of end?[-CAR/2+0.45,x1-0.35]:[-CAR/2+0.45,CAR/2-0.45])for(const z of [-1,1])
-      G.quad([x-0.15,0.2,z*0.2915],[x+0.15,0.2,z*0.2915],[x+0.15,0.84,z*0.2915],[x-0.15,0.84,z*0.2915],L.door,new V3(0,0,z));
-    panes(W,-CAR/2+0.75,end?x1-0.65:CAR/2-0.75);
-    return [G.build(),W.build()];};
+      for(const z of [-1,1])G.quad([a,y0,z*side],[b,y0,z*side],[b,y1,z*side],[a,y1,z*side],'#fff',new V3(0,0,z));}};
+  const carGeo=(C,L,end)=>{   // a car with its cab at +x (end cars) or gangways at both ends; body and windows apart
+    const G=Geo(),W=Geo(),loop=loopOf(C.half),h=C.len/2,x1=end?h-C.nose:h,side=C.half[3][0]+0.0015,gy=C.half[C.half.length-1][1]*0.92,gp=C.gap??GAP,gw=Math.min(0.23,side-0.04);
+    prism(G,loop,-h,x1,L);cap(G,loop,-h,-1);if(end)nose(G,C,L,loop);else cap(G,loop,h,1);
+    for(const x of C.jacobs?[-h+0.22,h-0.22]:[-C.pivot,C.pivot]){const r=C.jacobs?0.22:0.55;G.box(x-r,x+r,0.02,0.16,-0.22,0.22,'#2b2f34');}
+    G.box(-h,-h-gp/2-0.01,0.2,gy,-gw,gw,'#2b2f34');if(!end)G.box(h,h+gp/2+0.01,0.2,gy,-gw,gw,'#2b2f34');
+    const door=(x,w)=>{for(const z of [-1,1])G.quad([x-w,C.door[0],z*side],[x+w,C.door[0],z*side],[x+w,C.door[1],z*side],[x-w,C.door[1],z*side],L.door,new V3(0,0,z));};
+    if(C.tram){   // a tram section: a double door (in the middle, or behind the cab), windows all the rest of the way
+      const [y0,y1]=C.rows[0];
+      if(end){door(-h+0.3,0.16);panes(W,-h+0.52,x1-0.06,y0,y1,side,C.pane);}
+      else{door(0,0.16);panes(W,-h+0.06,-0.2,y0,y1,side,C.pane);panes(W,0.2,h-0.06,y0,y1,side,C.pane);}
+      if(C.sign){const t=C.half[C.half.length-1][1];   // white takes the line's colour: a stripe along the roof, the sign over the windscreen
+        G.box(-h+0.05,(end?x1:h)-0.05,t-0.004,t+0.012,-0.05,0.05,'#ffffff');
+        if(end)G.box(h-0.06,h-0.02,t-0.2,t-0.1,-0.13,0.13,'#ffffff');}
+      return [G.build(),W.empty()?null:W.build()];}
+    if(C.door)for(const x of end?[-h+0.45,x1-0.35]:[-h+0.45,h-0.45])door(x,0.15);
+    if(C.grilles)for(const z of [-1,1]){   // a power car: air grilles along its side, a small window by the cab
+      for(let k=0;k<3;k++){const a=-h+0.55+k*0.62;G.quad([a,0.56,z*side],[a+0.48,0.56,z*side],[a+0.48,0.84,z*side],[a,0.84,z*side],'#454a52',new V3(0,0,z));}
+      G.quad([x1-0.42,0.62,z*side],[x1-0.08,0.62,z*side],[x1-0.08,0.86,z*side],[x1-0.42,0.86,z*side],'#15191e',new V3(0,0,z));}
+    for(const [y0,y1] of C.rows)panes(W,-h+0.75,end?x1-0.65:h-0.75,y0,y1,side,C.pane);
+    return [G.build(),W.empty()?null:W.build()];};
   const bodyMat=new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.45,metalness:0.12});
   const glassMat=new THREE.MeshStandardMaterial({color:0x27313b,roughness:0.22,metalness:0.35,emissive:0xffd59a,emissiveIntensity:0});
   nightGlow.push(glassMat);
-  const deckAt=(x,z)=>{let y=0.03;for(const d of RAIL_DECKS){const dx=x-d.cx,dz=z-d.cz,u=dx*Math.cos(d.ang)-dz*Math.sin(d.ang),v=dx*Math.sin(d.ang)+dz*Math.cos(d.ang);
-    if(Math.abs(u)<=d.L/2&&Math.abs(v)<=d.W/2+0.3)y=Math.max(y,d.deckY(u)+0.01);}return y;};
+  const deckAt=(x,z)=>railDeckAt(x,z,0.03,0.025);
   const railPath=(t)=>{   // the track every half unit, with its height: on the bridge decks, and under the ground in tunnels
     const p=t.p,nSeg=p.length/2-1,seg=k=>Math.hypot(p[k*2+2]-p[k*2],p[k*2+3]-p[k*2+1]),X=[],Y=[],Z=[];
     let total=0;for(let k=0;k<nSeg;k++)total+=seg(k);
@@ -2057,29 +2243,110 @@ const runTrains=(()=>{
     const n=X.length;
     return {at(s,o){const f=Math.min(Math.max(s/STEP,0),n-1.0001),k=Math.floor(f),u=f-k;
       return o.set(X[k]+(X[k+1]-X[k])*u,Y[k]+(Y[k+1]-Y[k])*u,Z[k]+(Z[k+1]-Z[k])*u);}};};
-  const mk=(g,m,c)=>{const im=new THREE.InstancedMesh(g,m,c);im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);im.frustumCulled=false;TODAY.add(im);return im;};
-  [['ice',7],['ec',6]].forEach(([liv,n],k)=>{const t=BASEL.rail[k];if(!t)return;
-    const [gE,wE]=carGeo(LIVERY[liv],true),[gM,wM]=carGeo(LIVERY[liv],false),len=n*CAR+(n-1)*GAP;
-    const sbb=Math.max(0.5,t.sbb-len/2),bad=t.bad-len/2;
-    trains.push({path:railPath(t),n,len,end:[mk(gE,bodyMat,2),mk(wE,glassMat,2)],mid:[mk(gM,bodyMat,n-2),mk(wM,glassMat,n-2)],
-      legs:[{to:bad,dwell:14},{to:t.edge+1,dwell:16},{to:bad,dwell:14},{to:sbb,dwell:22}],   // and round again
-      leg:k?2:3,s:k?bad:sbb,v:0,wait:k?5:8,seen:true});
-  });
+  const mk=(g,m,c)=>{if(!g)return null;const im=new THREE.InstancedMesh(g,m,c);im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);im.frustumCulled=false;TODAY.add(im);return im;};
+  const make=(spec,t)=>{   // a train of n cars: cab cars at both ends; s is where its last car ends along the track
+    const L=LIVERY[spec.liv],n=spec.n,[gE,wE]=carGeo(spec.end,L,true),[gM,wM]=carGeo(spec.mid,L,false);
+    const end=[mk(gE,bodyMat,2),mk(wE,glassMat,2)],mid=[mk(gM,bodyMat,n-2),mk(wM,glassMat,n-2)],cars=[];
+    let off=0,ie=0,im=0;
+    for(let c=0;c<n;c++){const isEnd=c===0||c===n-1,C=isEnd?spec.end:spec.mid;
+      cars.push({C,off:off+C.len/2,flip:c===0,mesh:isEnd?end:mid,i:isEnd?ie++:im++});off+=C.len+GAP;}
+    return {path:railPath(t),cars,len:off-GAP,meshes:[...end,...mid].filter(Boolean),v:0,seen:true};};
+  const de=BASEL.rail.filter(t=>t.to!=='fr'),fr=BASEL.rail.find(t=>t.to==='fr');
+  [{liv:'ice',end:CARS.ice,mid:CARS.ice,n:7},{liv:'ec',end:CARS.ice,mid:CARS.ice,n:6}].forEach((spec,k)=>{const t=de[k];if(!t)return;
+    const T=make(spec,t),sbb=Math.max(0.5,t.sbb-T.len/2),bad=t.bad-T.len/2;
+    trains.push(Object.assign(T,{legs:[{to:bad,dwell:14},{to:t.edge+1,dwell:16},{to:bad,dwell:14},{to:sbb,dwell:22}],   // and round again
+      leg:k?2:3,s:k?bad:sbb,wait:k?5:8}));});
+  if(fr){const T=make({liv:'tgv',end:CARS.tgvPower,mid:CARS.tgvDuplex,n:8},fr);   // the French platforms are a terminus
+    trains.push(Object.assign(T,{legs:[{to:fr.edge+1,dwell:20},{to:0.5,dwell:24}],leg:1,s:0.5,wait:10}));}
   const A=new V3(),B=new V3(),M=new V3(),q=new THREE.Quaternion(),qp=new THREE.Quaternion(),m=new THREE.Matrix4(),
     ONE=new V3(1,1,1),NONE=new THREE.Matrix4().makeScale(0,0,0),UP=new V3(0,1,0),FWD=new V3(0,0,1);
+  // ---- the trams: every line on its route both ways, BVB's green trams and BLT's yellow ones, the line's colour on
+  // the sign over the windscreen and along the roof. The timetable sends one roughly every 7½ minutes each way (the clock runs
+  // eight times faster here, and at night every other tram stays in the depot), the lines spread out over each
+  // interval; and no tram drives into another: each looks ahead along its track and waits while the way is taken ----
+  const TRAMH=[[0.2,0.06],[0.23,0.1],[0.23,0.14],[0.23,0.2],[0.23,0.8],[0.205,0.9],[0.13,0.95],[0,0.96]];
+  const TLIV={BVB:{body:'#2e8b43',skirt:'#2b2f33',roof:'#d4d8db',nose:'#2e8b43',door:'#20302a',bands:[],skirtY:0.1,roofY:0.88},
+    BLT:{body:'#f2c20f',skirt:'#33363b',roof:'#d2d5d8',nose:'#f2c20f',door:'#2b2f33',bands:[[0.14,0.2,'#c8102e']],skirtY:0.1,roofY:0.88}};
+  const tcar=o=>car({half:TRAMH,nose:0.42,nz:0.4,ny:0.18,ne:1.2,shield:[0.02,0.98,0.4],rows:[[0.36,0.8]],pane:0.36,door:[0.1,0.8],jacobs:true,gap:0.04,tram:true,sign:true,...o});
+  const TCARS={BVB:{end:tcar({len:1.5,pivot:0.73}),mid:tcar({len:1.2,pivot:0.58}),n:6},BLT:{end:tcar({len:1.6,pivot:0.78}),mid:tcar({len:1.5,pivot:0.73}),n:5}};
+  const tramMat=new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.5,metalness:0.1});
+  tramMat.onBeforeCompile=(sh)=>{sh.vertexShader=sh.vertexShader.replace('#include <color_vertex>',
+    THREE.ShaderChunk.color_vertex.replace('vColor.rgb *= instanceColor.rgb;','vColor.rgb = all( greaterThan( color, vec3( 0.99 ) ) ) ? instanceColor.rgb : vColor.rgb;'));};
+  const tramPath=(p)=>{   // a route every half unit: position, heading, and the deck height where it crosses a bridge
+    const nSeg=p.length/2-1,seg=k=>Math.hypot(p[k*2+2]-p[k*2],p[k*2+3]-p[k*2+1]),X=[],Y=[],Z=[],H=[];
+    let total=0;for(let k=0;k<nSeg;k++)total+=seg(k);
+    for(let s=0,i=0,s0=0;s<=total;s+=STEP){while(i<nSeg-1&&s>s0+seg(i)){s0+=seg(i);i++;}
+      const u=Math.min(1,(s-s0)/(seg(i)||1)),x=p[i*2]+(p[i*2+2]-p[i*2])*u,z=p[i*2+1]+(p[i*2+3]-p[i*2+1])*u,hd=Math.atan2(-(p[i*2+3]-p[i*2+1]),p[i*2+2]-p[i*2]);
+      X.push(x);Z.push(z);H.push(hd);Y.push(roadDeckAt(x,z,hd,0.02));}
+    const n=X.length,f=s=>Math.min(Math.max(s/STEP,0),n-1.0001);
+    return {len:(n-1)*STEP,at(s,o){const g=f(s),k=Math.floor(g),u=g-k;return o.set(X[k]+(X[k+1]-X[k])*u,Y[k]+(Y[k+1]-Y[k])*u,Z[k]+(Z[k+1]-Z[k])*u);},
+      hd(s){return H[Math.round(f(s))];}};};
+  const trams=[],VT=3.4,ACC_T=1.1,HEAD_DAY=56,TL=(BASEL.trams||[]).filter(l=>l.dirs&&l.dirs.length===2);
+  const tramMeshes={};
+  {const need={BVB:0,BLT:0};const lines=TL.map((l,li)=>{const op=l.op==='BLT'?'BLT':'BVB',paths=l.dirs.map(d=>tramPath(d.p));
+      const cycle=(paths[0].len+paths[1].len)/2.7+12,n=Math.max(2,Math.min(9,Math.round(cycle/HEAD_DAY)));need[op]+=n;return {l,li,op,paths,n};});
+    for(const op of ['BVB','BLT'])if(need[op]){const T=TCARS[op],L=TLIV[op],[gE,wE]=carGeo(T.end,L,true),[gM,wM]=carGeo(T.mid,L,false),k=need[op];
+      tramMeshes[op]={end:[mk(gE,tramMat,2*k),mk(wE,glassMat,2*k)],mid:[mk(gM,tramMat,(T.n-2)*k),mk(wM,glassMat,(T.n-2)*k)],ie:0,im:0};}
+    for(const {l,li,op,paths,n} of lines){const col=new THREE.Color(l.colour),T=TCARS[op],TM=tramMeshes[op];
+      for(let k=0;k<n;k++){const cars=[];let off=0;
+        for(let c=0;c<T.n;c++){const isEnd=c===0||c===T.n-1,C=isEnd?T.end:T.mid,mesh=isEnd?TM.end:TM.mid,i=isEnd?TM.ie++:TM.im++;
+          cars.push({C,off:off+C.len/2,flip:c===T.n-1,mesh,i});off+=C.len+0.04;mesh[0].setColorAt(i,col);}
+        const tr={id:trams.length,idx:k,line:l.ref,paths,stops:l.dirs.map(d=>d.stops),cars,len:off-0.04,dir:0,s:off-0.04,si:0,v:0,wait:0,hidden:true,parked:false,blockT:0,ghost:0};
+        // its place in the timetable: run it on its own for its share of the cycle, the lines spread over the interval
+        const age=k*((paths[0].len+paths[1].len)/2.7+12)/n+li*HEAD_DAY/TL.length;
+        tr.hidden=false;for(let t=0;t<age;t+=0.5)stepTram(tr,0.5,false);
+        trams.push(tr);}}
+    for(const op in tramMeshes)for(const x of [tramMeshes[op].end[0],tramMeshes[op].mid[0]])x.instanceColor.needsUpdate=true;}
+  function stepTram(T,dt,check){   // the timetable's run: to the next stop and wait there, to the end of the line and turn
+    if(T.parked)return;
+    if(T.wait>0){T.wait-=dt;return;}
+    const P=T.paths[T.dir],stops=T.stops[T.dir];
+    if(T.s>=P.len-0.02){T.dir^=1;T.s=T.len;T.si=0;T.v=0;T.wait=T.hidden?0:6;return;}   // the other way, after a break
+    while(T.si<stops.length&&stops[T.si]<T.s-0.05)T.si++;
+    const target=T.si<stops.length?stops[T.si]:P.len,fast=T.hidden?4:1;
+    let vt=Math.min(VT*fast,Math.sqrt(2*ACC_T*fast*Math.max(0,target-T.s)));
+    if(check&&!T.hidden&&T.ghost<=0&&tramBlocked(T)){vt=0;T.blockT+=dt;if(T.blockT>8){T.ghost=3;T.blockT=0;}}else T.blockT=0;
+    if(T.ghost>0)T.ghost-=dt;
+    T.v=T.v<vt?Math.min(vt,T.v+ACC_T*fast*dt):Math.max(vt,T.v-3*dt);
+    T.s=Math.min(P.len,T.s+T.v*dt);
+    if(target-T.s<0.03&&T.v<0.4){T.s=Math.max(T.s,target);T.v=0;if(T.si<stops.length){T.si++;T.wait=T.hidden?0:2.5+(T.id%3)*0.5;}}
+  }
+  if(DEBUG)window.__trams=trams;
+  const occ=new Map(),CELL_T=0.5,cellKey=(x,z)=>(Math.floor(x/CELL_T)+30000)*60000+Math.floor(z/CELL_T)+30000;
+  const angGap=(a,b)=>Math.abs(Math.atan2(Math.sin(a-b),Math.cos(a-b)));
+  function tramBlocked(T){   // someone ahead on this track (or crossing it): not a tram passing the other way
+    const P=T.paths[T.dir],hd=P.hd(T.s),reach=0.7+T.v*T.v/6;
+    for(let d=0.3;d<=reach;d+=0.4){P.at(T.s+d,A);const L=occ.get(cellKey(A.x,A.z));
+      if(L)for(const e of L)if(e.id!==T.id&&angGap(e.hd,hd)<2.2)return true;}
+    return false;}
+  function placeTram(T){
+    let seen=false;const P=T.paths[T.dir];
+    for(const c of T.cars){const [body,glass]=c.mesh,sc=T.s-c.off;
+      if(T.parked){body.setMatrixAt(c.i,NONE);if(glass)glass.setMatrixAt(c.i,NONE);continue;}
+      P.at(sc+c.C.pivot,A);P.at(sc-c.C.pivot,B);M.addVectors(A,B).multiplyScalar(0.5);
+      if(!onMap(M)){body.setMatrixAt(c.i,NONE);if(glass)glass.setMatrixAt(c.i,NONE);continue;}
+      seen=true;const dx=A.x-B.x,dz=A.z-B.z;
+      q.setFromAxisAngle(UP,Math.atan2(-dz,dx)+(c.flip?Math.PI:0));qp.setFromAxisAngle(FWD,Math.atan2(A.y-B.y,Math.hypot(dx,dz)||1e-6)*(c.flip?-1:1));
+      m.compose(M,q.multiply(qp),ONE);body.setMatrixAt(c.i,m);if(glass)glass.setMatrixAt(c.i,m);}
+    T.hidden=!seen;
+    if(seen&&!T.parked){const hd=P.hd(T.s);for(let d=0;d<=T.len;d+=0.5){P.at(T.s-d,A);const k=cellKey(A.x,A.z);let L=occ.get(k);if(!L)occ.set(k,L=[]);L.push({id:T.id,hd});}}}
+  function runTrams(dt){
+    occ.clear();for(const T of trams){T.parked=NIGHT&&T.idx%2===1;placeTram(T);}   // where everyone is, then who may move
+    for(const T of trams)stepTram(T,dt,true);
+    for(const op in tramMeshes)for(const x of [...tramMeshes[op].end,...tramMeshes[op].mid])if(x)x.instanceMatrix.needsUpdate=true;}
   const onMap=o=>o.x>GB.x0+0.5&&o.x<GB.x1-0.5&&o.z>GB.z0+0.5&&o.z<GB.z1-0.5;
   function place(T){   // each car rides on its two bogies, so it follows curves and leans up the bridge ramps
-    let seen=false,ie=0,im=0;
-    for(let c=0;c<T.n;c++){const mid=T.s+CAR/2+c*(CAR+GAP),end=c===0||c===T.n-1,flip=c===0,[body,glass]=end?T.end:T.mid,i=end?ie++:im++;
-      T.path.at(mid+BOG,A);T.path.at(mid-BOG,B);M.addVectors(A,B).multiplyScalar(0.5);
-      if(!onMap(M)||M.y<-1.5){body.setMatrixAt(i,NONE);glass.setMatrixAt(i,NONE);continue;}
+    let seen=false;
+    for(const c of T.cars){const [body,glass]=c.mesh;
+      T.path.at(T.s+c.off+c.C.pivot,A);T.path.at(T.s+c.off-c.C.pivot,B);M.addVectors(A,B).multiplyScalar(0.5);
+      if(!onMap(M)||M.y<-1.5){body.setMatrixAt(c.i,NONE);if(glass)glass.setMatrixAt(c.i,NONE);continue;}
       seen=true;
       const dx=A.x-B.x,dz=A.z-B.z;
-      q.setFromAxisAngle(UP,Math.atan2(-dz,dx)+(flip?Math.PI:0));qp.setFromAxisAngle(FWD,Math.atan2(A.y-B.y,Math.hypot(dx,dz)||1e-6)*(flip?-1:1));
-      m.compose(M,q.multiply(qp),ONE);body.setMatrixAt(i,m);glass.setMatrixAt(i,m);}
-    for(const x of [...T.end,...T.mid])x.instanceMatrix.needsUpdate=true;
+      q.setFromAxisAngle(UP,Math.atan2(-dz,dx)+(c.flip?Math.PI:0));qp.setFromAxisAngle(FWD,Math.atan2(A.y-B.y,Math.hypot(dx,dz)||1e-6)*(c.flip?-1:1));
+      m.compose(M,q.multiply(qp),ONE);body.setMatrixAt(c.i,m);if(glass)glass.setMatrixAt(c.i,m);}
+    for(const x of T.meshes)x.instanceMatrix.needsUpdate=true;
     T.seen=seen;}
-  return (dt)=>{for(const T of trains){
+  return (dt)=>{runTrams(Math.min(dt,0.1));for(const T of trains){
     if(T.wait>0){T.wait-=dt;if(T.wait<=0)T.leg=(T.leg+1)%T.legs.length;}
     else{const L=T.legs[T.leg],r=L.to-T.s,dist=Math.abs(r),vt=Math.min(T.seen?VMAX:30,Math.sqrt(2*ACC*dist));
       T.v=T.v<vt?Math.min(vt,T.v+ACC*dt*(T.seen?1:6)):vt;
@@ -2306,6 +2573,7 @@ function applyTheme(){
   cloudMat.color.set(p.cloud);cloudDeckMat.color.set(p.deck);hillMat.color.set(p.hill);
   for(const w of [winToday,win1615])if(w)w.visible=NIGHT;
   for(const m of nightGlow)m.emissiveIntensity=NIGHT?0.9:0;
+  for(const g of dayOnly)g.visible=!NIGHT;
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',applyTheme);
 new MutationObserver(applyTheme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});

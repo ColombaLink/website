@@ -1,13 +1,16 @@
 """Download the raw map data for Secret Pigeon's Basel.
 
-Usage: python3 -I secret-pigeon/build/fetch_data.py <output-dir> [osm] [rail] [ortho] [sb3d] [trees]
+Usage: python3 -I secret-pigeon/build/fetch_data.py <output-dir> [osm] [rail] [tram] [streets] [ortho] [sb3d] [trees]
   (no part names: all of them)
 
 Writes into <output-dir>:
   osm_buildings.json   buildings and building parts (OpenStreetMap, ODbL) via the Swiss Overpass mirror; used for
                        the landmarks and the facade buildings
   osm_extras.json      trees, bridges, ferries, water, parks and a few named places
-  osm_rail.json        railway tracks and stations, for the trains between Basel SBB and the Badischer Bahnhof
+  osm_rail.json        railway tracks and stations for the trains to Germany and France (a little wider than the
+                       map: the lines loop out of it and back in)
+  osm_streets.json     the shopping streets between Barfüsserplatz and Marktplatz, for the shop fronts
+  osm_tram.json        the tram tracks and the tram lines (route relations: colours, operators, stops)
   ortho/E-N.jpg        swisstopo SWISSIMAGE at 1 m per pixel, one file per LV95 kilometre (WMS)
   sb3d/*.citygml.zip   swisstopo swissBUILDINGS3D 3.0 (CityGML, LOD2 roofs), newest release of each map sheet
   trees_bs.json        Basel's public tree register (species and age), Geodaten Kanton Basel-Stadt
@@ -75,10 +78,29 @@ out body geom({bb});""", os.path.join(out, "osm_extras.json"))
 
 def fetch_rail(out):
     s, w, n, e = BBOX
-    bb = f"{s},{w},{n},{e}"
+    bb = f"{s - 0.006},{w - 0.02},{n + 0.004},{e + 0.006}"     # wider: the lines loop out of the map and back in
     overpass(f"""[out:json][timeout:300][bbox:{bb}];
 (way["railway"="rail"];node["railway"="station"];);
 out body geom;""", os.path.join(out, "osm_rail.json"))
+
+
+def fetch_tram(out):
+    s, w, n, e = BBOX
+    bb = f"{s - 0.006},{w - 0.02},{n + 0.004},{e + 0.006}"     # the lines run on out of the map: their route
+    overpass(f"""[out:json][timeout:300][bbox:{bb}];
+(way["railway"="tram"];relation["route"="tram"];);
+out body geom;""", os.path.join(out, "osm_tram.json"))
+
+
+SHOPPING = ["Gerbergasse", "Falknerstrasse", "Freie Strasse", "Streitgasse", "Barfüssergasse", "Eisengasse", "Marktgasse"]
+
+
+def fetch_streets(out):
+    s, w, n, e = BBOX
+    names = "|".join(SHOPPING)
+    overpass(f"""[out:json][timeout:300][bbox:{s},{w},{n},{e}];
+way["highway"]["name"~"^({names})$"];
+out body geom;""", os.path.join(out, "osm_streets.json"))
 
 
 def fetch_ortho(out):
@@ -143,7 +165,8 @@ def fetch_trees(out):
     print(f"wrote {path} ({len(json.loads(body))} trees)", flush=True)
 
 
-PARTS = {"osm": fetch_osm, "rail": fetch_rail, "ortho": fetch_ortho, "sb3d": fetch_buildings, "trees": fetch_trees}
+PARTS = {"osm": fetch_osm, "rail": fetch_rail, "tram": fetch_tram, "streets": fetch_streets, "ortho": fetch_ortho,
+         "sb3d": fetch_buildings, "trees": fetch_trees}
 
 if __name__ == "__main__":
     if len(sys.argv) < 2 or any(a not in PARTS for a in sys.argv[2:]):
