@@ -1752,3 +1752,123 @@ p {
     transition: none !important;
   }
 }
+
+/* ---------- Secret Pigeon (the game) ---------- */
+
+.announce {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  margin-bottom: 22px;
+  padding: 5px 14px 5px 5px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.announce:hover {
+  text-decoration: none;
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+.announce-tag {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.announce-arrow {
+  flex-shrink: 0;
+  color: var(--accent);
+  transition: transform 0.15s ease;
+}
+
+.announce:hover .announce-arrow {
+  transform: translateX(3px);
+}
+
+.game-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: 56px;
+  align-items: center;
+}
+
+.game-copy .section-head {
+  margin-bottom: 0;
+}
+
+.game-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.game-note {
+  margin-top: 14px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.game-shot {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 24px 48px rgba(20, 28, 41, 0.12);
+}
+
+.game-shot img {
+  width: 100%;
+  transition: transform 0.4s ease;
+}
+
+.game-shot:hover img {
+  transform: scale(1.02);
+}
+
+.game-play {
+  position: absolute;
+  left: 18px;
+  bottom: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(20, 28, 41, 0.84);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.game-play svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+
+@media (max-width: 1040px) {
+  .game-grid {
+    grid-template-columns: 1fr;
+    gap: 36px;
+  }
+
+  .game-shot {
+    order: -1;
+  }
+}

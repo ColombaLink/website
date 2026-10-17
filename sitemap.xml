@@ -20,4 +20,7 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://colomba.link/en/contact/"/>
     <xhtml:link rel="alternate" hreflang="de" href="https://colomba.link/de/contact/"/>
   </url>
+  <url>
+    <loc>https://colomba.link/secret-pigeon/</loc>
+  </url>
 </urlset>

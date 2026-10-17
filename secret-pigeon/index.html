@@ -3,11 +3,41 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Secret Pigeon</title>
-<meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bungee&family=DM+Mono:wght@400;500&display=swap">
+<title>Secret Pigeon – a LoRaWAN flight game over Basel</title>
+<meta name="description" content="A five-minute browser game about LoRaWAN: fly a carrier pigeon with a radio over a 3D Basel, today or in 1615, and put together a working network.">
+<link rel="canonical" href="https://colomba.link/secret-pigeon/">
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Colomba">
+<meta property="og:url" content="https://colomba.link/secret-pigeon/">
+<meta property="og:title" content="Secret Pigeon: a LoRaWAN flight game over Basel">
+<meta property="og:description" content="Fly a carrier pigeon with a radio over a 3D Basel, today or in 1615, and put together a working LoRaWAN network. About five minutes, in your browser.">
+<meta property="og:image" content="https://colomba.link/secret-pigeon/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A grey pigeon hovering over Basel's old town beside the Münster, with the Rhine behind">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Secret Pigeon: a LoRaWAN flight game over Basel">
+<meta name="twitter:description" content="Fly a carrier pigeon with a radio over a 3D Basel and put together a working LoRaWAN network.">
+<meta name="twitter:image" content="https://colomba.link/secret-pigeon/og.jpg">
+<link rel="stylesheet" href="/secret-pigeon/fonts/fonts.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "VideoGame",
+  "name": "Secret Pigeon",
+  "url": "https://colomba.link/secret-pigeon/",
+  "image": "https://colomba.link/secret-pigeon/og.jpg",
+  "description": "A five-minute browser game about LoRaWAN: fly a carrier pigeon with a radio over a 3D Basel, today or in 1615, and put together a working network.",
+  "genre": "Educational",
+  "gamePlatform": "Web browser",
+  "applicationCategory": "Game",
+  "inLanguage": "en",
+  "isAccessibleForFree": true,
+  "publisher": {"@type": "Organization", "name": "Colomba Link GmbH", "url": "https://colomba.link/"}
+}
+</script>
 <style>
 /* Layout: full-bleed 3D city under everything; HUD pinned to the top corners; dispatch-slip cards float over the scene */
 :root{
@@ -279,6 +309,7 @@ button{font:inherit;color:inherit}
       <button id="btn-mute" class="link-btn">Sound: on</button>
       <button id="btn-reset" class="link-btn danger">Reset progress</button>
     </div>
+    <p class="credits mono">Made in Basel by <a href="/">Colomba</a>. We build private LoRaWAN networks for real.</p>
     <p class="credits mono">3D buildings (swissBUILDINGS3D) and aerial imagery (SWISSIMAGE) © <a href="https://www.swisstopo.admin.ch" target="_blank" rel="noopener">swisstopo</a> · Landmarks, bridges, railways, tram lines and places © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL) · Tram timetable: <a href="https://opentransportdata.swiss" target="_blank" rel="noopener">opentransportdata.swiss</a> · Trees (Baumkataster) and the 1615 plan and wall line: <a href="https://data.bs.ch" target="_blank" rel="noopener">Quelle: Geodaten Kanton Basel-Stadt</a> (CC BY 4.0)</p>
     <p id="load-msg" class="load-msg" hidden></p>
   </div>
@@ -338,6 +369,7 @@ button{font:inherit;color:inherit}
       <button id="btn-fin-nb" class="btn">Field notebook</button>
       <button id="btn-fin-title" class="btn">Title screen</button>
     </div>
+    <p class="muted" style="margin-top:16px">Want one for real? We build sensors, private LoRaWAN networks and the platforms behind them. <a href="/en/contact/">Get in touch</a> or visit <a href="/">colomba.link</a>.</p>
   </div>
 </section>
 
@@ -369,12 +401,12 @@ button{font:inherit;color:inherit}
 setTimeout(function(){
   if(!window.__spReady){
     var m=document.getElementById('load-msg');
-    if(m){m.hidden=false;m.textContent='Still loading the 3D engine. If this stays, check your internet connection: the game loads three.js from cdnjs.';}
+    if(m){m.hidden=false;m.textContent='Still loading the 3D engine. If this stays, check your internet connection.';}
   }
 },7000);
 </script>
 <script type="module">
-import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.183.2/three.module.min.js';
+import * as THREE from '/secret-pigeon/vendor/three.module.min.js';
 
 const V3=THREE.Vector3;
 const $=id=>document.getElementById(id);

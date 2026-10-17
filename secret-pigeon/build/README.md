@@ -25,7 +25,8 @@ timetable is Switzerland's whole public transport timetable (GTFS, about 300 MB)
 | `sb3d.py` | Streams the CityGML, merges each building's roof triangles back into roof planes, drops vertices on straight edges and closes seams between planes. |
 | `build_city.py` | Today's city: the 3D roofs in compact gzip form (the game raises the walls from the roof edges, skipping the ones another roof hides; platform roofs and train sheds over the tracks stand open on posts), roof colours from the aerial photo, the 1 m ground as AVIF with a small JPEG fallback, the Rhine's outline for the animated water, trees by species and age, each bridge's axis and stretch over the Rhine, the measurements of the landmarks, of Basel SBB's front and of the Kollegienhaus's eaves and entrance, the shop houses and their awnings, every railway and tram track, each tram line's route both ways with its stops, colour and operator and every trip of an ordinary weekday on it (from the timetable, with the stops laid on the route), two train tracks from Basel SBB over the Rhine to the Badischer Bahnhof and north off the map, and one from its French platforms towards France (shortest paths along OSM's running lines that never turn back). |
 | `build_1615.py` | Basel in 1615: traces every house on the plan into its own outline, builds the wall, towers and gates, plants garden and orchard trees, and paints the 1 m ground from the plan's own pixels (the Rhine beyond the plan follows the aerial photo); the river's outline from the plan gives the 1615 water. |
-| `assemble.py` | Injects both cities into the template; with a sixth argument it also writes the Artifact copy without the page wrapper. |
+| `assemble.py` | Injects both cities into the template and writes the colomba.link copy: it loads three.js and the fonts from the game's own `vendor/` and `fonts/` folders (the site promises no third-party scripts or fonts) and adds the parts in `site-parts.html` (share previews, a byline, a line on the final screen). With a sixth argument it also writes the Artifact copy, which keeps the cdnjs and Google Fonts links, leaves those parts out and drops the page wrapper. |
+| `site-parts.html` | What only the colomba.link copy gets: its description, canonical address, Open Graph and Twitter previews (`og.jpg`), structured data and the links back to the site. |
 
 The game itself (`game.template.html`) models the landmarks by hand on top of these measurements: the Münster and its
 cloister, the Rathaus (its old front building, north wing and tower told apart by the roof heights behind the front),
@@ -41,6 +42,13 @@ time it is in Basel, every trip stopping at each of its stations; a tram that wo
 "Tour the city" on the title screen has no level and no clock: the pigeon hovers on the spot with its wings beating and
 moves only when steered (W / S forward and back, A / D turn, Space up, Shift down; on touch screens the stick, with Flap
 and Sink held). Its "Fly to…" list glides over the rooftops to a landmark of the chosen era. Esc goes back to the title.
+
+Next to the game, `vendor/` holds three.js 0.183.2 (`three.module.min.js` imports `three.core.min.js`; both match
+cdnjs's SHA-512 hashes; MIT licence in `three-LICENSE.txt`) and `fonts/` the Latin subsets of Atkinson Hyperlegible,
+Bungee and DM Mono as WOFF2 with `fonts.css` and their SIL Open Font Licence texts. To move to another three.js
+version, replace both files and the version in the template's import and in `assemble.py` together. `og.jpg`
+(1200 × 630, the share preview) and `poster-960.webp` / `poster-1440.webp` (the picture on the home page) are renders
+from the game's own canvas: the pigeon beside the Münster in tour mode, drawn at twice the size and scaled down.
 
 Credits shown in the game: 3D buildings (swissBUILDINGS3D) and aerial imagery (SWISSIMAGE) © swisstopo; landmarks,
 bridges, railways, tram lines and places © OpenStreetMap contributors (ODbL); tram timetable: opentransportdata.swiss; tree register (Baumkataster) and the 1615 plan and
