@@ -1166,7 +1166,7 @@ def main(raw, work, out_js):
 
     # the Rathaus front onto the Marktplatz: the longest straight run of its walls facing the square, so the game
     # can put the arcade, battlements, clock and flèche exactly on it
-    rathaus_front = None
+    rathaus_front = rathaus_tower = None
     cands = []
     for r in frecs:
         if FACADE_STYLES[r["kind"]] != "rathaus":
@@ -1218,6 +1218,18 @@ def main(raw, work, out_js):
             prof.append(round(max([p0[2] - (n[0] * (q[0] - p0[0]) + n[1] * (q[1] - p0[1])) / n[2]
                                    for ring, p0, n in planes if inside(q, ring)] or [0.0]), 1))
         rathaus_front.append(prof)
+        # the tower's shaft: the roof parts round the spire above 30 m, whose lowest corner is where its walls stop
+        if "rathaus" in lm_peak:
+            tx, ty, _ = lm_peak["rathaus"]
+            tv = [p for r in frecs if FACADE_STYLES[r["kind"]] == "rathaus" for l in r["loops"]
+                  if all(math.dist(r["verts"][i][:2], (tx, ty)) < 7 and r["verts"][i][2] > 30 for i in l) for p in (r["verts"][i] for i in l)]
+            if tv:
+                us = [(p[0] - tx) * ux + (p[1] - ty) * uy for p in tv]
+                ns = [(p[0] - tx) * nx + (p[1] - ty) * ny for p in tv]
+                cu, cn = (min(us) + max(us)) / 2, (min(ns) + max(ns)) / 2
+                cx, cy = tx + ux * cu + nx * cn, ty + uy * cu + ny * cn
+                rathaus_tower = [round(cx / S, 2), round(-cy / S, 2), round((max(us) - min(us)) / 2 / S, 2),
+                                 round((max(ns) - min(ns)) / 2 / S, 2), round(min(p[2] for p in tv), 1)]
     # awnings over the shop windows: along every wall of a shop house that faces one of the streets or squares,
     # one every 6.5 m, as (x, z, the angle its front faces) in game units
     awnings = []
@@ -1339,6 +1351,8 @@ def main(raw, work, out_js):
             landmarks[k]["peak"] = [round(px_ / S, 2), round(-py_ / S, 2), round(ph, 1)]
     if rathaus_front and "rathaus" in landmarks:
         landmarks["rathaus"]["front"] = rathaus_front
+    if rathaus_tower and "rathaus" in landmarks:
+        landmarks["rathaus"]["tower"] = rathaus_tower
     for k, (typ, oid) in LANDMARK_TOWERS.items():
         for p in parts + outlines:
             if p["type"] == typ and p["id"] == oid and k in landmarks:
