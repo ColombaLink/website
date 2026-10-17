@@ -40,8 +40,9 @@ Lyria towards France, and runs Basel's twelve tram lines to their real weekday t
 time it is in Basel, every trip stopping at each of its stations; a tram that would run into another waits behind it.
 
 "Tour the city" on the title screen has no level and no clock: the pigeon hovers on the spot with its wings beating and
-moves only when steered (W / S forward and back, A / D turn, Space up, Shift down; on touch screens the stick, with Flap
-and Sink held). Its "Fly to…" list glides over the rooftops to a landmark of the chosen era. Esc goes back to the title.
+moves only when steered, with the levels' keys: W / S climb and dive, A / D turn, and Space held flies forward (on touch
+screens the stick, with Flap held). Its "Fly to…" list glides over the rooftops to a landmark of the chosen era. Esc goes
+back to the title.
 
 Next to the game, `vendor/` holds three.js 0.183.2 (`three.module.min.js` imports `three.core.min.js`; both match
 cdnjs's SHA-512 hashes; MIT licence in `three-LICENSE.txt`) and `fonts/` the Latin subsets of Atkinson Hyperlegible,

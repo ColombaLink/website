@@ -188,8 +188,6 @@ button{font:inherit;color:inherit}
 .knob{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:var(--paper);border:1.5px solid var(--ink);box-shadow:var(--shadow)}
 .flap-btn{pointer-events:auto;touch-action:none;width:92px;height:92px;border-radius:50%;border:0;background:var(--neck);color:var(--on-accent);font:700 17px var(--font-body);box-shadow:var(--shadow)}
 .flap-btn:active{transform:scale(.95)}
-.tbtns{display:flex;flex-direction:column;align-items:center;gap:12px;pointer-events:none}
-.sink-btn{width:64px;height:64px;font-size:14px;background:var(--paper);color:var(--ink);border:1.5px solid var(--line)}
 
 @media (max-width:520px){
   .hud-l{max-width:calc(100vw - 150px)}
@@ -237,7 +235,7 @@ button{font:inherit;color:inherit}
 
 <div id="touch" class="touch" hidden>
   <div id="stick" class="stick" aria-label="Steering stick"><div id="knob" class="knob"></div></div>
-  <div class="tbtns"><button id="btn-sink" class="flap-btn sink-btn" hidden>Sink</button><button id="btn-flap" class="flap-btn">Flap</button></div>
+  <button id="btn-flap" class="flap-btn">Flap</button>
 </div>
 
 <main id="s-title" class="screen">
@@ -3138,7 +3136,7 @@ async function buildL5(L,st){
 
 /* ===================== 6. Flight, camera, per-frame updates ===================== */
 const keys=new Set();
-const touch={x:0,y:0,up:0,down:0};   // up / down: the Flap and Sink buttons held during the tour
+const touch={x:0,y:0,up:0};   // up: the Flap button held, which flies the tour forward
 function inTurn(){return ((keys.has('a')||keys.has('arrowleft'))?1:0)-((keys.has('d')||keys.has('arrowright'))?1:0)-touch.x;}
 function inClimb(){return ((keys.has('w')||keys.has('arrowup'))?1:0)-((keys.has('s')||keys.has('arrowdown'))?1:0)+touch.y;}
 function forwardOf(yaw,pitch,out){const cp=Math.cos(pitch);return out.set(-Math.sin(yaw)*cp,Math.sin(pitch),-Math.cos(yaw)*cp);}
@@ -3194,7 +3192,8 @@ function updateBird(dt){
   bird.g.position.copy(P.pos);bird.g.rotation.set(P.pitch,P.yaw,P.roll,'YXZ');
   let amp=0.32,rate=7;
   if(P.flapT>0){amp=0.95;rate=20;}else if(G.mode==='play'&&!G.hold&&inClimb()>0.2){amp=0.7;rate=13;}
-  else if(G.mode==='tour'){const sp=G.tour.glide?0.6:Math.min(1,Math.abs(G.tour.v)/18);amp=0.95-0.4*sp;rate=17-7*sp;}   // hovering: fast, full beats
+  else if(G.mode==='tour'){const sp=G.tour.glide?0.6:Math.min(1,Math.abs(G.tour.v)/18),dive=clamp(-P.vy/14,0,1);
+    amp=(0.95-0.4*sp)*(1-0.6*dive);rate=(17-7*sp)*(1-0.3*dive);}   // hovering: fast, full beats; diving: wings half tucked
   P.fold+=((P.perched?1:0)-P.fold)*Math.min(1,dt*6);
   P.phase+=dt*rate;
   const a=Math.sin(P.phase)*amp*(1-P.fold)-0.3*P.fold;
@@ -3322,7 +3321,7 @@ function unloadLevel(){
   G.objText='';G.objTarget=null;G.lastSec=-1;
 }
 /* the tour: no level and no clock, just Basel. The pigeon hovers on the spot, wings beating, and goes where it is
-   steered: W / S (or up and down) forward and back, A / D turn, Space up, Shift down; the list flies to a landmark */
+   steered, with the levels' keys: W / S climb and dive, A / D turn, Space held flies forward; the list flies to a landmark */
 function tourSpots(){
   const L=BASEL.landmarks,list=[],add=(name,p,h,only)=>{if(p&&!(only&&era!==only))list.push({name,x:p[0],z:p[1],h});};
   add('Universität Basel (Kollegienhaus)',PL.uni,hM(16),'today');
@@ -3342,9 +3341,9 @@ function tourSpots(){
 }
 function startTour(){
   unloadLevel();resetPigeon();camPos.set(SPAWN.x,SPAWN.y+5,SPAWN.z+14);
-  G.mode='tour';G.tour={v:0,glide:null};show(null);Sound.init();$('btn-sink').hidden=false;
+  G.mode='tour';G.tour={v:0,glide:null};show(null);Sound.init();
   $('hud-level').textContent=`Tour · ${NAMES.era}`;
-  $('hud-obj').textContent=COARSE?'Drag the stick to fly and turn · hold Flap to rise, Sink to drop':'W / S forward and back · A / D turn · Space up · Shift down · Esc to leave';
+  $('hud-obj').textContent=COARSE?'Stick: climb, dive and turn · hold Flap to fly forward':'W / S climb / dive · A / D turn · hold Space to fly forward · Esc to leave';
   $('hud-time').hidden=true;
   const sel=$('tour-go');sel.replaceChildren(new Option('Fly to…',''),...tourSpots().map((p,i)=>new Option(p.name,String(i))));sel.hidden=false;
   setHud(true);Sound.coo();
@@ -3372,11 +3371,13 @@ function tourFly(dt){
     P.pos.lerpVectors(g.from,g.to,e);P.pos.y+=g.lift*Math.sqrt(Math.sin(Math.PI*e));
     P.yaw=lerpAngle(P.yaw,e<0.75?g.travel:g.yaw,Math.min(1,dt*3));P.roll*=Math.exp(-dt*4);P.pitch+=(0.15-P.pitch)*Math.min(1,dt*3);
     if(g.t>=1)T.glide=null;return;}
-  const turn=clamp(inTurn(),-1,1),fwd=clamp(inClimb(),-1,1),up=((keys.has(' ')||touch.up)?1:0)-((keys.has('shift')||keys.has('c')||touch.down)?1:0);
+  // the levels' keys: W / S climb and dive, A / D turn; Space (or Flap) held flies forward, and with nothing held it hovers
+  const turn=clamp(inTurn(),-1,1),up=clamp(inClimb(),-1,1),fwd=(keys.has(' ')||touch.up)?1:0;
   P.yaw+=turn*1.7*dt;
-  T.v+=((fwd>0?18:7)*fwd-T.v)*Math.min(1,dt*2.2);
-  P.vy+=(up*9-P.vy)*Math.min(1,dt*3);
-  P.pitch+=(0.3*(1-Math.abs(T.v)/18)+0.15*P.vy/9-P.pitch)*Math.min(1,dt*4);   // upright while hovering
+  T.v+=(fwd*18-T.v)*Math.min(1,dt*2.2);
+  P.vy+=((up>0?9:14)*up-P.vy)*Math.min(1,dt*3);   // a dive drops faster than a climb rises
+  const sp=Math.abs(T.v)/18;
+  P.pitch+=(0.3*(1-sp)+(P.vy>0?0.25*P.vy/9:0.55*P.vy/14)-P.pitch)*Math.min(1,dt*4);   // upright while hovering, nose down in a dive
   P.roll+=(turn*0.45-P.roll)*Math.min(1,dt*4);
   forwardOf(P.yaw,0,FWD);const px0=P.pos.x,pz0=P.pos.z;
   P.pos.addScaledVector(FWD,T.v*dt);P.pos.y+=P.vy*dt;
@@ -3539,11 +3540,11 @@ function chooseEra(e){
   const msg=$('load-msg');if(e==='1615'&&!city1615){msg.hidden=false;msg.textContent='Travelling to 1615…';}
   setTimeout(()=>{setEra(e);save.era=e;persist();applyTheme();msg.hidden=true;renderTitle();},40);
 }
-function toTitle(){unloadLevel();G.mode='title';G.run=null;G.tour=null;$('hud-time').hidden=false;$('tour-go').hidden=true;$('btn-sink').hidden=true;touch.up=touch.down=0;setHud(false);resetPigeon();renderTitle();show('s-title');}
+function toTitle(){unloadLevel();G.mode='title';G.run=null;G.tour=null;$('hud-time').hidden=false;$('tour-go').hidden=true;touch.up=0;setHud(false);resetPigeon();renderTitle();show('s-title');}
 function pause(){if(G.mode!=='play')return;G.mode='paused';$('pause-title').textContent=LEVELS[G.lv-1].name;show('s-pause');$('btn-resume').focus({preventScroll:true});}
 function resume(){if(G.mode!=='paused')return;G.mode='play';show(null);clock.getDelta();}
 function setMuted(m){Sound.setMuted(m);$('btn-mute').textContent=`Sound: ${m?'off':'on'}`;$('mute-wave').style.display=m?'none':'';$('mute-x').style.display=m?'':'none';$('hud-mute').setAttribute('aria-label',m?'Turn sound on':'Mute sound');}
-function flap(){if(G.mode==='tour'){P.vy=Math.max(P.vy,6);return;}if(G.mode==='play'&&!G.hold&&!G.cine)P.flapQueued=true;}
+function flap(){if(G.mode==='tour'){if(G.tour&&!G.tour.glide)G.tour.v=Math.max(G.tour.v,6);return;}if(G.mode==='play'&&!G.hold&&!G.cine)P.flapQueued=true;}
 function splat(){   // Agent Coo hit a Roche Tower: feathers everywhere, then the level starts again
   if(G.splatting)return;
   G.splatting=true;G.hold=true;bird.g.visible=false;
@@ -3611,9 +3612,9 @@ stick.addEventListener('pointermove',e=>{if(e.pointerId===stickId)moveStick(e);}
 const endStick=e=>{if(e.pointerId===stickId){stickId=null;touch.x=0;touch.y=0;knob.style.transform='';}};
 stick.addEventListener('pointerup',endStick);stick.addEventListener('pointercancel',endStick);
 $('btn-flap').addEventListener('pointerdown',e=>{e.preventDefault();flap();});
-for(const [id,k] of [['btn-flap','up'],['btn-sink','down']]){const b=$(id);   // held, for the tour
-  b.addEventListener('pointerdown',e=>{e.preventDefault();touch[k]=1;try{b.setPointerCapture(e.pointerId);}catch(_){}});
-  for(const ev of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(ev,()=>{touch[k]=0;});}
+{const b=$('btn-flap');   // held, for the tour
+  b.addEventListener('pointerdown',e=>{touch.up=1;try{b.setPointerCapture(e.pointerId);}catch(_){}});
+  for(const ev of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(ev,()=>{touch.up=0;});}
 
 $('btn-start').addEventListener('click',()=>{Sound.init();G.run={times:{}};startLevel(1);});
 $('btn-continue').addEventListener('click',()=>{Sound.init();G.run={times:{}};startLevel(nextUnfinished()||1);});
