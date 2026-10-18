@@ -53,6 +53,7 @@ FACADES = [("rathaus", "relation", 7634307), ("messe1", "way", 315916587), ("kun
            ("kunstneubau", "way", 295287955), ("sbb", "way", 100712891), ("badbf", "way", 100789428),
            ("tinguely", "way", 317500933), ("messe1", "relation", 18445990), ("moh", "way", 562039631),
            ("uni", "way", 270630550),
+           ("troisrois", "way", 148034746), ("troisroisbank", "way", 148034745),   # Les Trois Rois, and its corner building
            ("highrise", None, None), ("sacral", None, None),     # every other high-rise and church
            ("shops1", None, None), ("shops2", None, None), ("shops3", None, None), ("shops4", None, None)]
 UNI_ENTRANCE = (47.5578479, 7.5841403)   # the Kollegienhaus's main door, by Carl Gutknecht's relief (OSM)
@@ -1806,6 +1807,30 @@ def main(raw, work, out_js):
                "door": [round((pa[0] + (pb[0] - pa[0]) * t) / S, 2), round(-(pa[1] + (pb[1] - pa[1]) * t) / S, 2),
                         round(math.atan2(nrm[0], -nrm[1]), 4), round(min(pa[2], pb[2]), 1), round(L / S, 2), round(t, 3)],
                "top": round(max(p[2] for r in frecs if FACADE_STYLES[r["kind"]] == "uni" for p in r["verts"]), 1)}
+    # Les Trois Rois: Amadeus Merian's hotel (1842-44), joined in 2004 by the Kantonalbank's corner building of 1901-03
+    # at the Schifflände. Every wall of the hotel (its top edge, height and which way it faces), so the game can lay
+    # the terrace over the Rhine along the walls facing the water and the porch on the middle of the street front;
+    # and the height of its flat roof, where the corner pavilions have their railed terraces and flagpoles
+    tr_walls, tr_top = [], 0.0
+    for r in frecs:
+        if FACADE_STYLES[r["kind"]] != "troisrois":
+            continue
+        v, loops, flags = r["verts"], r["loops"], r["walls"]
+        directed = {(l[k], l[(k + 1) % len(l)]) for l in loops for k in range(len(l))}
+        bnd = [(l[k], l[(k + 1) % len(l)]) for l in loops for k in range(len(l)) if (l[(k + 1) % len(l)], l[k]) not in directed]
+        for (a, b), f in zip(bnd, flags):
+            pa, pb = v[a], v[b]
+            L = math.dist(pa[:2], pb[:2])
+            if f and L > 1.0:
+                nx, ny = (pb[1] - pa[1]) / L, -(pb[0] - pa[0]) / L
+                tr_walls += [round(pa[0] / S, 2), round(-pa[1] / S, 2), round(pb[0] / S, 2), round(-pb[1] / S, 2),
+                             round(min(pa[2], pb[2]), 1), round(nx, 3), round(-ny, 3)]
+        for l in loops:
+            zs = [v[i][2] for i in l]
+            if len(l) >= 3 and max(zs) - min(zs) < 0.4 and min(zs) > 18:
+                tr_top = max(tr_top, round(max(zs), 1))
+    if tr_walls:
+        iconic["troisrois"] = {"walls": tr_walls, "top": tr_top}
     sbb_front = None
     node = geo.local(47.54762, 7.58964)
     halls = [r for r in frecs if FACADE_STYLES[r["kind"]] == "sbb" and math.dist(r["c"], node) < 60]

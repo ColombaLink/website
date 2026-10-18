@@ -1594,6 +1594,34 @@ const FACADE_STYLES=(()=>{
     x.fillStyle=glow?'#000':'#bdb6a4';x.fillRect(22,96,212,190);
     for(let k=0;k<5;k++){const X=28+k*41;x.fillStyle=glow?'#ffd88a':'#2c333a';x.fillRect(X,104,33,174);
       if(!glow){x.fillStyle='rgba(170,190,205,.25)';x.fillRect(X,104,33,30);}}},256,448);
+  // Les Trois Rois (Amadeus Merian, 1842–44): pale yellow plaster between grey-blue pilasters, each window in a grey
+  // frame behind a white iron French balcony, over a grey ground floor of round-headed openings and under an attic
+  // storey; a tile is two bays and the river front's full 27 m (the street front, higher up the slope, shows 24 m)
+  const troisWall=glowMat((x,glow)=>{const w=256,h=756,m=28;let seed=1844;const r=()=>(seed=seed*16807%2147483647)/2147483647;
+    if(glow){x.fillStyle='#000';x.fillRect(0,0,w,h);}
+    else{x.fillStyle='#efd99c';x.fillRect(0,0,w,h);
+      for(let i=0;i<w*h/60;i++){x.fillStyle=r()<.5?'rgba(0,0,0,.03)':'rgba(255,255,255,.05)';x.fillRect(r()*w,r()*h,2,2);}
+      x.fillStyle='#c4cad0';x.fillRect(0,0,10,h);x.fillRect(w-10,0,10,h);           // the pilasters between pairs of bays
+      x.fillStyle='#c8ccd0';x.fillRect(0,h-5*m,w,5*m);                               // the grey ground floor
+      x.fillStyle='#b3b9c0';x.fillRect(0,h-5*m-10,w,10);x.fillRect(0,h-24*m,w,14);   // the string course and the cornice
+      x.fillStyle='rgba(60,60,70,.18)';x.fillRect(0,h-24*m+14,w,4);}
+    for(let b=0;b<2;b++){const cx=64+b*128;
+      archWin(x,cx-30,h-5*m+22,60,5*m-30,glow,'#aeb4ba');
+      for(let f=0;f<4;f++){const top=h-6*m-(f+1)*4.25*m+28,lit=r()<0.35;
+        if(!glow){x.fillStyle='#b9bfc6';x.fillRect(cx-25,top-8,50,82);}
+        x.fillStyle=glow?(lit?'#ffd590':'#000'):'#2b3239';x.fillRect(cx-19,top,38,70);
+        if(!glow){x.fillStyle='#e9e6dc';x.fillRect(cx-1,top,2,70);x.fillRect(cx-19,top+24,38,2);
+          x.fillStyle='#f4f2ec';x.fillRect(cx-23,top+50,46,3);x.fillRect(cx-23,top+67,46,3);
+          for(let i=0;i<9;i++)x.fillRect(cx-22+i*5.5,top+50,1.5,20);}}
+      const at=h-27*m+22,lit=r()<0.3;
+      if(!glow){x.fillStyle='#b9bfc6';x.fillRect(cx-19,at-5,38,46);}
+      x.fillStyle=glow?(lit?'#ffd590':'#000'):'#2b3239';x.fillRect(cx-14,at,28,36);}},256,756);
+  // its corner building at the Schifflände, built for the Kantonalbank in 1901–03: neo-baroque sandstone, tall
+  // round-headed windows on the ground floor and framed windows above; one bay a tile, 22 m high
+  const bankWall=glowMat((x,glow)=>{const w=128,h=616,m=28;wallBg(x,w,h,glow,'#cdb48a','rgba(110,85,50,.3)');
+    if(!glow){x.fillStyle='rgba(90,70,40,.22)';x.fillRect(0,h-7*m,w,10);x.fillRect(0,h-21*m,w,14);}
+    archWin(x,30,h-7*m+30,68,7*m-52,glow,'#b49a70');
+    for(let f=0;f<3;f++)crossWin(x,38,h-7*m-(f+1)*4.6*m+30,52,80,glow,'#b49a70');},128,616);
   // every other high-rise: a curtain wall, eight floors and eight bays a tile; any other church: sandstone and lancets
   const highrise=glowMat((x,glow)=>{const w=256,h=256;x.fillStyle=glow?'#000':'#c3c9ce';x.fillRect(0,0,w,h);
     for(let f=0;f<8;f++)for(let b=0;b<8;b++){const lit=rng()<0.3;
@@ -1612,6 +1640,8 @@ const FACADE_STYLES=(()=>{
     tinguely:{wall:tinguely,pitched:roofGrey,flat:roofGrey,u:2.0,v:1.6},
     moh:{wall:moh,pitched:roofGrey,flat:roofDark,u:3.6,v:6.94},
     uni:{wall:uniWall,pitched:roofDark,flat:roofDark,u:2.4,v:4.48},
+    troisrois:{wall:troisWall,pitched:roofDark,flat:roofDark,u:1.28,v:7.56},
+    troisroisbank:{wall:bankWall,pitched:roofBrown,flat:roofGrey,u:0.9,v:6.16},
     shops1:{wall:shops('#e8d7a6',null,'#4f6f4a','#a3262b','#f3e7c8',101),...shopRoofs},
     shops2:{wall:shops('#d6d3cc','rgba(95,90,80,.22)',null,'#1f3d63','#e9eef5',202),...shopRoofs},
     shops3:{wall:shops('#e3b9a3',null,null,'#1d1f22','#d8b04a',303),...shopRoofs},
@@ -1764,6 +1794,78 @@ function university(U,parent){
   for(let k=0;k<4;k++)B.add(boxGeo,stone,M4(M,-wd/2+0.25+(wd-0.5)*k/3,pod,0.6,0.22,low-pod,0.22));
   B.add(boxGeo,stone,M4(M,0,0,0.375,wd+0.6,pod,0.75));
   for(let k=0;k<3;k++)B.add(boxGeo,stone,M4(M,0,0,0.81+k*0.12,wd+0.6+k*0.2,pod-(k+1)*0.035,0.12));
+  B.build(parent);
+}
+
+/* Les Trois Rois (Amadeus Merian, 1842–44), after photos: on the river front the terrace over the quay with its white
+   iron railing, the glazed winter garden between the two corner pavilions and an awning; "LES TROIS ROIS" in gold on
+   both fronts; on the street the porch of three arches under a balcony, with the Three Kings standing above it; a
+   railed terrace and a flag on each pavilion's roof. Laid on swisstopo's model of the hotel: its walls (the ones facing
+   the water carry the terrace, the tallest of them are the pavilions) and the height of its flat roof */
+function troisRois(T,parent){
+  const B=Batch(),W=T.walls,walls=[];
+  for(let k=0;k+6<W.length;k+=7){const [ax,az,bx,bz,h,nx,nz]=W.slice(k,k+7);walls.push({ax,az,bx,bz,h,nx,nz,L:Math.hypot(bx-ax,bz-az)});}
+  const uvPlane=(u,v)=>{const g=new THREE.PlaneGeometry(1,1),a=g.attributes.uv;for(let i=0;i<a.count;i++)a.setXY(i,a.getX(i)*u,a.getY(i)*v);return g;};
+  const white=stdMat({color:0xf3f1ea}),grey=stdMat({color:0xb7bdc3}),gold=stdMat({color:0xc9a43c,metalness:.6,roughness:.35});
+  const rail=stdMat({transparent:true,alphaTest:.5,side:THREE.DoubleSide,map:canvasTexture(64,32,(x,w,h)=>{
+    x.fillStyle='#f4f2ec';x.fillRect(0,0,w,3);x.fillRect(0,h-3,w,3);for(let i=0;i<=4;i++)x.fillRect(i*16-1,0,2,h);
+    x.strokeStyle='#f4f2ec';x.lineWidth=2;for(let i=0;i<4;i++){x.beginPath();x.ellipse(i*16+8,h/2,5,10,0,0,Math.PI*2);x.stroke();}})});
+  const letters=stdMat({transparent:true,alphaTest:.4,metalness:.5,roughness:.4,map:canvasTexture(512,48,(x,w,h)=>{
+    x.fillStyle='#d4af4a';x.font='bold 40px Georgia, "Times New Roman", serif';x.textAlign='center';x.textBaseline='middle';
+    x.fillText('LES  TROIS  ROIS',w/2,h/2+2);},false)});
+  const flag=swiss=>stdMat({side:THREE.DoubleSide,map:canvasTexture(64,64,(x,w,h)=>{
+    if(swiss){x.fillStyle='#d52b1e';x.fillRect(0,0,w,h);x.fillStyle='#fff';x.fillRect(26,12,12,40);x.fillRect(12,26,40,12);}
+    else{x.fillStyle='#fff';x.fillRect(0,0,w,h);x.fillStyle='#111';x.fillRect(28,10,8,44);x.beginPath();x.arc(32,18,9,Math.PI,0);x.fill();x.fillRect(22,48,20,6);}},false)});
+  // the river front: one terrace along all the tall walls facing the water, on posts, behind a white railing
+  const river=walls.filter(w=>w.nx>0.6&&w.h>20);
+  if(river.length){
+    let nx=0,nz=0;for(const w of river){nx+=w.nx*w.L;nz+=w.nz*w.L;}const nl=Math.hypot(nx,nz);nx/=nl;nz/=nl;
+    const tx=-nz,tz=nx,along=(x,z)=>x*tx+z*tz;let s0=1e9,s1=-1e9,d1=-1e9;
+    for(const w of river)for(const [px,pz] of [[w.ax,w.az],[w.bx,w.bz]]){const sv=along(px,pz),dv=px*nx+pz*nz;s0=Math.min(s0,sv);s1=Math.max(s1,sv);d1=Math.max(d1,dv);}
+    const sc=(s0+s1)/2,len=s1-s0,M=frameOf(sc*tx+d1*nx,sc*tz+d1*nz,Math.atan2(nx,nz)),deck=hM(5),n=Math.max(1,Math.round(len/1.6));
+    B.add(boxGeo,grey,M4(M,0,deck,0.2,len,0.12,1.4));
+    for(let k=0;k<=n;k++)B.add(boxGeo,grey,M4(M,-len/2+k*len/n,0,0.82,0.1,deck,0.1));
+    B.add(uvPlane(len/0.6,1),rail,M4(M,0,deck+0.27,0.9,len,0.3,1));
+    for(const sx of [-1,1])B.add(uvPlane(1.4/0.6,1),rail,M4(M,sx*len/2,deck+0.27,0.2,1.4,0.3,1,0,Math.PI/2,0));
+    // its two corner pavilions stand out a little and higher. Between them the winter garden, with the gold letters over
+    // it; the awning in front of the south one (along the front the frame's +x runs north: x = sc - along)
+    const pav=river.filter(w=>w.h>27).map(w=>{const a=along(w.ax,w.az),b=along(w.bx,w.bz);return {w,a:Math.min(a,b),b:Math.max(a,b)};}).sort((p,q)=>p.a-q.a);
+    const two=pav.length>1,m0=two?pav[0].b:sc-len*0.2,m1=two?pav[pav.length-1].a:sc+len*0.2,mc=(m0+m1)/2,gw=(m1-m0)*0.8;
+    const zOf=p=>p.w.az+p.w.bz,south=two?pav.reduce((p,q)=>zOf(q)>zOf(p)?q:p):null,north=two?pav.reduce((p,q)=>zOf(q)<zOf(p)?q:p):null;
+    const glass=glowMat((x,glow)=>{const w=128,h=128;x.fillStyle=glow?'#000':'#9fb3bd';x.fillRect(0,0,w,h);
+      for(let i=0;i<2;i++){x.fillStyle=glow?'#ffe2a6':'rgba(40,60,70,.55)';x.beginPath();x.moveTo(i*64+6,h);x.lineTo(i*64+6,40);x.arc(i*64+32,40,26,Math.PI,0);x.lineTo(i*64+58,h);x.closePath();x.fill();}
+      if(!glow){x.fillStyle='#f4f2ec';for(let i=0;i<=2;i++)x.fillRect(i*64-3,0,6,h);x.fillRect(0,0,w,8);}},128,128,Math.max(1,Math.round(gw/0.9)),1);
+    B.add(boxGeo,glass,M4(M,sc-mc,deck+0.12,0.1,gw,hM(3.6),0.9));
+    B.add(boxGeo,stdMat({color:0xeee6d2}),M4(M,sc-(south?(south.a+south.b)/2:sc+len*0.32),deck+hM(3.2),0.45,len*0.2,0.04,1.0,-0.22,0,0));
+    const lw=river.find(w=>w.h>25&&(along(w.ax,w.az)-mc)*(along(w.bx,w.bz)-mc)<=0)||river.reduce((a,b)=>b.L>a.L?b:a),
+      u=clamp((mc-along(lw.ax,lw.az))/(along(lw.bx,lw.bz)-along(lw.ax,lw.az)||1),0,1);
+    B.add(planeGeo,letters,M4(frameOf(lw.ax+(lw.bx-lw.ax)*u+lw.nx*0.03,lw.az+(lw.bz-lw.az)*u+lw.nz*0.03,Math.atan2(lw.nx,lw.nz)),0,hM(14),0,2.4,0.22,1));
+    // on each pavilion's flat top a terrace behind an iron railing, and a flag: Basel's on the south one, the Swiss flag on the north one
+    if(two){const yt=hM(T.top||Math.max(...pav.map(p=>p.w.h))+1);
+      for(const p of [north,south]){const c=(p.a+p.b)/2,o=((p.w.ax+p.w.bx)*nx+(p.w.az+p.w.bz)*nz)/2-0.78,L=(p.b-p.a)*0.43,D=0.55;
+        const F=frameOf(c*tx+o*nx,c*tz+o*nz,Math.atan2(nx,nz));
+        for(const [x,z,l,r] of [[0,D/2,L,0],[0,-D/2,L,0],[L/2,0,D,Math.PI/2],[-L/2,0,D,Math.PI/2]])B.add(uvPlane(l/0.6,1),rail,M4(F,x,yt+0.15,z,l,0.3,1,0,r,0));
+        B.add(boxGeo,white,M4(F,0,yt,0,0.04,hM(7),0.04));B.add(planeGeo,flag(p===north),M4(F,0.32,yt+hM(7)-0.25,0,0.6,0.42,1));}}
+  }
+  // the street front: three arches under a balcony, the gold letters and the Three Kings on their brackets above
+  const street=walls.filter(w=>w.nx<-0.6&&w.L>3).reduce((a,b)=>!a||b.L>a.L?b:a,null);
+  if(street){
+    const t=street.az<street.bz?0.62:0.38,px=street.ax+(street.bx-street.ax)*t,pz=street.az+(street.bz-street.az)*t;
+    const M=frameOf(px,pz,Math.atan2(street.nx,street.nz)),top=hM(5.5);
+    for(let k=0;k<4;k++)B.add(boxGeo,grey,M4(M,-1.0+k*2/3,0,0.5,0.2,top,0.2));
+    const arches=stdMat({transparent:true,alphaTest:.5,side:THREE.DoubleSide,map:canvasTexture(192,96,(x,w,h)=>{x.fillStyle='#c3c8cc';x.fillRect(0,0,w,h);
+      x.globalCompositeOperation='destination-out';for(let i=0;i<3;i++){x.beginPath();x.moveTo(i*64+8,h);x.lineTo(i*64+8,48);x.arc(i*64+32,48,24,Math.PI,0);x.lineTo(i*64+56,h);x.closePath();x.fill();}},false)});
+    B.add(planeGeo,arches,M4(M,0,top/2,0.61,2.2,top,1));
+    B.add(boxGeo,grey,M4(M,0,top,0.32,2.5,0.1,0.75));
+    B.add(uvPlane(2.5/0.6,1),rail,M4(M,0,top+0.25,0.69,2.5,0.3,1));
+    B.add(planeGeo,letters,M4(M,0,hM(8.4),0.04,2.6,0.25,1));
+    const robes=[0xa3262b,0x2f5f8f,0x3f7a4f],skin=stdMat({color:0xe1c19a}),y0=hM(9.1);
+    for(let k=0;k<3;k++){const kx=(k-1)*0.42;
+      B.add(boxGeo,grey,M4(M,kx,y0,0.12,0.22,0.05,0.22));
+      B.add(boxGeo,stdMat({color:robes[k]}),M4(M,kx,y0+0.05,0.12,0.13,hM(1.4),0.1));
+      B.add(boxGeo,skin,M4(M,kx,y0+0.05+hM(1.4),0.12,0.07,0.08,0.07));
+      B.add(boxGeo,gold,M4(M,kx,y0+0.13+hM(1.4),0.12,0.08,0.05,0.08));}
+  }
   B.build(parent);
 }
 
@@ -2735,6 +2837,11 @@ const roofsAround=(x,z,r,c=cityToday)=>{let t=0;for(let dx=-r;dx<=r;dx+=0.4)for(
 if(PL.moh)landmarkLabel('Meret Oppenheim Hochhaus',null,'#7d8287',PL.moh[0],roofsAround(PL.moh[0],PL.moh[1],4)+3,PL.moh[1],0.8,'today');   // over its top, not its plinth
 if(BASEL.iconic.uni){university(BASEL.iconic.uni,TODAY);
   if(PL.uni)landmarkLabel('Universität Basel','Kollegienhaus',RED_UNI,PL.uni[0],roofsAround(PL.uni[0],PL.uni[1],6)+3,PL.uni[1],0.9,'today');}
+if(BASEL.iconic.troisrois){const T=BASEL.iconic.troisrois,w=T.walls;troisRois(T,TODAY);
+  let cx=0,cz=0,n=0,vx=0,vz=0;for(let k=0;k+6<w.length;k+=7){cx+=w[k]+w[k+2];cz+=w[k+1]+w[k+3];n+=2;
+    if(w[k+5]>0.6&&w[k+4]>20){const L=Math.hypot(w[k+2]-w[k],w[k+3]-w[k+1]);vx+=w[k+5]*L;vz+=w[k+6]*L;}}   // and the way its river front faces
+  PL.troisrois=[cx/n,cz/n];if(vx||vz)PL.troisroisView=Math.atan2(vx,vz);
+  landmarkLabel('Les Trois Rois','Grand Hotel, 1844','#b08d3c',PL.troisrois[0],roofsAround(PL.troisrois[0],PL.troisrois[1],4)+3,PL.troisrois[1],0.85,'today');}
 landmarkLabel('Schützenmattpark',null,'#4caf6a',PL.schuetzenmatt[0],10,PL.schuetzenmatt[1],0.8,'today');
 
 /* ---------- Basel in 1615, built the first time the time machine is used ---------- */
@@ -3626,12 +3733,13 @@ function unloadLevel(){
 /* the tour: no level and no clock, just Basel. The pigeon hovers on the spot, wings beating, and goes where it is
    steered, with the levels' keys: W / S climb and dive, A / D turn, Space held flies forward; the list flies to a landmark */
 function tourSpots(){
-  const L=BASEL.landmarks,list=[],add=(name,p,h,only)=>{if(p&&!(only&&era!==only))list.push({name,x:p[0],z:p[1],h});};
+  const L=BASEL.landmarks,list=[],add=(name,p,h,only,view)=>{if(p&&!(only&&era!==only))list.push({name,x:p[0],z:p[1],h,view});};
   add('Universität Basel (Kollegienhaus)',PL.uni,hM(16),'today');
   add('Universität Basel (the college, 1460)',PL.alte_uni,city1615&&PL.alte_uni?roofsAround(PL.alte_uni[0],PL.alte_uni[1],3,city1615):hM(18),'1615');
   add('Rathaus and Marktplatz',L.rathaus&&[L.rathaus.x,L.rathaus.z],hM(45));
   add('Basler Münster',L.muenster&&[L.muenster.x,L.muenster.z],hM(65));
   add('Mittlere Brücke',[0,0],1);
+  add('Les Trois Rois',PL.troisrois,hM(28),'today',PL.troisroisView);   // seen from the Rhine
   add('Spalentor',L.spalentor&&[L.spalentor.x,L.spalentor.z],hM(40));
   add('Barfüsserplatz',PL.barfi,1);
   add('Elisabethenkirche',L.elisabethen&&[L.elisabethen.x,L.elisabethen.z],hM(74),'today');
@@ -3653,8 +3761,8 @@ function startTour(){
 }
 function tourGo(i){   // glide over to a landmark and hover a little below its label, off to one side of it
   const p=tourSpots()[i];if(!p||!G.tour)return;
-  const a0=Math.atan2(P.pos.x-p.x,P.pos.z-p.z),from=P.pos.clone();let best=null;
-  // of the spots around it, the one nearest the way we came with nothing tall underneath
+  const a0=p.view??Math.atan2(P.pos.x-p.x,P.pos.z-p.z),from=P.pos.clone();let best=null;
+  // of the spots around it, the one nearest the way we came (or the side it is best seen from) with nothing tall underneath
   for(const d of [18,24])for(let k=-3;k<=3;k++){const a=a0+k*0.5;
     const x=clamp(p.x+Math.sin(a)*d,WORLD.x0,WORLD.x1),z=clamp(p.z+Math.cos(a)*d,WORLD.z0,WORLD.z1);
     const y=Math.max(p.h-1,6,topAt(x,z,1.5)+2.5),cost=(y-Math.max(p.h-1,6))*2+Math.abs(k)*1.5+(d-18)*0.3;
@@ -3672,7 +3780,8 @@ function tourFly(dt){
   const T=G.tour;
   if(T.glide){const g=T.glide;g.t=Math.min(1,g.t+dt/g.dur);const e=g.t*g.t*(3-2*g.t);
     P.pos.lerpVectors(g.from,g.to,e);P.pos.y+=g.lift*Math.sqrt(Math.sin(Math.PI*e));
-    P.yaw=lerpAngle(P.yaw,e<0.75?g.travel:g.yaw,Math.min(1,dt*3));P.roll*=Math.exp(-dt*4);P.pitch+=(0.15-P.pitch)*Math.min(1,dt*3);
+    const k=clamp((e-0.6)/0.4,0,1),s=k*k*(3-2*k);   // facing the way it flies, then turning to its last heading, which it reaches as it lands
+    P.yaw=lerpAngle(P.yaw,lerpAngle(g.travel,g.yaw,s),Math.min(1,dt*3+s));P.roll*=Math.exp(-dt*4);P.pitch+=(0.15-P.pitch)*Math.min(1,dt*3);
     if(g.t>=1)T.glide=null;return;}
   // the levels' keys: W / S climb and dive, A / D turn; Space (or Flap) held flies forward, and with nothing held it hovers
   const turn=clamp(inTurn(),-1,1),up=clamp(inClimb(),-1,1),fwd=(keys.has(' ')||touch.up)?1:0;
