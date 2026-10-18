@@ -6,7 +6,8 @@ Usage: python3 -I secret-pigeon/build/build_city.py <raw-dir> <work-dir> <out-js
   out-js    JS file that defines `const BASEL = {...}`; assemble.py injects it into the game
 
 Buildings are swisstopo's swissBUILDINGS3D 3.0: real roof shapes and heights. OpenStreetMap supplies the landmarks,
-the buildings that get facades in the game, trees, bridges, ferries, place names and the railway tracks.
+the buildings that get facades in the game, trees, bridges, ferries, place names, the railway and tram tracks and the
+tram and bus routes; Switzerland's timetable (GTFS) the trams' and buses' trips.
 Coordinates: swiss LV95 metres relative to the Mittlere Brücke. Game x = east / S, game z = -north / S,
 heights are multiplied by VS (a mild vertical exaggeration so landmarks read from the air).
 """
@@ -590,23 +591,29 @@ def rail_lines(raw, geo):
     return [[round(v / S * (1 if i % 2 == 0 else -1), 2) for x, y in rdp(r, 0.3) for i, v in enumerate((x, y))] for r in runs]
 
 
-TT_DATE = "20261021"     # the timetable's day for the trams: an ordinary Wednesday
+TT_DATE = "20261021"     # the timetable's day for the trams and buses: an ordinary Wednesday
 TT_AGENCIES = ("Basler Verkehrsbetriebe", "Baselland Transport")
+# the bus companies whose lines run in the map: the game's name for each, and how OpenStreetMap writes their operator
+BUS_AGENCIES = {"Basler Verkehrsbetriebe": ("BVB", ("BVB", "Basler Verkehrs")),
+                "Baselland Transport": ("BLT", ("BLT", "Baselland")),
+                "Autobus AG Liestal": ("AAGL", ("AAGL", "Autobus AG Liestal")),
+                "SWEG Südwestdeutsche Landesverkehrs-GmbH": ("SWEG", ("SWEG", "Südwestdeutsche"))}
 
 
-def gtfs_trams(raw, work):
-    """Basel's tram trips on TT_DATE from Switzerland's timetable (GTFS, opentransportdata.swiss): for each line, each
-    trip's stops as (lat, lon, arrival, departure) in seconds after midnight. The timetable is big (its stop times
-    alone are 3.7 GB unpacked), so it is read as a stream once and the result kept in the work folder."""
+def gtfs_timetable(raw, work):
+    """Basel's tram and bus trips on TT_DATE from Switzerland's timetable (GTFS, opentransportdata.swiss): for each
+    line, each trip's stops as (lat, lon, arrival, departure) in seconds after midnight, and for the buses the company
+    that runs each line. The timetable is big (its stop times alone are 3.7 GB unpacked), so it is read as a stream
+    once and the result kept in the work folder."""
     src = os.path.join(raw, "gtfs.zip")
     if not os.path.exists(src):
-        return {}
-    key = [os.path.getsize(src), TT_DATE]
-    cache = os.path.join(work, "tram-timetable.json")
+        return {"trams": {}, "buses": {}}
+    key = [os.path.getsize(src), TT_DATE, list(TT_AGENCIES), sorted(BUS_AGENCIES)]
+    cache = os.path.join(work, "timetable.json")
     if os.path.exists(cache):
         c = json.load(open(cache))
         if c.get("key") == key:
-            return c["lines"]
+            return c["timetable"]
     z = zipfile.ZipFile(src)
 
     def table(name, keep_line=None):   # rows as dicts; keep_line skips most lines before they are parsed
@@ -618,8 +625,15 @@ def gtfs_trams(raw, work):
                     yield dict(zip(head, next(csv.reader([line]))))
 
     hms = lambda t: sum(int(v) * m for v, m in zip(t.split(":"), (3600, 60, 1)))
-    agencies = {r["agency_id"] for r in table("agency.txt") if r["agency_name"] in TT_AGENCIES}
-    routes = {r["route_id"]: r["route_short_name"] for r in table("routes.txt") if r["agency_id"] in agencies and r["route_type"] in ("0", "900")}
+    agency = {r["agency_id"]: r["agency_name"] for r in table("agency.txt") if r["agency_name"] in TT_AGENCIES or r["agency_name"] in BUS_AGENCIES}
+    routes = {}                        # route -> (trams or buses, line, company)
+    for r in table("routes.txt"):
+        name = agency.get(r["agency_id"])
+        rt = int(r["route_type"]) if r["route_type"].isdigit() else -1
+        if name in TT_AGENCIES and rt in (0, 900):
+            routes[r["route_id"]] = ("trams", r["route_short_name"], name)
+        elif name in BUS_AGENCIES and (rt == 3 or 700 <= rt <= 799):
+            routes[r["route_id"]] = ("buses", r["route_short_name"], name)
     first = lambda l: l.split(",", 1)[0].strip('"')      # every field is quoted
     trips = {r["trip_id"]: (routes[r["route_id"]], r["service_id"]) for r in table("trips.txt", lambda l: first(l) in routes)}
     services = {sid for _, sid in trips.values()}
@@ -634,18 +648,32 @@ def gtfs_trams(raw, work):
         times.setdefault(r["trip_id"], []).append((int(r["stop_sequence"]), r["stop_id"], hms(r["arrival_time"]), hms(r["departure_time"])))
     want = {sid for v in times.values() for _, sid, _, _ in v}
     stops = {r["stop_id"]: (float(r["stop_lat"]), float(r["stop_lon"])) for r in table("stops.txt") if r["stop_id"] in want}
-    lines = {}
+    out = {"trams": {}, "buses": {}}         # trams by line; buses by company and line ("BVB 30")
     for tid, seq in times.items():
         seq.sort()
-        lines.setdefault(trips[tid][0], []).append([[*stops[sid], a, d] for _, sid, a, d in seq if sid in stops])
+        (kind, line, name), _ = trips[tid]
+        out[kind].setdefault(line if kind == "trams" else f"{BUS_AGENCIES[name][0]} {line}", []).append(
+            [[*stops[sid], a, d] for _, sid, a, d in seq if sid in stops])
     with open(cache, "w") as f:
-        json.dump({"key": key, "lines": lines}, f, separators=(",", ":"))
-    return lines
+        json.dump({"key": key, "timetable": out}, f, separators=(",", ":"))
+    return out
 
 
-def timetable_runs(trips, lines, geo, along):
-    """Each timetabled trip laid on one of the line's two routes: the trip's stops that lie on the route, in order,
-    with times smoothed (the timetable gives whole minutes, so stops that share a minute are spread by distance) and
+def along_line(pts, q):
+    """How far q is from a polyline, and the distance along it of its nearest point."""
+    best, run = (1e18, 0.0), 0.0
+    for a, b in zip(pts, pts[1:]):
+        L = math.dist(a, b) or 1e-9
+        t = max(0.0, min(1.0, ((q[0] - a[0]) * (b[0] - a[0]) + (q[1] - a[1]) * (b[1] - a[1])) / (L * L)))
+        best = min(best, (math.dist(q, (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)), run + L * t))
+        run += L
+    return best
+
+
+def timetable_runs(trips, lines, geo, along, min_stops=3, end_reach=35):
+    """Each timetabled trip laid on one of the line's routes (the one with most of its stops, at least min_stops):
+    the trip's stops that lie on the route, in order (its first and last may be end_reach metres off it), with times
+    smoothed (the timetable gives whole minutes, so stops that share a minute are spread by distance) and
     a short stop at each. A trip that carries on beyond the route's ends enters or leaves at the end, out of sight;
     one that starts or ends on the route stands at its terminus for a while. Returns the distinct patterns (stops
     as distance in game units, arrival and departure in seconds after the trip's start) and the trips that use
@@ -658,9 +686,9 @@ def timetable_runs(trips, lines, geo, along):
             kept = []
             for i, (lat, lon, a, d) in enumerate(trip):
                 dist, al = along(line, geo.local(lat, lon))
-                if dist < 35 and (not kept or al > kept[-1][1] + 5):
+                if dist < (end_reach if i in (0, len(trip) - 1) else 35) and (not kept or al > kept[-1][1] + 5):
                     kept.append((i, al, a, d))
-            if len(kept) >= 3 and (best is None or len(kept) > len(best[1])):
+            if len(kept) >= min_stops and (best is None or len(kept) > len(best[1])):
                 best = (di, kept)
         if not best:
             continue
@@ -754,21 +782,14 @@ def tram_network(raw, work, geo):
             return None
         return cut, stops, run[ins[-1]] - run[ins[0]]
 
-    def along(pts, q):
-        best, run = (1e18, 0.0), 0.0
-        for a, b in zip(pts, pts[1:]):
-            L = math.dist(a, b) or 1e-9
-            t = max(0.0, min(1.0, ((q[0] - a[0]) * (b[0] - a[0]) + (q[1] - a[1]) * (b[1] - a[1])) / (L * L)))
-            best = min(best, (math.dist(q, (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)), run + L * t))
-            run += L
-        return best
+    along = along_line
 
     def ends(rel):
         name = rel.get("tags", {}).get("name", "")
         parts = name.split(":", 1)[-1].split("→")
         return (parts[0].strip(), parts[-1].strip()) if len(parts) == 2 else (name, name)
 
-    timetable = gtfs_trams(raw, work)
+    timetable = gtfs_timetable(raw, work)["trams"]
     lines = {}
     for r in els:
         if r["type"] == "relation" and r.get("tags", {}).get("ref"):
@@ -805,6 +826,345 @@ def tram_network(raw, work, geo):
         out.append({"ref": ref, "colour": t.get("colour") or "#888888", "op": t.get("operator") or "", "dirs": dirs,
                     "pats": pats, "trips": [v for r in runs for v in r]})
     return [[round(v / S * (1 if i % 2 == 0 else -1), 2) for x, y in rdp(r, 0.3) for i, v in enumerate((x, y))] for r in tracks], out
+
+
+LANE_W = 3.2        # metres: a bus keeps to the middle of the rightmost lane it may use
+BUS_HALF = 1.45     # half a bus's width (2.55 m) and a little room: from the walls, and from a bus coming the other way
+END_REACH = 80      # metres a bus terminus may be off its route: in a turning loop or a bus station of its own
+
+
+def rdp_long(pts, eps):
+    """rdp() for long polylines that may turn back on themselves: no deep recursion, distances to the chord itself."""
+    keep, stack = {0, len(pts) - 1}, [(0, len(pts) - 1)]
+    while stack:
+        i0, i1 = stack.pop()
+        a, b = pts[i0], pts[i1]
+        L2 = (b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2 or 1e-9
+        imax, dmax = 0, -1.0
+        for i in range(i0 + 1, i1):
+            q = pts[i]
+            t = max(0.0, min(1.0, ((q[0] - a[0]) * (b[0] - a[0]) + (q[1] - a[1]) * (b[1] - a[1])) / L2))
+            d = math.dist(q, (a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t))
+            if d > dmax:
+                imax, dmax = i, d
+        if dmax > eps:
+            keep.add(imax)
+            stack += [(i0, imax), (imax, i1)]
+    return [pts[i] for i in sorted(keep)]
+
+
+class Footprints:
+    """Where the buildings stand (the outlines of their roofs, whose walls go down to the street), to keep buses off them."""
+
+    def __init__(self, rings):
+        self.grid = {}
+        for r in rings:
+            xs, ys = [p[0] for p in r], [p[1] for p in r]
+            bb = (min(xs), max(xs), min(ys), max(ys))
+            for gx in range(int(bb[0] // 20), int(bb[1] // 20) + 1):
+                for gy in range(int(bb[2] // 20), int(bb[3] // 20) + 1):
+                    self.grid.setdefault((gx, gy), []).append((r, bb))
+
+    def hit(self, x, y):
+        return any(bb[0] <= x <= bb[1] and bb[2] <= y <= bb[3] and inside((x, y), r)
+                   for r, bb in self.grid.get((int(x // 20), int(y // 20)), ()))
+
+
+def bus_network(raw, work, geo, footprints):
+    """Basel's buses, out of OpenStreetMap and the timetable: for each line that runs in the map today, its company and
+    its routes (OpenStreetMap's route variants joined way by way, or where a line has none, the roads between its
+    stops), each laid in the middle of the rightmost lane and away from the walls, and every trip of an ordinary
+    weekday on the route it takes. Game units; empty without the data. Also returns a report for the build log."""
+    src = os.path.join(raw, "osm_bus.json")
+    timetable = gtfs_timetable(raw, work)["buses"]
+    if not os.path.exists(src) or not timetable:
+        return [], {}
+    W, E, Sth, N = AREA
+    in_map = lambda q, m=0: W - m <= q[0] <= E + m and Sth - m <= q[1] <= N + m
+    els = json.load(open(src))["elements"]
+    ways = {e["id"]: e for e in els if e["type"] == "way"}
+    pos = {}
+    for w in ways.values():
+        for nid, p in zip(w["nodes"], w.get("geometry") or []):
+            if p:
+                pos[nid] = geo.local(p["lat"], p["lon"])
+
+    def oneway(t):
+        return (t.get("oneway") in ("yes", "true", "1", "-1") or t.get("junction") in ("roundabout", "circular")
+                or t.get("highway") in ("motorway", "motorway_link")) and "no" not in (t.get("oneway:bus"), t.get("oneway:psv"))
+
+    def offset(t, forward):     # metres right of the way's middle: the middle of the rightmost lane a bus may use there
+        ow = oneway(t)
+        if t.get("oneway") == "-1":
+            forward = not forward
+        try:
+            n = int(str(t.get("lanes", "")).split(";")[0])
+        except ValueError:
+            n = 1 if ow else 2
+        if ow and not forward:      # against the one-way traffic: in a bus lane of its own beside it
+            n += 1
+        o = (n - 1) / 2 * LANE_W
+        return min(6.0, o if ow and forward else max(o, BUS_HALF))
+
+    def chain(rel):
+        """The route's ways in driving order, joined end to end: points, each with the lane offset of its way; None if
+        there is a gap. A roundabout that is a member as a whole is driven from where the route enters it to where
+        it leaves."""
+        mem = []
+        for m in rel["members"]:
+            if m["type"] == "way" and m.get("role", "") in ("", "forward", "backward") and m.get("geometry"):
+                pts = [geo.local(p["lat"], p["lon"]) for p in m["geometry"] if p]
+                if len(pts) > 1:
+                    mem.append((pts, ways.get(m["ref"], {}).get("tags", {})))
+        if not mem:
+            return None
+        ring = lambda pts: len(pts) > 3 and math.dist(pts[0], pts[-1]) < 0.5
+        near = lambda q, pts: min(math.dist(q, p) for p in (pts if ring(pts) else (pts[0], pts[-1])))
+        line, offs = [], []
+        for k, (pts, t) in enumerate(mem):
+            nxt = mem[k + 1][0] if k + 1 < len(mem) else None
+            if ring(pts):
+                loop = pts[:-1]
+                a = min(range(len(loop)), key=lambda i: math.dist(loop[i], line[-1])) if line else 0
+                b = min(range(len(loop)), key=lambda i: near(loop[i], nxt)) if nxt else (a - 1) % len(loop)
+                fwd = (b - a) % len(loop)
+                if not oneway(t) and fwd > len(loop) - fwd:      # not one way round: the shorter way
+                    seg, forward = [loop[(a - j) % len(loop)] for j in range(len(loop) - fwd + 1)], False
+                else:
+                    seg, forward = [loop[(a + j) % len(loop)] for j in range(fwd + 1)], True
+            elif line:
+                forward = math.dist(line[-1], pts[0]) <= math.dist(line[-1], pts[-1])
+                seg = pts if forward else pts[::-1]
+            else:
+                forward = not nxt or near(pts[-1], nxt) <= near(pts[0], nxt)
+                seg = pts if forward else pts[::-1]
+            if line:
+                gap = math.dist(line[-1], seg[0])
+                if gap > 40:
+                    return None
+                if gap < 0.5:
+                    seg = seg[1:]
+            o = offset(t, forward)
+            line += seg
+            offs += [o] * len(seg)
+        return line, offs
+
+    def cut(line, offs):            # the map's stretch of a route and 300 m either side, like the trams'
+        ins = [i for i, q in enumerate(line) if in_map(q)]
+        if not ins:
+            return None
+        run = [0.0]
+        for a, b in zip(line, line[1:]):
+            run.append(run[-1] + math.dist(a, b))
+        a0, a1 = run[ins[0]] - 300, run[ins[-1]] + 300
+        keep = [i for i, r in enumerate(run) if a0 <= r <= a1]
+        return ([line[i] for i in keep], [offs[i] for i in keep]) if len(keep) > 1 else None
+
+    def box(v, r):                  # mean over 2r+1 samples
+        acc, out = [0.0], []
+        for x in v:
+            acc.append(acc[-1] + x)
+        for k in range(len(v)):
+            i0, i1 = max(0, k - r), min(len(v), k + r + 1)
+            out.append((acc[i1] - acc[i0]) / (i1 - i0))
+        return out
+
+    def lay(line, offs):
+        """The route as a bus drives it: a point every metre, moved right by its lane's offset (eased over 20 m where
+        the lanes change) and back towards the middle of the road wherever a side of the bus would be in a building.
+        Also the metres that stay in one (under a building, or nowhere to go)."""
+        P, O = [line[0]], [offs[0]]
+        for i in range(1, len(line)):
+            a, b = line[i - 1], line[i]
+            n = max(1, int(math.dist(a, b)))
+            for k in range(1, n + 1):
+                P.append((a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n))
+                O.append(offs[i])
+        n = len(P)
+        T = []
+        for k in range(n):
+            a, b = P[max(0, k - 3)], P[min(n - 1, k + 3)]
+            L = math.dist(a, b) or 1.0
+            T.append(((b[0] - a[0]) / L, (b[1] - a[1]) / L))
+        O = box(O, 10)
+        lim, stuck = [], 0
+        for k in range(n):
+            (px, py), (tx, ty) = P[k], T[k]
+            o, got = O[k], None
+            while o > -0.01 and got is None:
+                cx, cy = px + ty * o, py - tx * o
+                if not any(footprints.hit(cx + ty * s, cy - tx * s) for s in (-BUS_HALF, 0.0, BUS_HALF)):
+                    got = o
+                o -= 0.25
+            if got is None:
+                stuck += 1
+            lim.append(O[k] if got is None else got)
+        ero = [min(lim[max(0, k - 6):k + 7]) for k in range(n)]
+        O = box(ero, 6)                 # never above what is clear: a mean over a window no wider than the minimum's
+        Q, last = [], None
+        for k in range(n):
+            (px, py), (tx, ty) = P[k], T[k]
+            q = (px + ty * O[k], py - tx * O[k])
+            if last is None or (q[0] - last[0]) * tx + (q[1] - last[1]) * ty > 0.05:   # no loops on a tight bend
+                Q.append(q)
+                last = q
+        return rdp_long(Q, 0.2), stuck
+
+    # the roads, for a line without a route of its own: directed edges between OSM nodes, on the ways buses may use
+    adj, egrid = {}, {}
+    for w in ways.values():
+        t = w.get("tags", {})
+        if any(t.get(k) in ("no", "private") for k in ("access", "motor_vehicle", "vehicle")) and not (
+                {t.get("bus"), t.get("psv")} & {"yes", "designated", "permissive"}):
+            continue
+        ow, rev = oneway(t), t.get("oneway") == "-1"
+        for a, b in zip(w["nodes"], w["nodes"][1:]):
+            if a not in pos or b not in pos:
+                continue
+            L = math.dist(pos[a], pos[b])
+            if not (ow and rev):
+                adj.setdefault(a, []).append((b, L, t, True))
+            if not ow or rev:
+                adj.setdefault(b, []).append((a, L, t, False))
+            for gx in range(int(min(pos[a][0], pos[b][0]) // 25), int(max(pos[a][0], pos[b][0]) // 25) + 1):
+                for gy in range(int(min(pos[a][1], pos[b][1]) // 25), int(max(pos[a][1], pos[b][1]) // 25) + 1):
+                    egrid.setdefault((gx, gy), []).append((a, b))
+
+    def edge(u, v):                 # the drivable edge from u to v: (length, tags, along the way's direction) or None
+        return next(((L, t, f) for x, L, t, f in adj.get(u, ()) if x == v), None)
+
+    def snap(q):                    # the nearest road to a stop: its two nodes (in the way's order) and how far along
+        best = None
+        for gx in range(int(q[0] // 25) - 2, int(q[0] // 25) + 3):
+            for gy in range(int(q[1] // 25) - 2, int(q[1] // 25) + 3):
+                for a, b in egrid.get((gx, gy), ()):
+                    (ax, ay), (bx, by) = pos[a], pos[b]
+                    L2 = (bx - ax) ** 2 + (by - ay) ** 2 or 1e-9
+                    u = max(0.0, min(1.0, ((q[0] - ax) * (bx - ax) + (q[1] - ay) * (by - ay)) / L2))
+                    d = math.dist(q, (ax + (bx - ax) * u, ay + (by - ay) * u))
+                    if d < 45 and (best is None or d < best[0]):
+                        best = (d, a, b, u)
+        return best and best[1:]
+
+    GOAL = -1                       # (OSM node ids are positive)
+
+    def route(qs):
+        """The shortest drive along the roads through the stops qs in order: points with their lane offsets, or None."""
+        snaps = [snap(q) for q in qs]
+        if any(s is None for s in snaps):
+            return None
+        at = lambda s: (pos[s[0]][0] + (pos[s[1]][0] - pos[s[0]][0]) * s[2], pos[s[0]][1] + (pos[s[1]][1] - pos[s[0]][1]) * s[2])
+        line, offs = [at(snaps[0])], [BUS_HALF]
+        for (a0, b0, u0), (a1, b1, u1) in zip(snaps, snaps[1:]):
+            q0, q1 = at((a0, b0, u0)), at((a1, b1, u1))
+            if (a0, b0) == (a1, b1) and ((u1 > u0 and edge(a0, b0)) or (u1 < u0 and edge(b0, a0))):
+                e = edge(a0, b0) if u1 > u0 else edge(b0, a0)
+                line.append(q1)
+                offs.append(offset(e[1], e[2]))
+                continue
+            best, prev, pq = {}, {}, []
+            for u, v in ((a0, b0), (b0, a0)):      # off along the first stop's road, whichever way it may be driven
+                e = edge(u, v)
+                if e and math.dist(q0, pos[v]) < best.get(v, 1e18):
+                    best[v], prev[v] = math.dist(q0, pos[v]), (None, e[1], e[2])
+                    heapq.heappush(pq, (best[v], v))
+            ends = {u: edge(u, v) for u, v in ((a1, b1), (b1, a1)) if edge(u, v)}   # and onto the next stop's road
+            goal = None
+            while pq:
+                d, u = heapq.heappop(pq)
+                if u == GOAL:
+                    goal = True
+                    break
+                if d > best.get(u, 1e18):
+                    continue
+                if u in ends and d + math.dist(pos[u], q1) < best.get(GOAL, 1e18):
+                    best[GOAL], prev[GOAL] = d + math.dist(pos[u], q1), (u, ends[u][1], ends[u][2])
+                    heapq.heappush(pq, (best[GOAL], GOAL))
+                for v, L, t, f in adj.get(u, ()):
+                    if d + L < best.get(v, 1e18):
+                        best[v], prev[v] = d + L, (u, t, f)
+                        heapq.heappush(pq, (d + L, v))
+            if not goal or best[GOAL] > 4 * math.dist(q0, q1) + 600:
+                return None                 # no way there, or only a long way round: something is missing
+            path, u = [], GOAL
+            while u is not None:
+                pu, t, f = prev[u]
+                path.append((q1 if u == GOAL else pos[u], offset(t, f)))
+                u = pu
+            for q, o in path[::-1]:
+                if math.dist(line[-1], q) > 0.3:
+                    line.append(q)
+                    offs.append(o)
+        return line, offs
+
+    rels = [e for e in els if e["type"] == "relation"]
+    out, report = [], {}
+    for key in sorted(timetable, key=lambda k: (k.split(" ")[0], k.split(" ", 1)[1].zfill(5))):
+        trips = timetable[key]
+        op, ref = key.split(" ", 1)
+        names = next(v[1] for v in BUS_AGENCIES.values() if v[0] == op)
+        memo = {}
+
+        def along(line, q):
+            k = (id(line), q)
+            if k not in memo:
+                memo[k] = along_line(line, q)
+            return memo[k]
+
+        def covered(qs, line):          # how many of a trip's stops in the map lie on the route, in order, as
+            n, last = 0, -1e9           # timetable_runs keeps them (a terminus may be off it, in a loop or a bus station)
+            for i, q in enumerate(qs):
+                if in_map(q, 30):
+                    d, al = along(line, q)
+                    if d < (END_REACH if i in (0, len(qs) - 1) else 35) and al > last + 5:
+                        n, last = n + 1, al
+            return n
+
+        trip_qs = [[geo.local(lat, lon) for lat, lon, _, _ in trip] for trip in trips]
+        if not any(sum(1 for q in qs if in_map(q)) >= 2 for qs in trip_qs):
+            continue                    # the line never comes into the map
+        routes, kinds, stuck = [], [], []
+        for r in rels:
+            t = r.get("tags", {})
+            if t.get("ref") == ref and any(nm in (t.get("operator") or "") for nm in names):
+                c = chain(r)
+                c = c and cut(*c)
+                if c:
+                    pts, st = lay(*c)
+                    routes.append(pts)
+                    kinds.append("osm")
+                    stuck.append(st)
+        # a trip that stops in the map where none of the line's routes go is driven along the roads between its stops,
+        # from the one before it comes into the map to the one after it leaves
+        need = Counter()
+        for qs in trip_qs:
+            ins = [i for i, q in enumerate(qs) if in_map(q)]
+            if len(ins) < 2 or (routes and max(covered(qs, l) for l in routes) >= sum(1 for q in qs if in_map(q, 30))):
+                continue
+            need[tuple(qs[max(0, ins[0] - 1):ins[-1] + 2])] += 1
+        for qs, _ in need.most_common():
+            if any(covered(qs, l) >= sum(1 for q in qs if in_map(q, 30)) for l in routes):
+                continue
+            c = route(list(qs))
+            c = c and cut(*c)
+            if c:
+                pts, st = lay(*c)
+                routes.append(pts)
+                kinds.append("road")
+                stuck.append(st)
+        if not routes:
+            continue
+        pats, runs = timetable_runs(trips, routes, geo, along, min_stops=2, end_reach=END_REACH)
+        if not runs:
+            continue
+        used = sorted({r[0] for r in runs})
+        renum = {di: k for k, di in enumerate(used)}
+        out.append({"ref": ref, "op": op,
+                    "routes": [{"p": [round(v / S * (1 if i % 2 == 0 else -1), 2) for x, y in routes[di] for i, v in enumerate((x, y))]} for di in used],
+                    "pats": pats, "trips": [v for r in runs for v in (renum[r[0]], r[1], r[2])]})
+        report[key] = {"trips": [len(runs), len(trips)], "patterns": len(pats),
+                       "routes": [[kinds[di], len(routes[di]), stuck[di]] for di in used]}
+    return out, report
 
 
 def load_3d(raw, work, geo, keep_local):
@@ -1025,6 +1385,21 @@ def main(raw, work, out_js):
 
     # ---------- buildings: swissBUILDINGS3D roofs ----------
     blds = load_3d(raw, work, geo, lambda x, y: in_area(x, y, m=-15))
+    # covered footbridges (OSM building=bridge): swisstopo models them down to the ground, often as one building with
+    # the houses they join, so the street under them would be walled off. Their roofs become buildings of their own,
+    # open underneath
+    spans = [(r, bbox(r)) for o in outlines if o["tags"].get("building") == "bridge" for r in o["outer"]]
+    on_span = lambda q: any(bb[0] <= q[0] <= bb[1] and bb[2] <= q[1] <= bb[3] and inside(q, r) for r, bb in spans)
+    split = []
+    for b in blds:
+        xs, ys = [p[0] for f in b["roof"] for p in f], [p[1] for f in b["roof"] for p in f]
+        if not any(bb[0] <= max(xs) and min(xs) <= bb[1] and bb[2] <= max(ys) and min(ys) <= bb[3] for _, bb in spans):
+            split.append(b)
+            continue
+        over = [f for f in b["roof"] if on_span((sum(p[0] for p in f) / len(f), sum(p[1] for p in f) / len(f)))]
+        rest = [f for f in b["roof"] if f not in over]
+        split += ([dict(b, roof=over, span=True)] if over else []) + ([dict(b, roof=rest)] if rest else [])
+    blds = split
     terrain = {}            # ground-floor heights on a 50 m grid, for the few models without a ground outline
     for b in blds:
         if b["ground"] is not None:
@@ -1151,6 +1526,9 @@ def main(raw, work, out_js):
         if style is None and kind in (0, 10) and over_tracks(roof, g):
             kind, zbot = 5, 2.5         # on posts; the game keeps only a fascia under each roof edge
             stats["shed"] += 1
+        elif b.get("span"):
+            kind, zbot = 9, max(4.5, top_rel - 4.0)     # a covered footbridge, about 4 m deep and high over the street
+            stats["footbridge"] += 1
         elif kind in (4, 5, 9):         # canopies, open buildings and covered bridges stand on posts or span a street
             if b["wall_min"] is not None and b["wall_min"] - g > 1.5:
                 zbot = b["wall_min"] - g
@@ -1680,6 +2058,11 @@ def main(raw, work, out_js):
 
     rail = rail_tracks(raw, geo)
     tram_tracks, trams = tram_network(raw, work, geo)
+    # where the buildings stand, walls down to the street (a roof on posts high enough for a bus is left out), and
+    # the hand-modelled ones: the buses keep off them
+    footprints = Footprints([[(r["verts"][i][0], r["verts"][i][1]) for i in l] for r in recs + frecs if r["zbot"] < 3.8
+                             for l in r["loops"]] + skip_rings)
+    buses, bus_report = bus_network(raw, work, geo, footprints)
 
     def b64(arr):
         return base64.b64encode(arr.tobytes()).decode()
@@ -1693,7 +2076,7 @@ def main(raw, work, out_js):
         "trees": b64(trees), "treeInfo": b64(tree_info),
         "towers": towers, "landmarks": landmarks, "iconic": dict(iconic, sbb=sbb_front, uni=uni), "places": places, "bridges": bridges, "ferries": ferries,
         "rail": rail, "tracks": rail_lines(raw, geo), "awnings": awnings, "market": market,
-        "tramTracks": tram_tracks, "trams": trams,
+        "tramTracks": tram_tracks, "trams": trams, "buses": buses,
     }
     js = "const BASEL=" + json.dumps(data, separators=(",", ":"), ensure_ascii=False) + ";\n"
     with open(out_js, "w") as f:
@@ -1708,7 +2091,7 @@ def main(raw, work, out_js):
                       "uni": uni and {"eaves": len(uni["eaves"]) // 7, "door": uni["door"], "top": uni["top"]},
                       "awnings": len(awnings) // 4, "market": market and len(market["square"]),
                       "trams": [[t["ref"], t["op"], t["colour"], len(t["pats"]), len(t["trips"]) // 3, [[d["name"], len(d["p"]) // 2, len(d["stops"])] for d in t["dirs"]]] for t in trams],
-                      "tram_tracks": len(tram_tracks),
+                      "tram_tracks": len(tram_tracks), "buses": bus_report,
                       "towers": towers, "landmarks": {k: {kk: (round(v, 2) if isinstance(v, float) else v) for kk, v in d.items()} for k, d in landmarks.items()},
                       "places": places, "ground_px": [GW, GH], "ground_kB": [len(ground_b64) * 3 // 4 // 1000, len(small_b64) * 3 // 4 // 1000],
                       "js_kB": len(js) // 1000}, ensure_ascii=False, indent=1))
