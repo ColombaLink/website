@@ -2367,7 +2367,8 @@ const runTrains=(()=>{
       const u=Math.min(1,(s-s0)/(seg(i)||1)),x=p[i*2]+(p[i*2+2]-p[i*2])*u,z=p[i*2+1]+(p[i*2+3]-p[i*2+1])*u,hd=Math.atan2(-(p[i*2+3]-p[i*2+1]),p[i*2+2]-p[i*2]);
       X.push(x);Z.push(z);H.push(hd);Y.push(roadDeckAt(x,z,hd,0.02));}
     const n=X.length,f=s=>Math.min(Math.max(s/STEP,0),n-1.0001);
-    return {len:(n-1)*STEP,at(s,o){const g=f(s),k=Math.floor(g),u=g-k;return o.set(X[k]+(X[k+1]-X[k])*u,Y[k]+(Y[k+1]-Y[k])*u,Z[k]+(Z[k+1]-Z[k])*u);},
+    return {len:(n-1)*STEP,at(s,o){const g=s/STEP,k=g<0?0:Math.min(Math.floor(g),n-2),u=g-k,y=g<0?Y[0]:g>n-1?Y[n-1]:Y[k]+(Y[k+1]-Y[k])*u;   // (on past
+      return o.set(X[k]+(X[k+1]-X[k])*u,y,Z[k]+(Z[k+1]-Z[k])*u);},   // either end in a straight line: a tram starting at a terminus stands behind it)
       hd(s){return H[Math.round(f(s))];},X,Z,H,zones:[]};};
   const TT=3,VCATCH=7,GAP_T=0.6,TL=(BASEL.trams||[]).filter(l=>l.dirs&&l.dirs.length===2&&l.trips&&l.trips.length);
   const ease=u=>u<0.25?2.667*u*u:u>0.75?1-2.667*(1-u)*(1-u):1.333*u-0.1667;   // speed up, run, slow down for the stop
@@ -2379,8 +2380,8 @@ const runTrains=(()=>{
     for(let k=0;k+3<p.length;k+=3){if(tau<=p[k+2])return p[k];if(tau<p[k+4])return p[k]+(p[k+3]-p[k])*ease((tau-p[k+2])/(p[k+4]-p[k+2]));}
     return p[p.length-3];};
   // the vehicles: as many of each kind as the timetable ever has out at once
-  const need={BVB:0,BLT:0};
-  for(const op of ['BVB','BLT']){const ev=[];for(const L of lines)if(L.op===op)for(const t of L.trips)ev.push([t.t0,1],[t.t1+1,-1]);
+  const need={BVB:0,BLT:0},LATE=120;   // (with two minutes' grace for one that is late at its terminus)
+  for(const op of ['BVB','BLT']){const ev=[];for(const L of lines)if(L.op===op)for(const t of L.trips)ev.push([t.t0,1],[t.t1+LATE,-1]);
     ev.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);let n=0;for(const [,d] of ev){n+=d;need[op]=Math.max(need[op],n);}}
   const tramMeshes={},trams=[];
   for(const op of ['BVB','BLT'])if(need[op]){const T=TCARS[op],L=TLIV[op],[gE,wE]=carGeo(T.end,L,true),[gM,wM]=carGeo(T.mid,L,false),k=need[op];
@@ -2399,7 +2400,6 @@ const runTrains=(()=>{
     const P=pathOf(V),hd=P.hd(V.s);
     for(let d=from;d<=to;d+=0.35){P.at(d,A);const L=occ.get(cellKey(A.x,A.z));if(L)for(let i=0;i<L.length;i+=2)if(L[i]!==V&&angGap(L[i+1],hd)<2.2)return {at:d,by:L[i]};}
     return null;}
-  function bodyFree(V){const P=pathOf(V);for(let d=0;d<=V.len;d+=0.5){P.at(V.s-d,A);const L=occ.get(cellKey(A.x,A.z));if(L)for(let i=0;i<L.length;i+=2)if(L[i]!==V)return false;}return true;}
   function occTram(V){   // the track under a tram, cell by cell, for the trams behind it and across its way to see
     if(!V.trip||!V.shown)return;
     const P=pathOf(V),hd=P.hd(V.s);for(let d=0;d<=V.len;d+=0.5){P.at(V.s-d,A);const k=cellKey(A.x,A.z);let L=occ.get(k);if(!L)occ.set(k,L=[]);if(!L.length)occUsed.push(L);L.push(V,hd);}}
@@ -2427,44 +2427,49 @@ const runTrains=(()=>{
   function gridAdd(V,pad){const b=V.bb;
     for(let i=Math.floor((b[0]-pad)/GC);i<=Math.floor((b[2]+pad)/GC);i++)for(let j=Math.floor((b[1]-pad)/GC);j<=Math.floor((b[3]+pad)/GC);j++){
       const k=gkey(i,j);let L=vgrid[k];if(!L)vgrid[k]=L=[];if(!L.length)used.push(L);L.push(V);}}
-  function busNear(V,pad){   // is any bus within pad of a tram (the grid holds only the buses while the trams move)
+  function anyNear(V,pad){   // is any other bus or tram within pad of a tram
     const b=V.bb;if(!V.no)return true;
     for(let i=Math.floor((b[0]-pad)/GC);i<=Math.floor((b[2]+pad)/GC);i++)for(let j=Math.floor((b[1]-pad)/GC);j<=Math.floor((b[3]+pad)/GC);j++){
-      const L=vgrid[gkey(i,j)];if(L&&L.length)return true;}
+      const L=vgrid[gkey(i,j)];if(L)for(const U of L)if(U!==V)return true;}
     return false;}
   const sat=(a,i,b,j)=>{   // do two boxes overlap? (they are apart if some edge direction of either separates them)
     const dx=b[j]-a[i],dz=b[j+1]-a[i+1],ax=a[i+2],az=a[i+3],bx=b[j+2],bz=b[j+3],c=Math.abs(ax*bx+az*bz),s=Math.abs(ax*bz-az*bx);
     return Math.abs(dx*ax+dz*az)<=a[i+4]+b[j+4]*c+b[j+5]*s&&Math.abs(dz*ax-dx*az)<=a[i+5]+b[j+4]*s+b[j+5]*c
       &&Math.abs(dx*bx+dz*bz)<=b[j+4]+a[i+4]*c+a[i+5]*s&&Math.abs(dz*bx-dx*bz)<=b[j+5]+a[i+4]*s+a[i+5]*c;};
-  function hits(ob,n,self,only){   // the first other tram or bus (only one kind, if asked) whose boxes overlap these n boxes
-    let x0=1e9,z0=1e9,x1=-1e9,z1=-1e9;
+  function hits(ob,n,self,only,nb=n){   // the first other tram or bus (only one kind, if asked) whose boxes overlap these n boxes
+    let x0=1e9,z0=1e9,x1=-1e9,z1=-1e9;   // (the boxes from nb on are a tram's look-out ahead, which only buses keep clear of)
     for(let i=0;i<n*6;i+=6){const rx=Math.abs(ob[i+2])*ob[i+4]+Math.abs(ob[i+3])*ob[i+5],rz=Math.abs(ob[i+3])*ob[i+4]+Math.abs(ob[i+2])*ob[i+5];
       x0=Math.min(x0,ob[i]-rx);x1=Math.max(x1,ob[i]+rx);z0=Math.min(z0,ob[i+1]-rz);z1=Math.max(z1,ob[i+1]+rz);}
     stamp++;
     for(let i=Math.floor(x0/GC);i<=Math.floor(x1/GC);i++)for(let j=Math.floor(z0/GC);j<=Math.floor(z1/GC);j++){const L=vgrid[gkey(i,j)];if(!L)continue;
       for(const V of L){if(V.stamp===stamp)continue;V.stamp=stamp;
         if(V===self||!V.no||(only&&V.kind!==only))continue;const b=V.bb;if(b[0]>x1||b[2]<x0||b[1]>z1||b[3]<z0)continue;
-        for(let a=0;a<n*6;a+=6)for(let c=0;c<V.no*6;c+=6)if(sat(ob,a,V.ob,c))return V;}}
+        for(let a=0,m=(V.kind==='tram'?nb:n)*6;a<m;a+=6)for(let c=0;c<V.no*6;c+=6)if(sat(ob,a,V.ob,c))return V;}}
     return null;}
   const pob=new Float32Array(42);
-  function tramBoxes(V,s,probe){   // a tram's cars with its front at s, the first one with the track just ahead of it
+  function tramBoxes(V,s,probe){   // a tram's cars with its front at s, then a box for the track just ahead of it
     const P=pathOf(V);let n=0;     // (`probe` long)
     for(const c of V.cars){const sc=s-c.off;P.at(sc+c.C.pivot,A);P.at(sc-c.C.pivot,B);
-      const dx=A.x-B.x,dz=A.z-B.z,L=Math.hypot(dx,dz)||1e-6,ux=dx/L,uz=dz/L,e=n?0:probe,o=n++*6;
-      pob[o]=(A.x+B.x+ux*e)/2;pob[o+1]=(A.z+B.z+uz*e)/2;pob[o+2]=ux;pob[o+3]=uz;pob[o+4]=c.C.len/2+e/2;pob[o+5]=TRAM_HW;}
+      const dx=A.x-B.x,dz=A.z-B.z,L=Math.hypot(dx,dz)||1e-6,o=n++*6;
+      pob[o]=(A.x+B.x)/2;pob[o+1]=(A.z+B.z)/2;pob[o+2]=dx/L;pob[o+3]=dz/L;pob[o+4]=c.C.len/2;pob[o+5]=TRAM_HW;}
+    if(probe>0){const o=n++*6,ux=pob[2],uz=pob[3],e=pob[4]+probe/2;
+      pob[o]=pob[0]+ux*e;pob[o+1]=pob[1]+uz*e;pob[o+2]=ux;pob[o+3]=uz;pob[o+4]=probe/2;pob[o+5]=TRAM_HW;}
     return n;}
-  function tramClear(V,to){   // as far towards `to` as a tram can go without running into a bus (its cars behind cut the bends)
-    let probe=GAP_B,by=hits(pob,tramBoxes(V,to,probe),V,'bus');if(!by)return to;
-    if(by.by===V){probe=0;by=hits(pob,tramBoxes(V,to,0),V,'bus');if(!by)return to;}   // a bus waiting for this tram: only its body counts
-    V.by=by;let lo=V.s,hi=to;for(let i=0;i<5;i++){const mid=(lo+hi)/2;if(hits(pob,tramBoxes(V,mid,probe),V,'bus'))hi=mid;else lo=mid;}
+  const tramHits=(V,s,probe)=>hits(pob,tramBoxes(V,s,probe),V,null,V.cars.length);
+  function tramClear(V,to){   // as far towards `to` as a tram can go without touching another tram or running into a bus
+    let probe=GAP_B,by=tramHits(V,to,probe);if(!by)return to;   // (its cars behind cut the bends)
+    if(by.kind==='bus'&&(by.by===V||by.wz&&by.wz.includes(V))){probe=0;by=tramHits(V,to,0);if(!by)return to;}   // a bus waiting for this tram:
+    // only its body counts
+    V.by=by;let lo=V.s,hi=to;for(let i=0;i<5;i++){const mid=(lo+hi)/2;if(tramHits(V,mid,probe))hi=mid;else lo=mid;}
     return lo;}
   // ---- where a bus route crosses another bus route or a tram track, joins one (the first stretch they share) or meets
   // a bus or tram coming the other way: zones. A tram or bus goes into one only once it has it to itself (on a narrow
   // stretch, with those going its way), together with every zone it will be in until its tail is out of it, and room
   // to stop beyond them; so none of them can stop in a junction and lock another one out of it ----
-  const ZIN=0.85,ZOUT=0.5,ZJOIN=7,GAP_Z=0.05,zones=[];   // a zone starts well before the paths touch, so one waiting for it is clear
+  const ZIN=0.85,ZIN_T=0.5,ZOUT=0.5,ZJOIN=7,GAP_Z=0.05,zones=[];   // a zone starts well before the paths touch, so one waiting for it is clear
+  // (between two trams, which keep to their tracks, a sample before they touch is enough)
   const free=e=>!e[2].n||(e[3]!==0&&e[2].side===e[3]);
-  const hold=(V,e)=>{e[2].n++;e[2].side=e[3];V.held.push(e);};
+  const hold=(V,e)=>{e[2].n++;e[2].side=e[3];e[2].v=V;V.held.push(e);};   // (v: who took it last)
   function dropZones(V){for(const e of V.held)if(!--e[2].n)e[2].side=0;V.held.length=0;}
   function setZones(V,P){dropZones(V);V.zp=P.zones;V.zi=0;V.zl=P.len;}
   function zoneRun(V,from){   // the zones from `from` on that a tram or bus will be in until its tail is out of them all,
@@ -2485,20 +2490,28 @@ const runTrains=(()=>{
     while(V.zi<Z.length&&Z[V.zi][0]<=V.s)V.zi++;
     let i=V.zi;while(i<Z.length&&V.held.includes(Z[i]))i++;
     if(i>=Z.length||Z[i][0]>to+GAP_Z)return to;
-    const {want,end}=zoneRun(V,i);
-    if(want.every(free)&&(end>V.zl-0.5||room(end))){for(const e of want)hold(V,e);return to;}   // (at the end of its route it goes)
+    const {want,end}=zoneRun(V,i);   // (at the end of its route, or still in a zone it holds, it goes as soon as they are free)
+    if(want.every(free)&&(end>V.zl-0.5||V.held.some(e=>e[0]<=V.s+GAP_Z)||room(end))){for(const e of want)hold(V,e);return to;}
+    const w=V.wz||(V.wz=[]);w.length=0;for(const e of want)if(!free(e))w.push(e[2].v);   // (whose zones it waits for)
     return Math.max(V.s,Math.min(to,Z[i][0]-GAP_Z));}
-  function buildZones(paths){   // paths: [{P, bus}] - every bus route against the other bus routes and the tram tracks
+  function buildZones(paths){   // paths: [{P, bus}] - every bus route and tram track against every other one
+    const PV=Math.max(...Object.values(TCARS).flatMap(T=>[T.end.pivot,T.mid.pivot]));
     for(const a of paths){   // how far either side of its line a bus or tram reaches: half its width, more on a bend
       const H=a.P.H,n=H.length,w=a.W=new Float32Array(n),hw=a.bus?0.255:0.23,k=a.bus?0.4:0.3,cap=a.bus?0.45:0.3;   // (it cuts the corner)
-      for(let i=0;i<n;i++)w[i]=hw+Math.min(cap,k*angGap(H[Math.max(0,i-2)],H[Math.min(n-1,i+2)]));}
-    const C=1.45;let x0=1e9,z0=1e9,x1=-1e9,z1=-1e9;   // a grid of every point of every path (cells as big as two reaches)
+      for(let i=0;i<n;i++)w[i]=hw+Math.min(cap,k*angGap(H[Math.max(0,i-2)],H[Math.min(n-1,i+2)]));
+      if(!a.bus){const t=a.T=new Float32Array(n),{X,Z}=a.P;   // and against another tram, how far its cars cut in on a bend: half
+        for(let i=0;i<n;i++){const i0=Math.max(0,i-2),i1=Math.min(n-1,i+2),tx=X[i]-X[i0],tz=Z[i]-Z[i0],ux=X[i1]-X[i],uz=Z[i1]-Z[i];   // the bogies'
+          t[i]=Math.sign(tx*uz-tz*ux)*Math.min(0.25,PV/2*angGap(H[i0],H[i1]));}}}   // spacing times the turn, signed by the side it turns to
+    const C=1.45;let x0=1e9,z0=1e9,x1=-1e9,z1=-1e9;   // a grid of every point of these paths (cells as big as two reaches)
     for(const a of paths){const {X,Z}=a.P;for(let i=0;i<X.length;i++){x0=Math.min(x0,X[i]);x1=Math.max(x1,X[i]);z0=Math.min(z0,Z[i]);z1=Math.max(z1,Z[i]);}}
-    const nx=Math.floor((x1-x0)/C)+1,nz=Math.floor((z1-z0)/C)+1,cellOf=(x,z)=>Math.floor((z-z0)/C)*nx+Math.floor((x-x0)/C),start=new Int32Array(nx*nz+1);
-    let total=0;for(const a of paths){const {X,Z}=a.P;total+=X.length;for(let i=0;i<X.length;i++)start[cellOf(X[i],Z[i])+1]++;}
-    for(let c=0;c<nx*nz;c++)start[c+1]+=start[c];
-    const fill=start.slice(),items=new Int32Array(total*2);
-    paths.forEach((a,p)=>{const {X,Z}=a.P;for(let i=0;i<X.length;i++){const o=fill[cellOf(X[i],Z[i])]++*2;items[o]=p;items[o+1]=i;}});
+    const nx=Math.floor((x1-x0)/C)+1,nz=Math.floor((z1-z0)/C)+1,cellOf=(x,z)=>Math.floor((z-z0)/C)*nx+Math.floor((x-x0)/C);
+    const grid=list=>{const start=new Int32Array(nx*nz+1);let total=0;
+      for(const a of list){const {X,Z}=a.P;total+=X.length;for(let i=0;i<X.length;i++)start[cellOf(X[i],Z[i])+1]++;}
+      for(let c=0;c<nx*nz;c++)start[c+1]+=start[c];
+      const fill=start.slice(),items=new Int32Array(total*2);
+      list.forEach((a,p)=>{const {X,Z}=a.P;for(let i=0;i<X.length;i++){const o=fill[cellOf(X[i],Z[i])]++*2;items[o]=p;items[o+1]=i;}});
+      return {start,items};};
+    let {start,items}=grid(paths);
     for(let p=0;p<paths.length;p++){if(!paths[p].bus)continue;const {X,Z}=paths[p].P,W=paths[p].W,near=new Map(),best=new Map();
       for(let k=0;k<X.length;k++){best.clear();const ci=Math.floor((X[k]-x0)/C),cj=Math.floor((Z[k]-z0)/C);
         for(let row=Math.max(0,cj-1);row<=Math.min(nz-1,cj+1);row++)for(let col=Math.max(0,ci-1);col<=Math.min(nx-1,ci+1);col++){const c=row*nx+col;
@@ -2507,42 +2520,66 @@ const runTrains=(()=>{
             if(d2<r*r){const pen=Math.sqrt(d2)-r,b=best.get(q);if(!b||pen<b[1])best.set(q,[j,pen]);}}}
         for(const [q,[j]] of best){let m=near.get(q);if(!m)near.set(q,m=[]);m.push(k,j);}}
       for(const [q,m] of near)pairZones(paths[p].P,paths[q].P,m);}
+    const tp=paths.filter(a=>!a.bus);({start,items}=grid(tp));   // and every tram track against the others: where their cars could touch
+    for(let p=0;p<tp.length;p++){const {X,Z}=tp[p].P,T=tp[p].T,near=new Map(),best=new Map();
+      for(let k=0;k<X.length;k++){best.clear();const ci=Math.floor((X[k]-x0)/C),cj=Math.floor((Z[k]-z0)/C);
+        for(let row=Math.max(0,cj-1);row<=Math.min(nz-1,cj+1);row++)for(let col=Math.max(0,ci-1);col<=Math.min(nx-1,ci+1);col++){const c=row*nx+col;
+          for(let t=start[c];t<start[c+1];t++){const q=items[t*2];if(q<=p)continue;
+            const Q=tp[q],j=items[t*2+1],dx=Q.P.X[j]-X[k],dz=Q.P.Z[j]-Z[k];if(dx*dx+dz*dz>1.5*1.5)continue;
+            const pen=segD(Q.P,j,X[k],Z[k])-reach(tp[p].P,T,k,Q.P.X[j],Q.P.Z[j])-reach(Q.P,Q.T,j,X[k],Z[k])-0.01;   // (against its line)
+            if(pen<0){const b=best.get(q);if(!b||pen<b[1])best.set(q,[j,pen]);}}}
+        for(const [q,[j]] of best){let m=near.get(q);if(!m)near.set(q,m=[]);m.push(k,j);}}
+      for(const [q,m] of near)pairZones(tp[p].P,tp[q].P,m,true);}
     for(const a of paths)a.P.zones.sort((u,v)=>u[0]-v[0]);}
-  function pairZones(A,B,m){   // m: pairs of points (on A, on B) close enough for the two to touch; each run of them is a zone
-    for(let r0=0,r=2;r<=m.length;r+=2){
+  const reach=(P,t,i,x,z)=>{const i0=Math.max(0,i-1),i1=Math.min(P.X.length-1,i+1),dx=P.X[i1]-P.X[i0],dz=P.Z[i1]-P.Z[i0];   // how far a tram's
+    return TRAM_HW+(t[i]*(dx*(z-P.Z[i])-dz*(x-P.X[i]))>0?Math.abs(t[i]):0);};   // cars reach towards (x, z): more on the inside of a bend
+  const segD=(Q,j,x,z)=>{let d=1e9;   // from a point to a path's line either side of its point j
+    for(let i=Math.max(0,j-1);i<Math.min(Q.X.length-1,j+1);i++){const ax=Q.X[i],az=Q.Z[i],vx=Q.X[i+1]-ax,vz=Q.Z[i+1]-az,
+      u=Math.max(0,Math.min(1,((x-ax)*vx+(z-az)*vz)/(vx*vx+vz*vz||1))),ex=x-ax-vx*u,ez=z-az-vz*u;d=Math.min(d,Math.sqrt(ex*ex+ez*ez));}
+    return d;};
+  function pairZones(A,B,m,tt){   // m: pairs of points (on A, on B) close enough for the two to touch; each run of them is a zone
+    for(let r0=0,r=2;r<=m.length;r+=2){   // (tt: two tram tracks, where trams on the same route may be in a zone together)
       if(r<m.length&&m[r]-m[r-2]<=2&&Math.abs(m[r+1]-m[r-1])<=4)continue;
       let jmin=1e9,jmax=-1e9,ang=0;
       for(let t=r0;t<r;t+=2){jmin=Math.min(jmin,m[t+1]);jmax=Math.max(jmax,m[t+1]);ang+=angGap(A.H[m[t]],B.H[m[t+1]]);}
-      ang/=(r-r0)/2;const k0=m[r0]*STEP,k1=m[r-2]*STEP,z={n:0,side:0};zones.push(z);
-      if(ang<0.6){const j0=m[r0+1]*STEP;A.zones.push([k0-ZIN,k0+ZJOIN,z,0]);B.zones.push([j0-ZIN,j0+ZJOIN,z,0]);}   // joining: where they meet
-      else{const sd=ang>2.55?1:0;A.zones.push([k0-ZIN,k1+ZOUT,z,sd]);B.zones.push([jmin*STEP-ZIN,jmax*STEP+ZOUT,z,-sd]);}   // head on, or across
+      ang/=(r-r0)/2;const k0=m[r0]*STEP,k1=m[r-2]*STEP,z={n:0,side:0},zi=tt?ZIN_T:ZIN;zones.push(z);
+      if(ang<0.6&&tt){let t=r0,j0=m[r0+1];   // two tracks joining: up to where they are one
+        while(t<r-2&&segD(B,m[t+1],A.X[m[t]],A.Z[m[t]])>0.1){t+=2;j0=Math.min(j0,m[t+1]);}
+        A.zones.push([k0-zi,m[t]*STEP+ZOUT,z,1]);B.zones.push([j0*STEP-zi,m[t+1]*STEP+ZOUT,z,-1]);}
+      else if(ang<0.6){const j0=m[r0+1]*STEP;A.zones.push([k0-ZIN,k0+ZJOIN,z,0]);B.zones.push([j0-ZIN,j0+ZJOIN,z,0]);}   // joining: where they meet
+      else{const sd=ang>2.55||tt?1:0;A.zones.push([k0-zi,k1+ZOUT,z,sd]);B.zones.push([jmin*STEP-zi,jmax*STEP+ZOUT,z,-sd]);}   // head on, or across
       r0=r;}}
   // the timetable clock: seconds after midnight, from Basel's own time where that fits the sky
   const zurich=()=>{try{const p=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Zurich',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(new Date()),
     g=k=>+p.find(x=>x.type===k).value;return g('hour')*3600+g('minute')*60+g('second');}catch(e){return 8*3600;}};
   const startClock=night=>{const z=zurich();return night?(z>=20*3600?z:z<2400?z+86400:22.5*3600):(z>=6*3600&&z<20*3600?z:8*3600);};
   let clock=0,clockNight=null;
-  function resetTrams(T){for(const V of trams){V.trip=null;V.shown=false;dropZones(V);}
+  function startTram(V,t,T){V.trip=t;V.s=posAt(t,T);V.shown=false;V.no=0;setZones(V,pathOf(V));}
+  function resetTrams(T){for(const V of trams){V.trip=null;V.shown=false;V.no=0;dropZones(V);}
     for(const L of lines){L.next=L.trips.findIndex(t=>t.t0>T);if(L.next<0)L.next=L.trips.length;
-      for(const t of L.trips)if(t.t0<=T&&T<=t.t1){const V=trams.find(v=>!v.trip&&v.op===L.op);if(V){V.trip=t;V.s=posAt(t,T);setZones(V,pathOf(V));}}}}
+      for(const t of L.trips)if(t.t0<=T&&T<=t.t1){const V=trams.find(v=>!v.trip&&v.op===L.op);if(V)startTram(V,t,T);}}}
   function runTrams(dt){
     if(clockNight!==NIGHT){clockNight=NIGHT;clock=startClock(NIGHT);resetTrams(clock);resetBuses(clock);}
     clock+=dt*TT;if(clock>25.5*3600){clock=5*3600;resetTrams(clock);resetBuses(clock);}
     for(const L of lines)while(L.next<L.trips.length&&L.trips[L.next].t0<=clock){const t=L.trips[L.next++],V=trams.find(v=>!v.trip&&v.op===L.op);
-      if(V){V.trip=t;V.s=posAt(t,clock);V.shown=false;setZones(V,pathOf(V));}}
+      if(V)startTram(V,t,clock);}
     for(const L of occUsed)L.length=0;occUsed.length=0;
-    for(const V of trams){if(V.trip&&clock>V.trip.t1){V.trip=null;V.shown=false;dropZones(V);}occTram(V);}   // where everyone is
-    for(const L of used)L.length=0;used.length=0;for(const V of buses)if(V.no)gridAdd(V,VCATCH*dt+0.1);   // and every bus
+    for(const V of trams){const t=V.trip;   // a trip is over at its time, but one in sight that is late gets to its terminus first
+      if(t&&clock>t.t1&&!(V.seen&&V.s<t.pat[t.pat.length-3]-0.05&&clock<t.t1+LATE)){V.trip=null;V.shown=false;V.no=0;dropZones(V);}
+      occTram(V);}   // where everyone is
+    const pad=VCATCH*dt+0.1;for(const L of used)L.length=0;used.length=0;   // and every bus and tram, as far as it can go this step
+    for(const V of buses)if(V.no)gridAdd(V,pad);for(const V of trams)if(V.no)gridAdd(V,pad);
     const want=new Map();
     for(const V of trams){if(!V.trip)continue;const sd=Math.max(V.s,posAt(V.trip,clock)),hit=hitAhead(V,V.s+0.3,sd+GAP_T);want.set(V,{sd,hit});}
     for(const [V,w] of want){let to=Math.min(w.sd,V.s+VCATCH*dt);
       if(w.hit){const o=want.get(w.hit.by);const mutual=o&&o.hit&&o.hit.by===V;   // two that see each other: the lower number goes first
         if(!(mutual&&V.id<w.hit.by.id))to=Math.min(to,w.hit.at-GAP_T);}
-      V.by=null;const s0=V.s,room=s=>!hits(pob,tramBoxes(V,s,0),V,'bus');
-      if(V.shown){zoneDrop(V);if(to>V.s&&busNear(V,to-V.s+GAP_B+0.1))to=tramClear(V,to);to=zoneGate(V,to,room);}
+      V.by=null;if(V.wz)V.wz.length=0;const s0=V.s,room=s=>!tramHits(V,s,0);
+      if(V.shown){zoneDrop(V);if(to>V.s&&anyNear(V,to-V.s+GAP_B+0.1))to=tramClear(V,to);to=zoneGate(V,to,room);}
       V.s=Math.max(V.s,to);V.stuck=V.s>s0+1e-4?0:(V.stuck||0)+dt;
-      if(!V.shown&&bodyFree(V)&&room(V.s)&&enterZones(V,room))V.shown=true;}   // a tram only comes into view where there is room for it
-    for(const V of trams){V.seen=placeTram(V);if(V.no)gridAdd(V,0);}
+      if(!V.shown&&room(V.s)&&enterZones(V,room)){V.shown=true;V.seen=placeTram(V);gridAdd(V,pad);}   // a tram only comes into view where there is room for it
+      else V.seen=placeTram(V);}   // (the trams after it see it where it is now)
+    for(const V of trams)if(!V.trip)V.seen=placeTram(V);
     for(const op in tramMeshes)for(const x of [...tramMeshes[op].end,...tramMeshes[op].mid])if(x)x.instanceMatrix.needsUpdate=true;}
 
   // ---- the buses: every line that comes into the map today, on its routes, to the same weekday timetable as the
@@ -2660,7 +2697,8 @@ const runTrains=(()=>{
   function busClear(V,P,to){   // as far towards `to` as a bus can go with nobody in the way
     let by=blocked(V,P,to,GAP_B);if(!by)return to;
     let probe=GAP_B;
-    if(by.by===V&&by.kind==='bus'&&V.id<by.id){probe=0;by=blocked(V,P,to,0);if(!by)return to;}   // two buses waiting for each other: one squeezes on
+    if(by.by===V&&by.kind==='bus'&&V.id<by.id||by.wz&&by.wz.includes(V)){probe=0;by=blocked(V,P,to,0);if(!by)return to;}   // two buses waiting for each other: one
+    // squeezes on; and one waiting for a zone this bus holds does not hold it up with the road it keeps clear ahead
     V.by=by;let lo=V.s,hi=to;for(let i=0;i<5;i++){const mid=(lo+hi)/2;if(blocked(V,P,mid,probe))hi=mid;else lo=mid;}
     return lo;}
   function startTrip(V,L,t,T){V.trip=t;V.s=Math.max(posAt(t,T),V.len);V.shown=false;V.no=0;V.until=null;V.by=null;V.k=0;setZones(V,L.paths[t.dir]);
@@ -2683,7 +2721,7 @@ const runTrains=(()=>{
         if(clock>=V.until){V.k++;V.until=null;while(V.k<n&&!isStop(p,V.k))V.k++;}}
       if((V.k>=n&&V.s>=p[n*3-3]-0.05)||clock>V.trip.t1+600){V.trip=null;V.shown=false;dropZones(V);placeBus(V,P);continue;}   // done (or hopelessly late)
       let to=Math.min(Math.max(V.s,posAt(V.trip,clock)),V.k<n?p[V.k*3]:p[n*3-3],V.s+VCATCH*dt);
-      V.by=null;const room=s=>!blocked(V,P,Math.min(s,P.len),GAP_B),s0=V.s;
+      V.by=null;if(V.wz)V.wz.length=0;const room=s=>!blocked(V,P,Math.min(s,P.len),GAP_B),s0=V.s;
       if(V.shown){zoneDrop(V);if(to>V.s)to=busClear(V,P,to);to=zoneGate(V,to,room);}
       V.s=Math.max(V.s,to);V.stuck=V.s>s0+1e-4?0:(V.stuck||0)+dt;
       if(!V.shown&&!blocked(V,P,V.s,0)&&enterZones(V,room)){V.shown=true;placeBus(V,P);gridAdd(V,VCATCH*dt+0.1);}   // it comes out where there is room for it
@@ -2691,13 +2729,13 @@ const runTrains=(()=>{
     for(const sec in busMesh)busMesh[sec].instanceMatrix.needsUpdate=true;}
   if(DEBUG)window.__traffic={get clock(){return clock;},set(T){clock=T;resetTrams(T);resetBuses(T);},
     tick(dt){runTrams(dt);runBuses(dt);},
-    overlaps(){   // pairs of buses, or a bus and a tram, whose bodies overlap now (there should be none)
+    overlaps(){   // pairs of buses and trams whose bodies overlap now (there should be none)
       const out=[],all=[...buses,...trams].filter(V=>V.no);
-      for(let a=0;a<all.length;a++)for(let b=a+1;b<all.length;b++){const U=all[a],W=all[b];if(U.kind==='tram'&&W.kind==='tram')continue;
+      for(let a=0;a<all.length;a++)for(let b=a+1;b<all.length;b++){const U=all[a],W=all[b];
         let hit=false;for(let i=0;i<U.no*6&&!hit;i+=6)for(let j=0;j<W.no*6&&!hit;j+=6)hit=sat(U.ob,i,W.ob,j);
         if(hit)out.push([U.kind+U.id,W.kind+W.id]);}
       return out;},
-    lines:busLines,trams,buses,zones};
+    lines:busLines,tramLines:lines,trams,buses,zones};
   const onMap=o=>o.x>GB.x0+0.5&&o.x<GB.x1-0.5&&o.z>GB.z0+0.5&&o.z<GB.z1-0.5;
   function place(T){   // each car rides on its two bogies, so it follows curves and leans up the bridge ramps
     let seen=false;

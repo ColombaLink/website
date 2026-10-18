@@ -38,16 +38,19 @@ college on the Rheinsprung, used from 1460 until the Kollegienhaus opened. It al
 Oppenheim Hochhaus and the shop houses from Barfüsserplatz to Marktplatz (with awnings, and market stalls on the
 Marktplatz by day), lays every railway and tram track in the map, runs a DB ICE and an SBB EuroCity towards Germany and a TGV
 Lyria towards France, and runs Basel's twelve tram lines to their real weekday timetable, three times faster than life and from the
-time it is in Basel, every trip stopping at each of its stations; a tram that would run into another waits behind it.
+time it is in Basel, every trip stopping at each of its stations. A tram waits behind one ahead of it on its track, and
+where two tram tracks cross, join, or run closer than two trams can pass (lines 10 and 17 run both ways on one track
+over a crossing), one tram goes through at a time, or several on the same route. A tram starting its trip at a
+terminus in the map stands on the track behind the stop, and one running late still reaches its terminus before it goes.
 The 15 bus lines that come into the map run to the same timetable: BVB's green battery buses (Mercedes eCitaro G
 articulated buses, and HESS lighTram 25 double-articulated ones on line 50 to the airport, after the photos and
 specification sheets BVB publishes), BLT's and AAGL's yellow ones and SWEG's white ones. Every bus stands at each stop
 of its trip (a late one briefly) and moves only where its body and the road just ahead of it are clear of every other
 bus and tram; the trams keep clear of the buses the same way. Where a bus route crosses another or a tram track, joins
 one, or would meet a vehicle coming the other way on a bend or a narrow street, the game makes a zone (found when it
-loads, from the routes); a bus or tram goes in only with all the zones it will be in until its tail is out, and room
-to stop beyond them, so none of them can lock another out of a junction. A full weekday replayed at 3× has no bus
-overlapping a bus or a tram and no stop missed.
+loads, from the routes), and the same for the tram tracks; a bus or tram goes in only with all the zones it will be in
+until its tail is out, and room to stop beyond them, so none of them can lock another out of a junction. A full
+weekday replayed at 3× has no tram or bus overlapping another and no stop missed.
 
 "Tour the city" on the title screen has no level and no clock: the pigeon hovers on the spot with its wings beating and
 moves only when steered (W / S forward and back, A / D turn, Space up, Shift down; on touch screens the stick, with Flap
