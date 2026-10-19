@@ -7,7 +7,8 @@ Usage: python3 -I secret-pigeon/build/build_city.py <raw-dir> <work-dir> <out-js
 
 Buildings are swisstopo's swissBUILDINGS3D 3.0: real roof shapes and heights. OpenStreetMap supplies the landmarks,
 the buildings that get facades in the game, trees, bridges, ferries, place names, the railway and tram tracks and the
-tram and bus routes; Switzerland's timetable (GTFS) the trams' and buses' trips.
+tram and bus routes; Switzerland's timetable (GTFS) the trams' and buses' trips; the Copernicus DEM the hills and
+mountains on the horizon (horizon.py).
 Coordinates: swiss LV95 metres relative to the Mittlere Brücke. Game x = east / S, game z = -north / S,
 heights are multiplied by VS (a mild vertical exaggeration so landmarks read from the air).
 """
@@ -28,6 +29,7 @@ from array import array
 from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import horizon  # noqa: E402
 import sb3d  # noqa: E402
 
 S = 5.0             # metres per game unit on the ground
@@ -2228,6 +2230,14 @@ def main(raw, work, out_js):
     footprints = Footprints([[(r["verts"][i][0], r["verts"][i][1]) for i in l] for r in recs + frecs if r["zbot"] < 3.8
                              for l in r["loops"]] + skip_rings)
     buses, bus_report = bus_network(raw, work, geo, footprints)
+    # the Jura, the Black Forest and the Vosges on the horizon, over the city's ground: the game's y = 0, here the
+    # median ground height of its buildings
+    grounds = sorted(b["ground"] for b in blds if b["ground"] is not None)
+    if os.path.isdir(os.path.join(raw, "dem")):
+        sky, sky_report = horizon.build(raw, geo.e0, geo.n0, AREA, grounds[len(grounds) // 2])
+    else:
+        sky, sky_report = None, "no <raw-dir>/dem: run fetch_data.py <raw-dir> dem for the hills on the horizon"
+        print(sky_report, flush=True)
 
     def b64(arr):
         return base64.b64encode(arr.tobytes()).decode()
@@ -2242,7 +2252,7 @@ def main(raw, work, out_js):
         "trees": b64(trees), "treeInfo": b64(tree_info),
         "towers": towers, "landmarks": landmarks, "iconic": dict(iconic, sbb=sbb_front, uni=uni), "places": places, "bridges": bridges, "ferries": ferries,
         "rail": rail, "tracks": rail_lines(raw, geo), "awnings": awnings, "market": market,
-        "tramTracks": tram_tracks, "trams": trams, "buses": buses, "access": access,
+        "tramTracks": tram_tracks, "trams": trams, "buses": buses, "access": access, "horizon": sky,
     }
     js = "const BASEL=" + json.dumps(data, separators=(",", ":"), ensure_ascii=False) + ";\n"
     with open(out_js, "w") as f:
@@ -2258,7 +2268,7 @@ def main(raw, work, out_js):
                       "uni": uni and {"eaves": len(uni["eaves"]) // 7, "door": uni["door"], "top": uni["top"]},
                       "awnings": len(awnings) // 4, "market": market and len(market["square"]),
                       "trams": [[t["ref"], t["op"], t["colour"], len(t["pats"]), len(t["trips"]) // 3, [[d["name"], len(d["p"]) // 2, len(d["stops"])] for d in t["dirs"]]] for t in trams],
-                      "tram_tracks": len(tram_tracks), "buses": bus_report,
+                      "tram_tracks": len(tram_tracks), "buses": bus_report, "horizon": sky_report,
                       "towers": towers, "landmarks": {k: {kk: (round(v, 2) if isinstance(v, float) else v) for kk, v in d.items()} for k, d in landmarks.items()},
                       "places": places, "ground_px": [GW, GH], "ground_kB": [len(ground_b64) * 3 // 4 // 1000, len(small_b64) * 3 // 4 // 1000],
                       "js_kB": len(js) // 1000}, ensure_ascii=False, indent=1))

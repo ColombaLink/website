@@ -1,7 +1,7 @@
 """Download the raw map data for Secret Pigeon's Basel.
 
 Usage: python3 -I secret-pigeon/build/fetch_data.py <output-dir> [osm] [rail] [tram] [bus] [timetable] [streets] [ortho]
-       [sb3d] [trees] [access]
+       [sb3d] [trees] [access] [dem]
   (no part names: all of them)
 
 Writes into <output-dir>:
@@ -19,6 +19,8 @@ Writes into <output-dir>:
   sb3d/*.citygml.zip   swisstopo swissBUILDINGS3D 3.0 (CityGML, LOD2 roofs), newest release of each map sheet
   trees_bs.json        Basel's public tree register (species and age), Geodaten Kanton Basel-Stadt
   access_bs.json       the stairs and ladders down to the water along the rivers, Geodaten Kanton Basel-Stadt
+  dem/*.tif            the Copernicus DEM GLO-90 (WorldDEM-90, 3 arc-seconds) around Basel out to 75 km, nine
+                       1-degree tiles, for the hills and mountains on the horizon (about 47 MB)
 """
 import json
 import math
@@ -29,7 +31,8 @@ import urllib.parse
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from build_city import lv95  # noqa: E402
+import horizon  # noqa: E402
+from build_city import ORIGIN_LATLON, lv95  # noqa: E402
 
 BBOX = (47.5440, 7.5690, 47.5735, 7.6170)  # south, west, north, east
 UA = "SecretPigeonGame/0.1 (educational game; https://colomba.link, info@colomba.link)"
@@ -217,8 +220,27 @@ def fetch_access(out):
     print(f"wrote {path} ({len(json.loads(body))} stairs and ladders)", flush=True)
 
 
+def fetch_dem(out):
+    """The terrain for the horizon: the Copernicus DEM GLO-90 tiles (Cloud Optimized GeoTIFFs from the AWS open data
+    registry, no sign-in) within horizon.R_OUT of the Mittlere Brücke. Licence: free and open, with the notice in
+    the game's credits (COP-DEM-GLO-90-F, https://dataspace.copernicus.eu/explore-data/data-collections/
+    copernicus-contributing-missions/collections-description/COP-DEM)."""
+    os.makedirs(os.path.join(out, "dem"), exist_ok=True)
+    for name in horizon.tiles(*ORIGIN_LATLON):
+        path = os.path.join(out, "dem", name + ".tif")
+        if not os.path.exists(path):
+            body = get(horizon.GLO90.format(name))
+            if body[:4] not in (b"II*\0", b"MM\0*"):
+                raise SystemExit(f"the DEM tile {name} is not a TIFF: {body[:200]!r}")
+            with open(path + ".part", "wb") as f:
+                f.write(body)
+            os.replace(path + ".part", path)
+        print(f"DEM {name}: {os.path.getsize(path) / 1e6:.1f} MB", flush=True)
+
+
 PARTS = {"osm": fetch_osm, "rail": fetch_rail, "tram": fetch_tram, "bus": fetch_bus, "timetable": fetch_timetable,
-         "streets": fetch_streets, "ortho": fetch_ortho, "sb3d": fetch_buildings, "trees": fetch_trees, "access": fetch_access}
+         "streets": fetch_streets, "ortho": fetch_ortho, "sb3d": fetch_buildings, "trees": fetch_trees, "access": fetch_access,
+         "dem": fetch_dem}
 
 if __name__ == "__main__":
     if len(sys.argv) < 2 or any(a not in PARTS for a in sys.argv[2:]):

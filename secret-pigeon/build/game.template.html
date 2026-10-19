@@ -279,7 +279,7 @@ button{font:inherit;color:inherit}
       <button id="btn-reset" class="link-btn danger">Reset progress</button>
     </div>
     <!--@SITE_BYLINE@-->
-    <p class="credits mono">3D buildings (swissBUILDINGS3D) and aerial imagery (SWISSIMAGE) © <a href="https://www.swisstopo.admin.ch" target="_blank" rel="noopener">swisstopo</a> · Landmarks, bridges, the Rhine's banks, railways, roads, tram and bus lines and places © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL) · Tram and bus timetable: <a href="https://opentransportdata.swiss" target="_blank" rel="noopener">opentransportdata.swiss</a> · Trees (Baumkataster), the stairs and ladders down to the Rhine, and the 1615 plan and wall line: <a href="https://data.bs.ch" target="_blank" rel="noopener">Quelle: Geodaten Kanton Basel-Stadt</a> (CC BY 4.0)</p>
+    <p class="credits mono">3D buildings (swissBUILDINGS3D) and aerial imagery (SWISSIMAGE) © <a href="https://www.swisstopo.admin.ch" target="_blank" rel="noopener">swisstopo</a> · Landmarks, bridges, the Rhine's banks, railways, roads, tram and bus lines and places © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL) · Tram and bus timetable: <a href="https://opentransportdata.swiss" target="_blank" rel="noopener">opentransportdata.swiss</a> · Trees (Baumkataster), the stairs and ladders down to the Rhine, and the 1615 plan and wall line: <a href="https://data.bs.ch" target="_blank" rel="noopener">Quelle: Geodaten Kanton Basel-Stadt</a> (CC BY 4.0) · The hills and mountains on the horizon: produced using <a href="https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM" target="_blank" rel="noopener">Copernicus WorldDEM™-90</a> © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved. The organisations in charge of the Copernicus programme by law or by delegation do not incur any liability for any use of the Copernicus WorldDEM™-90.</p>
     <p id="load-msg" class="load-msg" hidden></p>
   </div>
 </main>
@@ -349,7 +349,7 @@ button{font:inherit;color:inherit}
       <button id="btn-nb-close" class="btn">Close</button>
     </div>
     <p id="nb-summary" class="muted"></p>
-    <p class="credits mono">3D buildings (swissBUILDINGS3D) and aerial imagery (SWISSIMAGE) © <a href="https://www.swisstopo.admin.ch" target="_blank" rel="noopener">swisstopo</a> · Landmarks, bridges, the Rhine's banks, railways, roads, tram and bus lines and places © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL) · Tram and bus timetable: <a href="https://opentransportdata.swiss" target="_blank" rel="noopener">opentransportdata.swiss</a> · Trees (Baumkataster), the stairs and ladders down to the Rhine, and the 1615 plan and wall line: <a href="https://data.bs.ch" target="_blank" rel="noopener">Quelle: Geodaten Kanton Basel-Stadt</a> (CC BY 4.0)</p>
+    <p class="credits mono">3D buildings (swissBUILDINGS3D) and aerial imagery (SWISSIMAGE) © <a href="https://www.swisstopo.admin.ch" target="_blank" rel="noopener">swisstopo</a> · Landmarks, bridges, the Rhine's banks, railways, roads, tram and bus lines and places © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL) · Tram and bus timetable: <a href="https://opentransportdata.swiss" target="_blank" rel="noopener">opentransportdata.swiss</a> · Trees (Baumkataster), the stairs and ladders down to the Rhine, and the 1615 plan and wall line: <a href="https://data.bs.ch" target="_blank" rel="noopener">Quelle: Geodaten Kanton Basel-Stadt</a> (CC BY 4.0) · The hills and mountains on the horizon: produced using <a href="https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM" target="_blank" rel="noopener">Copernicus WorldDEM™-90</a> © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved. The organisations in charge of the Copernicus programme by law or by delegation do not incur any liability for any use of the Copernicus WorldDEM™-90.</p>
     <div id="nb-list"></div>
   </div>
 </section>
@@ -521,8 +521,10 @@ const canvas=$('game');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
 const scene=new THREE.Scene();
+// the city fades into the fog by 1050 units (5 km); the hills on the horizon reach 75 km out (15000 units) and have a
+// haze of their own (see "the Jura, the Black Forest and the Vosges on the horizon")
 scene.fog=new THREE.Fog(0xbcd8ea,260,1050);
-const camera=new THREE.PerspectiveCamera(60,1,0.5,2400);
+const camera=new THREE.PerspectiveCamera(60,1,0.5,16000);
 function resize(){const w=window.innerWidth,h=window.innerHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.fov=w<h?74:60;camera.updateProjectionMatrix();}
 addEventListener('resize',resize);resize();
 
@@ -2317,8 +2319,10 @@ function buildRiver(banks,plan,parent){
     lg.setAttribute('normal',new THREE.Float32BufferAttribute(new Array(ring.length).fill([0,1,0]).flat(),3));
     lg.setAttribute('uv',new THREE.Float32BufferAttribute(lu,2));lg.setIndex(li);parent.add(new THREE.Mesh(lg,photoMat));
   });
-  // where the river is, for groundAt(): the segments near each point, and a grid of the channel for the rest
-  const R={shores,dUp,dDown,cell:5,x0:GB.x0-80,z0:GB.z0-80,hash:new Map()};
+  // where the river is, for groundAt(): the segments near each point, and a grid of the channel for the rest; and
+  // where it leaves the map at either end (both shores), for the hills on the horizon
+  const R={shores,dUp,dDown,cell:5,x0:GB.x0-80,z0:GB.z0-80,hash:new Map(),
+    ends:[[lines.g[0],lines.k[0]],[lines.g[lines.g.length-1],lines.k[lines.k.length-1]]]};
   for(const sh of shores)for(let i=0;i+1<sh.P.length;i++){
     const a=sh.P[i],b=sh.P[i+1];if(!inMap(a)&&!inMap(b))continue;
     for(let r=Math.floor((Math.min(a[1],b[1])-5-R.z0)/R.cell);r<=Math.floor((Math.max(a[1],b[1])+5-R.z0)/R.cell);r++)
@@ -3199,6 +3203,7 @@ function build1615(){
   if(city1615)return;
   city1615=buildCity(BASEL1615);Y1615.add(city1615.mesh);
   RIVERS['1615']=buildRiver(BASEL1615.ground.banks,{g:[['wall1615',null]],k:[['wall1615',null]]},Y1615);
+  openChannel(RIVERS['1615']);   // the hills keep both eras' ways out open
   {const mb=BASEL.bridges.find(b=>/Mittlere/.test(b.name));if(mb){const B=Batch();buildBridge(mb,B,'1615');B.build(Y1615);}}
   plantTrees(BASEL1615.trees,BASEL1615.treeInfo,Y1615,RIVERS['1615']);
   win1615=litWindows(city1615.windows.filter((_,i)=>i%3===0),Y1615,0xffa64d);
@@ -3220,14 +3225,70 @@ function build1615(){
   groundTex1615=groundTexture(BASEL1615.ground.src,BASEL1615.ground.fallback);
 }
 
-/* the Jura and the Black Forest on the horizon */
-const hillMat=new THREE.MeshStandardMaterial({color:0x86a07c,roughness:1,flatShading:true});
-const riverWays=RIVERS.today?[RIVERS.today.dUp,RIVERS.today.dDown].map(d=>Math.atan2(d[1],d[0])):[];
-for(let i=0;i<20;i++){
-  let a=i/20*Math.PI*2+rng()*0.2;const r=760+rng()*160,h=new THREE.Mesh(new THREE.IcosahedronGeometry(1,1),hillMat);
-  for(const w of riverWays){const d=Math.atan2(Math.sin(a-w),Math.cos(a-w));if(Math.abs(d)<0.3)a=w+(d<0?-0.3:0.3);}   // not in the Rhine
-  h.scale.set(170+rng()*120,50+rng()*70,170+rng()*120);h.position.set(WORLD.cx+Math.cos(a)*r,-14,WORLD.cz+Math.sin(a)*r);scene.add(h);
+/* ---------- the Jura, the Black Forest and the Vosges on the horizon ----------
+   The Copernicus DEM (GLO-90) out to 75 km round the Mittlere Brücke on a polar grid (BASEL.horizon, see horizon.py):
+   bearings and distances as they are, heights over the city's ground lowered for the Earth's curvature, so that each
+   ridge stands as high over Basel's horizon as it does, and then stretched like the buildings' (VS: 1.4 times the
+   horizontal scale, an exaggeration). The terrain rises out of the flat map over the first 2 km beyond its edge.
+   The city's fog would swallow it, so it has a haze of its own: each ridge is paler the farther away it is, and up
+   to about 430 m over the city the city's fog lies on the hillsides as it lies on the plain, so the near hills fade
+   into the map's surroundings and the ridges stand over the haze. Where the Rhine runs on out of the map its channel
+   stays open. */
+const HAZE={len:{value:5000},max:{value:0.85},low:{value:120}};   // the haze's reach and strength; how high the fog lies (units)
+const farMat=new THREE.MeshStandardMaterial({vertexColors:true,roughness:1});
+farMat.onBeforeCompile=sh=>{
+  Object.assign(sh.uniforms,{hzLen:HAZE.len,hzMax:HAZE.max,hzLow:HAZE.low});
+  sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vFarW;')
+    .replace('#include <fog_vertex>','#include <fog_vertex>\n\tvFarW=(modelMatrix*vec4(transformed,1.0)).xyz;');
+  sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vFarW;\nuniform float hzLen,hzMax,hzLow;')
+    .replace('#include <fog_fragment>',['#ifdef USE_FOG',
+      '\tfloat hzFoot=(1.0-smoothstep(0.0,hzLow,vFarW.y))*smoothstep(fogNear,fogFar,vFogDepth);',   // like the plain beside it
+      '\tfloat hzFar=(1.0-exp(-distance(vFarW,cameraPosition)/hzLen))*hzMax;',
+      '\tgl_FragColor.rgb=mix(gl_FragColor.rgb,fogColor,max(hzFoot,hzFar));','#endif'].join('\n'));
+};
+const HORIZON=await (async()=>{
+  const H=BASEL.horizon;if(!H)return null;
+  const b=await gunzip(H.gz),n=H.az,nr=H.rings,US=BASEL.S,SINK=4;   // the plain a little under the map's ground beside it
+  const pos=new Float32Array(n*nr*3),col=new Float32Array(n*nr*3),idx=[];
+  const plain=new THREE.Color().setRGB(GB.avg[0]/255,GB.avg[1]/255,GB.avg[2]/255,THREE.SRGBColorSpace);
+  const fields=new THREE.Color(0x586844),woods=new THREE.Color(0x3a5034),tops=new THREE.Color(0x606e46),c=new THREE.Color();
+  let p=0,first=0;
+  const zz=()=>{let v=0,sh=1,k;do{k=b[p++];v+=(k&127)*sh;sh*=128;}while(k&128);return v%2?-(v+1)/2:v/2;};
+  for(let j=0;j<nr;j++){
+    const rm=H.r0*Math.pow(1+H.q,j),r=rm/US,drop=rm*rm*0.87/(2*6371000);let h=first;   // the curvature it was lowered by
+    for(let i=0;i<n;i++){
+      h+=zz();if(i===0)first=h;
+      const a=i/n*Math.PI*2,k=(j*n+i)*3,e=h+H.h0+drop;   // h: metres over the city's ground as drawn; e: over the sea
+      pos[k]=Math.sin(a)*r;pos[k+1]=h*VS-SINK*(1-smooth01(h*VS/20));pos[k+2]=-Math.cos(a)*r;
+      c.copy(fields).lerp(woods,smooth01((e-330)/250)).lerp(tops,smooth01((e-1050)/250));   // fields, wooded hills, high pastures
+      c.lerp(plain,1-smooth01(h/40));col[k]=c.r;col[k+1]=c.g;col[k+2]=c.b;}
+  }
+  const inMap=k=>pos[k]>GB.x0&&pos[k]<GB.x1&&pos[k+2]>GB.z0&&pos[k+2]<GB.z1;
+  for(let j=0;j+1<nr;j++)for(let i=0;i<n;i++){
+    const a=j*n+i,bb=(j+1)*n+i,cc=j*n+(i+1)%n,d=(j+1)*n+(i+1)%n;
+    if(inMap(a*3)&&inMap(bb*3)&&inMap(cc*3)&&inMap(d*3))continue;   // under the city
+    idx.push(a,cc,bb,cc,d,bb);}
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('color',new THREE.BufferAttribute(col,3));
+  g.setIndex(idx);g.computeVertexNormals();
+  const m=new THREE.Mesh(g,farMat);scene.add(m);return m;
+})();
+// the Rhine's way out of the map at each end: under the water between its shores, rising beside them, for as far as
+// the water shows through the city's fog (6 km). Only low ground gives way: a hill in the straight channel's path
+// (the Grenzacher Horn, upstream) stays whole, and the river ends at its foot, in the fog, where the real one bends
+function openChannel(R){
+  if(!HORIZON||!R)return;
+  const P=HORIZON.geometry.attributes.position,a=P.array,M=40,floor=RIVER_Y-0.6;
+  for(const [[p,q],d] of [[R.ends[0],R.dUp],[R.ends[1],R.dDown]]){
+    const nx=-d[1],nz=d[0],w=(q[0]-p[0])*nx+(q[1]-p[1])*nz,l0=Math.min(0,w),l1=Math.max(0,w);
+    for(let k=0;k<a.length;k+=3){
+      const x=a[k]-p[0],z=a[k+2]-p[1],t=x*d[0]+z*d[1];if(t<-40||t>1200)continue;
+      const o=Math.max(l0-(x*nx+z*nz),x*nx+z*nz-l1,0),up=a[k+1]-floor;if(o>=M||up<=0)continue;
+      a[k+1]-=up*(1-smooth01(o/M))*(1-smooth01((t-900)/300))*(1-smooth01((up-12)/8));}
+  }
+  P.needsUpdate=true;HORIZON.geometry.computeVertexNormals();
 }
+openChannel(RIVERS.today);
 
 /* ---------- the era switch ---------- */
 const ERA_NAMES={
@@ -3398,8 +3459,8 @@ function collide(pos,px,pz){
 
 /* day and night follow the page theme */
 const PAL={
-  day:{sky:0xbcd8ea,hs:0xe4f2ff,hg:0x8b8070,hi:1.7,sun:0xfff1da,si:2.3,city:0xffffff,photo:0xffffff,cloud:0xffffff,tree:0xffffff,hill:0x86a07c,deck:0xf4f7fb},
-  night:{sky:0x121a2c,hs:0x6f86b8,hg:0x151a24,hi:1.0,sun:0xa8bbff,si:1.0,city:0x8a94ad,photo:0x55607c,cloud:0x3a4660,tree:0x9197ba,hill:0x1e2a2c,deck:0xb8c3d4},
+  day:{sky:0xbcd8ea,hs:0xe4f2ff,hg:0x8b8070,hi:1.7,sun:0xfff1da,si:2.3,city:0xffffff,photo:0xffffff,cloud:0xffffff,tree:0xffffff,hill:0xffffff,haze:0.85,deck:0xf4f7fb},
+  night:{sky:0x121a2c,hs:0x6f86b8,hg:0x151a24,hi:1.0,sun:0xa8bbff,si:1.0,city:0x8a94ad,photo:0x55607c,cloud:0x3a4660,tree:0x9197ba,hill:0x55607c,haze:0.4,deck:0xb8c3d4},
 };
 function isNight(){if(save.sky==='night')return true;if(save.sky==='day')return false;const t=document.documentElement.getAttribute('data-theme');if(t==='dark')return true;if(t==='light')return false;return matchMedia('(prefers-color-scheme: dark)').matches;}
 let NIGHT=false;
@@ -3410,7 +3471,7 @@ function applyTheme(){
   waterMat.color.set(NIGHT?0x10202a:0x3e6b62);waterMat.envMap=NIGHT?SKY_NIGHT:SKY_DAY;waterMat.needsUpdate=true;
   for(const c of [cityToday,city1615])if(c)c.mat.color.set(p.city);
   hemi.color.set(p.hs);hemi.groundColor.set(p.hg);hemi.intensity=p.hi;sun.color.set(p.sun);sun.intensity=p.si;
-  cloudMat.color.set(p.cloud);cloudDeckMat.color.set(p.deck);hillMat.color.set(p.hill);
+  cloudMat.color.set(p.cloud);cloudDeckMat.color.set(p.deck);farMat.color.set(p.hill);HAZE.max.value=p.haze;
   for(const w of [winToday,win1615])if(w)w.visible=NIGHT;
   for(const m of nightGlow)m.emissiveIntensity=NIGHT?0.9:0;
   for(const g of dayOnly)g.visible=!NIGHT;
@@ -4417,7 +4478,7 @@ $('btn-reset').addEventListener('click',()=>{
 
 /* ---------- boot ---------- */
 if(DEBUG)window.__sp={G,P,LEVELS,startLevel,beginPlay,completeLevel,startQuiz,sendL4,getSave:()=>save,V3,renderer,scene,camera,topAt,collide,setEra,chooseEra,splatHit,
-  get city(){return city},get era(){return era},get G1(){return G1},get SENSORS4(){return SENSORS4},get splatTargets(){return splatToday},feathers,ferries,trains,bird,keys,tourGo,tourSpots,RIVERS,groundAt,floorAt,riverBoats,
+  get city(){return city},get era(){return era},get G1(){return G1},get SENSORS4(){return SENSORS4},get splatTargets(){return splatToday},feathers,ferries,trains,bird,keys,tourGo,tourSpots,RIVERS,groundAt,floorAt,riverBoats,horizon:HORIZON,HAZE,
   step:(dt=1/60)=>{G.clock+=dt;if(G.mode==="play"){updateTweens(dt);updatePlay(dt);}else if(G.mode==="tour"){updateTweens(dt);tourFly(dt);}animateWorld(dt);updateFeathers(dt);updateBird(dt);updateCamera(dt);renderer.render(scene,camera);}};
 setMuted(save.muted);
 setEra(save.era==='1615'?'1615':'today');applyTheme();
