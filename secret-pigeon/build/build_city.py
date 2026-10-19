@@ -5,7 +5,8 @@ Usage: python3 -I secret-pigeon/build/build_city.py <raw-dir> <work-dir> <out-js
   work-dir  scratch folder for converted images and a cache of the parsed 3D buildings
   out-js    JS file that defines `const BASEL = {...}`; assemble.py injects it into the game
 
-Buildings are swisstopo's swissBUILDINGS3D 3.0: real roof shapes and heights. OpenStreetMap supplies the landmarks,
+Buildings are swisstopo's swissBUILDINGS3D 3.0: real roof shapes and heights, with the places listed in
+mapbs-updates.json taken from Basel-Stadt's newer 3D city model (mapbs.py). OpenStreetMap supplies the landmarks,
 the buildings that get facades in the game, trees, bridges, ferries, place names, the railway and tram tracks and the
 tram and bus routes; Switzerland's timetable (GTFS) the trams' and buses' trips; the Copernicus DEM the hills and
 mountains on the horizon (horizon.py).
@@ -30,6 +31,7 @@ from collections import Counter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import horizon  # noqa: E402
+import mapbs  # noqa: E402
 import sb3d  # noqa: E402
 
 S = 5.0             # metres per game unit on the ground
@@ -1367,19 +1369,40 @@ def load_3d(raw, work, geo, keep_local):
     zips = sorted(os.path.join(folder, f) for f in os.listdir(folder) if f.endswith(".citygml.zip"))
     if not zips:
         raise SystemExit("no swissBUILDINGS3D tiles in <raw-dir>/sb3d: run fetch_data.py first")
-    key = [[os.path.basename(z), os.path.getsize(z)] for z in zips] + [[round(geo.e0, 2), round(geo.n0, 2)], list(AREA)]
+    key = [[os.path.basename(z), os.path.getsize(z)] for z in zips] + [[round(geo.e0, 2), round(geo.n0, 2)], list(AREA),
+                                                                       "ids"]
     cache = os.path.join(work, "sb3d-cache.json")
     if os.path.exists(cache):
         c = json.load(open(cache))
         if c.get("key") == key:
             return c["buildings"]
-    out = []
-    for b in sb3d.read_buildings(zips, lambda e, n: keep_local(e - geo.e0, n - geo.n0)):
-        out.append({"kind": b["kind"], "ground": b["ground"], "wall_min": b["wall_min"],
-                    "roof": [[[round(p[0] - geo.e0, 2), round(p[1] - geo.n0, 2), round(p[2], 2)] for p in f]
-                             for f in b["roof"]]})
+    out = [local_building(b, geo) for b in sb3d.read_buildings(zips, lambda e, n: keep_local(e - geo.e0, n - geo.n0))]
     with open(cache, "w") as f:
         json.dump({"key": key, "buildings": out}, f, separators=(",", ":"))
+    return out
+
+
+def local_building(b, geo):
+    return {"id": b["id"], "kind": b["kind"], "ground": b["ground"], "wall_min": b["wall_min"],
+            "roof": [[[round(p[0] - geo.e0, 2), round(p[1] - geo.n0, 2), round(p[2], 2)] for p in f] for f in b["roof"]]}
+
+
+def update_from_mapbs(raw, work, geo, blds, keep_local, stats):
+    """Where Basel-Stadt's own 3D city model is newer than swissBUILDINGS3D (the sites in mapbs-updates.json, each
+    checked against the aerial photo), drop swisstopo's buildings there and put the canton's in their place."""
+    sites = mapbs.read_updates(os.path.join(raw, "mapbs"), work, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                                                             "mapbs-updates.json"))
+    drop = set().union(*(s["remove"] for s in sites)) if sites else set()
+    out = [b for b in blds if b.get("id") not in drop]
+    stats["mapbs_removed"] = len(blds) - len(out)
+    for s in sites:
+        for b in s["add"]:
+            lb = local_building(b, geo)
+            pts = [p for f in lb["roof"] for p in f]
+            if pts and keep_local(sum(p[0] for p in pts) / len(pts), sum(p[1] for p in pts) / len(pts)):
+                out.append(lb)
+                stats["mapbs_added"] += 1
+    stats["mapbs_sites"] = len(sites)
     return out
 
 
@@ -1578,6 +1601,8 @@ def main(raw, work, out_js):
 
     # ---------- buildings: swissBUILDINGS3D roofs ----------
     blds = load_3d(raw, work, geo, lambda x, y: in_area(x, y, m=-15))
+    stats = Counter()
+    blds = update_from_mapbs(raw, work, geo, blds, lambda x, y: in_area(x, y, m=-15), stats)
     # covered footbridges (OSM building=bridge): swisstopo models them down to the ground, often as one building with
     # the houses they join, so the street under them would be walled off. Their roofs become buildings of their own,
     # open underneath
@@ -1677,7 +1702,6 @@ def main(raw, work, out_js):
                             return True
         return False
 
-    stats = Counter()
     recs = []
     for b in blds:
         roof = b["roof"]

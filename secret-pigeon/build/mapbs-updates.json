@@ -1,0 +1,327 @@
+{
+ "about": "Places where Basel-Stadt's own 3D city model (MapBS 3D-Stadtmodell, Wavefront OBJ in LV95, ordered free from shop.geo.bs.ch on 18 October 2026) is newer than swissBUILDINGS3D, each checked against the SWISSIMAGE aerial photo the game lays on the ground and against the shadows in it. build_city.py drops the listed swissBUILDINGS3D buildings (gml ids) and puts the listed MapBS buildings (object names) in their place. A site is swapped whole or not at all. Everywhere else the two models agree to within a metre or so and the game keeps swissBUILDINGS3D.",
+ "source": "Quelle: Geodaten Kanton Basel-Stadt (CC BY 4.0)",
+ "sites": [
+  {
+   "at_lv95": [
+    2610643,
+    1268132
+   ],
+   "why": "old building demolished: the photo shows a construction pit with a crane where the game still has it",
+   "remove": [
+    "ID_7F1E9540-F796-429F-8223-35C5A0B8914F"
+   ],
+   "add": [
+    "7476"
+   ]
+  },
+  {
+   "at_lv95": [
+    2612094,
+    1268596
+   ],
+   "why": "long block with its wing in the photo, missing from the game",
+   "remove": [],
+   "add": [
+    "16591",
+    "16596",
+    "16597",
+    "16600",
+    "16601",
+    "18480",
+    "18484",
+    "19678",
+    "28467",
+    "28468",
+    "28469",
+    "58891"
+   ]
+  },
+  {
+   "at_lv95": [
+    2612002,
+    1268740
+   ],
+   "why": "rebuilt block at the Messe: MapBS's courtyard and wings match the photo and its shadows",
+   "remove": [
+    "ID_1B37C170-0AA6-426D-B2A4-674D0C391E55",
+    "ID_219A7A9B-C827-41FC-BC72-4E09E2E6BFCC",
+    "ID_4BEA75E0-B5ED-46CE-B896-CA61F4554CD5",
+    "ID_4DE5418C-90C9-449E-B78F-93F0F162CFCE",
+    "ID_DA41710A-1D49-4946-A086-81630C200308"
+   ],
+   "add": [
+    "16590",
+    "57619",
+    "58521",
+    "58522",
+    "58523",
+    "58524",
+    "58528"
+   ]
+  },
+  {
+   "at_lv95": [
+    2612456,
+    1268569
+   ],
+   "why": "the game has a building in what the photo shows is an open yard beside the white hall, which MapBS also has",
+   "remove": [
+    "ID_0E3996D6-690A-4B46-AF87-37625E5F8219",
+    "ID_8B9EC634-713A-413C-8101-6728C946AF31"
+   ],
+   "add": [
+    "18546"
+   ]
+  },
+  {
+   "at_lv95": [
+    2610063,
+    1269096
+   ],
+   "why": "demolished: the photo shows a cleared site where the game still has a building",
+   "remove": [
+    "ID_432C1DA9-ED47-475A-B857-8152C6546DB0"
+   ],
+   "add": []
+  },
+  {
+   "at_lv95": [
+    2612723,
+    1267660
+   ],
+   "why": "demolished: the photo shows a cleared site with rubble where the game still has a building",
+   "remove": [
+    "ID_1FF8D30D-39F2-4996-B8F4-03C843F8A425",
+    "ID_AB24DAA9-3373-4035-8329-80B4F5D30877"
+   ],
+   "add": [
+    "58129"
+   ]
+  },
+  {
+   "at_lv95": [
+    2613218,
+    1267698
+   ],
+   "why": "same outline, but MapBS's taller building casts the wide shadow the photo shows",
+   "remove": [
+    "ID_FB279EC0-84C2-47C6-A0E4-1B17F6188543"
+   ],
+   "add": [
+    "58814",
+    "58815",
+    "58933"
+   ]
+  },
+  {
+   "at_lv95": [
+    2610034,
+    1269004
+   ],
+   "why": "row along the tracks: MapBS's taller building casts the wide shadow band the photo shows",
+   "remove": [
+    "ID_18BFDB33-11C0-41B3-B8DF-33434BB4C478",
+    "ID_260D8B71-645C-4392-86C7-E8345425B74B",
+    "ID_A1537546-9FCF-4958-AC55-4D4376F5814C",
+    "ID_EDD5EC7A-4F44-41BA-A4FB-0DE19023FF07",
+    "ID_F0DE7665-47D5-4DFB-AFDE-6CE9BA3EA587"
+   ],
+   "add": [
+    "27889",
+    "58819",
+    "58820",
+    "58821",
+    "58822"
+   ]
+  },
+  {
+   "at_lv95": [
+    2612662,
+    1267696
+   ],
+   "why": "block next to the Roche construction site: MapBS's heights fit the photo's shadows (0.74 over 849 cells)",
+   "remove": [
+    "ID_1A11BB2D-0506-41C9-8939-A53EEF593152",
+    "ID_431B4585-2AA0-4B6B-86F0-32B8AF0C743E"
+   ],
+   "add": [
+    "201805281803",
+    "52364",
+    "52395"
+   ]
+  },
+  {
+   "at_lv95": [
+    2612981,
+    1267880
+   ],
+   "why": "demolished: the game has a building on what the photo shows is open paving",
+   "remove": [
+    "ID_41B41A1E-7728-4ECA-9E57-22ED6B945EB1"
+   ],
+   "add": []
+  },
+  {
+   "at_lv95": [
+    2613216,
+    1268483
+   ],
+   "why": "the game has a building where the photo shows a courtyard with trees and a path",
+   "remove": [
+    "ID_21203C65-E69A-4B99-A7D6-E372AA1F0ACA"
+   ],
+   "add": [
+    "17985"
+   ]
+  },
+  {
+   "at_lv95": [
+    2610179,
+    1269093
+   ],
+   "why": "new corner wing of a St. Johann block, in the photo, missing from the game",
+   "remove": [
+    "ID_056336A8-326C-4FD7-AB79-6EA5442A443D",
+    "ID_ACC8EE07-6CC0-419E-8FA7-2E324EA9F015"
+   ],
+   "add": [
+    "58726",
+    "58740",
+    "58986"
+   ]
+  },
+  {
+   "at_lv95": [
+    2613141,
+    1267166
+   ],
+   "why": "the old houses are gone: the photo shows a construction site where the game still has them",
+   "remove": [
+    "ID_8B32E9C2-D1CB-4128-B76B-6CDD25FAC8D9",
+    "ID_9DEA4F5F-78E8-4D40-AAD7-A00E30796DC5"
+   ],
+   "add": []
+  },
+  {
+   "at_lv95": [
+    2610874,
+    1267079
+   ],
+   "why": "large house with a grey roof and dormers, in the photo, missing from the game",
+   "remove": [
+    "ID_DEDCEA78-B02C-40AE-B925-30E0F8BCAE97"
+   ],
+   "add": [
+    "8332",
+    "8335"
+   ]
+  },
+  {
+   "at_lv95": [
+    2610208,
+    1269052
+   ],
+   "why": "new St. Johann block: MapBS's heights fit the photo's shadows in the courtyard better",
+   "remove": [
+    "ID_478A4167-7C8E-4FC0-A0A2-3B3C45D2C1EE",
+    "ID_A69A5504-815E-4552-86E3-CA5F9EE24B48"
+   ],
+   "add": [
+    "58719",
+    "58856"
+   ]
+  },
+  {
+   "at_lv95": [
+    2610258,
+    1269115
+   ],
+   "why": "building with a glass roof, in the photo with its shadow, missing from the game",
+   "remove": [],
+   "add": [
+    "58853"
+   ]
+  },
+  {
+   "at_lv95": [
+    2611363,
+    1268584
+   ],
+   "why": "the game has one big flat block where the photo shows a white building standing apart, as MapBS has it",
+   "remove": [
+    "ID_0B7F634F-CE29-4FAF-B0E3-F22027CEADE4",
+    "ID_7A3FB4E3-3C26-4C59-8710-B7115426A3CD"
+   ],
+   "add": [
+    "18727",
+    "58917"
+   ]
+  },
+  {
+   "at_lv95": [
+    2610480,
+    1266929
+   ],
+   "why": "L-shaped house: the photo shows one continuous roof; the game has a gap in its middle",
+   "remove": [],
+   "add": [
+    "13496"
+   ]
+  },
+  {
+   "at_lv95": [
+    2611505,
+    1266122
+   ],
+   "why": "the game has a building over paving by the tracks; MapBS keeps only the white building the photo shows",
+   "remove": [
+    "ID_5BEA996C-130C-49BB-916A-CCE23A2A28E4"
+   ],
+   "add": []
+  },
+  {
+   "at_lv95": [
+    2610227,
+    1269087
+   ],
+   "why": "St. Johann block: MapBS's taller ring casts the courtyard shadow the photo shows",
+   "remove": [
+    "ID_0CE9A01B-7731-4013-AE2C-94B4F2758EB8",
+    "ID_34E69F84-2438-483B-9433-8FBBAF3E0469",
+    "ID_71E72186-E6DD-4E7A-AFF3-F8B2E849F15A",
+    "ID_91408307-991F-481F-9626-BD71F3074A5B"
+   ],
+   "add": [
+    "58720",
+    "58737",
+    "58843",
+    "58849"
+   ]
+  },
+  {
+   "at_lv95": [
+    2610280,
+    1267134
+   ],
+   "why": "the game has this house only a metre or two high (under construction); the photo shows it finished, with solar panels, as MapBS has it",
+   "remove": [
+    "ID_3D7BD6EF-A457-489C-954B-01A0718EDD7E"
+   ],
+   "add": [
+    "58688"
+   ]
+  },
+  {
+   "at_lv95": [
+    2610398,
+    1267632
+   ],
+   "why": "the photo shows one continuous row of roofs; the game breaks it in two",
+   "remove": [],
+   "add": [
+    "11035"
+   ]
+  }
+ ]
+}
