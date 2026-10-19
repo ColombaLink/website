@@ -1,7 +1,7 @@
 """Download the raw map data for Secret Pigeon's Basel.
 
 Usage: python3 -I secret-pigeon/build/fetch_data.py <output-dir> [osm] [rail] [tram] [bus] [timetable] [streets] [ortho]
-       [sb3d] [trees]
+       [sb3d] [trees] [access]
   (no part names: all of them)
 
 Writes into <output-dir>:
@@ -18,6 +18,7 @@ Writes into <output-dir>:
   ortho/E-N.jpg        swisstopo SWISSIMAGE at 1 m per pixel, one file per LV95 kilometre (WMS)
   sb3d/*.citygml.zip   swisstopo swissBUILDINGS3D 3.0 (CityGML, LOD2 roofs), newest release of each map sheet
   trees_bs.json        Basel's public tree register (species and age), Geodaten Kanton Basel-Stadt
+  access_bs.json       the stairs and ladders down to the water along the rivers, Geodaten Kanton Basel-Stadt
 """
 import json
 import math
@@ -202,8 +203,22 @@ def fetch_trees(out):
     print(f"wrote {path} ({len(json.loads(body))} trees)", flush=True)
 
 
+def fetch_access(out):
+    """The stairs and ladders down to the water along Basel's rivers (data.bs.ch dataset 100285): position and kind."""
+    s, w, n, e = BBOX
+    q = urllib.parse.urlencode({"select": "geo_point_2d,typ_bez,ausstieg_moeglich",
+                                "where": f"in_bbox(geo_point_2d,{s},{w},{n},{e})"})
+    body = get(f"https://data.bs.ch/api/explore/v2.1/catalog/datasets/100285/exports/json?{q}")
+    if not body.startswith(b"["):
+        raise SystemExit(f"the waterside access points did not come as a JSON list: {body[:200]!r}")
+    path = os.path.join(out, "access_bs.json")
+    with open(path, "wb") as f:
+        f.write(body)
+    print(f"wrote {path} ({len(json.loads(body))} stairs and ladders)", flush=True)
+
+
 PARTS = {"osm": fetch_osm, "rail": fetch_rail, "tram": fetch_tram, "bus": fetch_bus, "timetable": fetch_timetable,
-         "streets": fetch_streets, "ortho": fetch_ortho, "sb3d": fetch_buildings, "trees": fetch_trees}
+         "streets": fetch_streets, "ortho": fetch_ortho, "sb3d": fetch_buildings, "trees": fetch_trees, "access": fetch_access}
 
 if __name__ == "__main__":
     if len(sys.argv) < 2 or any(a not in PARTS for a in sys.argv[2:]):

@@ -380,26 +380,159 @@ def close_mask(mask, w, h, r):
     return bytearray(b"".join(v.to_bytes(w, "big") for v in rows))
 
 
-def mask_png(mask, w, h, work, name, feather=48):
-    """The river mask as a grey PNG data URL (255 = water), faded out towards the edge of the map like the ground."""
-    img = bytearray(w * h * 3)
-    for y in range(h):
-        row = mask[y * w:(y + 1) * w].translate(bytes([0, 255] + [0] * 254))
-        img[y * w * 3:(y + 1) * w * 3:3] = row
-        img[y * w * 3 + 1:(y + 1) * w * 3:3] = row
-        img[y * w * 3 + 2:(y + 1) * w * 3:3] = row
-    for y in range(h):
-        for x in (list(range(min(feather, w))) + list(range(max(feather, w - feather), w))) if feather <= y < h - feather else range(w):
-            d = min(x, y, w - 1 - x, h - 1 - y)
-            if d < feather:
-                t = d / feather
-                o = (y * w + x) * 3
-                v = int(img[o] * t * t * (3 - 2 * t))
-                img[o] = img[o + 1] = img[o + 2] = v
-    bmp, png = os.path.join(work, name + ".bmp"), os.path.join(work, name + ".png")
-    write_bmp(bmp, w, h, img)
-    subprocess.run(["sips", "-s", "format", "png", bmp, "--out", png], check=True, capture_output=True)
-    return "data:image/png;base64," + base64.b64encode(open(png, "rb").read()).decode()
+GROSSBASEL = (47.5550, 7.5880)   # the Barfüsserplatz: which of the Rhine's shores is Grossbasel's
+
+
+def river_shores(els, geo):
+    """The Rhine's two shores in OpenStreetMap (its outline, natural=water and water=river, as far as the data goes):
+    {"g": Grossbasel's, "k": Kleinbasel's}, each a flat list x, z, x, z, ... in game units from upstream (the east) to
+    downstream. The game sinks the river between them and builds the banks along them; {} without them."""
+    runs = []
+    for el in els:
+        t = el.get("tags", {})
+        if t.get("natural") != "water" or t.get("water") != "river":
+            continue
+        ways = [el.get("geometry") or []] if el["type"] == "way" else \
+            [m.get("geometry") or [] for m in el.get("members", []) if m.get("role") == "outer"]
+        for g in ways:
+            cur = []
+            for p in g + [None]:         # the outline leaves the area of the data: the shore stops there
+                if p:
+                    cur.append(geo.local(p["lat"], p["lon"]))
+                elif len(cur) > 1:
+                    runs.append(cur)
+                    cur = []
+                else:
+                    cur = []
+    joined = True
+    while joined:                        # a multipolygon's outline comes in several ways, either way round
+        joined = False
+        for i, a in enumerate(runs):
+            for j, b in enumerate(runs):
+                if i == j:
+                    continue
+                if math.dist(a[-1], b[0]) < 0.5:
+                    runs[i] = a + b[1:]
+                elif math.dist(a[-1], b[-1]) < 0.5:
+                    runs[i] = a + b[::-1][1:]
+                elif math.dist(a[0], b[-1]) < 0.5:
+                    runs[i] = b[:-1] + a
+                elif math.dist(a[0], b[0]) < 0.5:
+                    runs[i] = b[::-1][:-1] + a
+                else:
+                    continue
+                del runs[j]
+                joined = True
+                break
+            if joined:
+                break
+    runs = sorted(runs, key=lambda r: -sum(math.dist(p, q) for p, q in zip(r, r[1:])))[:2]
+    if len(runs) < 2 or min(sum(math.dist(p, q) for p, q in zip(r, r[1:])) for r in runs) < 1000:
+        return {}
+    return shores_out(runs, geo.local(*GROSSBASEL))
+
+
+def shores_out(runs, ref):
+    """Two shores (local metres) as the game wants them: game units, from the east, Grossbasel's first."""
+    out = []
+    for pts in runs:
+        line = [(round(x / S, 2), round(-y / S, 2)) for x, y in pts]
+        if line[0][0] < line[-1][0]:
+            line.reverse()
+        out.append(line)
+    out.sort(key=lambda line: min((x - ref[0] / S) ** 2 + (z + ref[1] / S) ** 2 for x, z in line))
+    return {"g": [c for p in out[0] for c in p], "k": [c for p in out[1] for c in p]}
+
+
+def river_banks(mask, w, h, west, north, ref, cell=2.0):
+    """The two shores of the river in a mask (`cell`-metre cells from `west`, `north`; 1 = water), for a river that
+    OpenStreetMap doesn't have (Basel in 1615): its edge, smoothed over the landing stages, as river_shores() gives
+    them. `ref` (local metres) lies in Grossbasel. {} if the river doesn't cross the map."""
+    flip = bytes([1, 0] + [0] * 254)
+    m = close_mask(mask, w, h, 6)                                  # landing stages, boats: water
+    m = close_mask(m.translate(flip), w, h, 2).translate(flip)     # slivers of water-coloured land: land
+    water = lambda i, j: 0 <= i < w and 0 <= j < h and m[j * w + i] == 1
+    # every edge between water and land (or the map's edge) as corner -> next corner, the water on its right on screen
+    nxt = {}
+    for j in range(h):
+        i = m.find(1, j * w, (j + 1) * w)
+        while i >= 0:
+            i -= j * w
+            for ok, a, b in ((water(i, j - 1), (i, j), (i + 1, j)), (water(i + 1, j), (i + 1, j), (i + 1, j + 1)),
+                             (water(i, j + 1), (i + 1, j + 1), (i, j + 1)), (water(i - 1, j), (i, j + 1), (i, j))):
+                if not ok:
+                    nxt.setdefault(a, []).append(b)
+            i = m.find(1, j * w + i + 1, (j + 1) * w)
+    loops = []
+    while nxt:
+        a = next(iter(nxt))
+        loop, d = [a], None
+        while a in nxt:
+            ends = nxt[a]       # where two water cells meet at a corner, keep to the same one: turn right
+            b = max(ends, key=lambda e: d[0] * (e[1] - a[1]) - d[1] * (e[0] - a[0])) if d and len(ends) > 1 else ends[0]
+            ends.remove(b)
+            if not ends:
+                del nxt[a]
+            d, a = (b[0] - a[0], b[1] - a[1]), b
+            if a == loop[0]:
+                break
+            loop.append(a)
+        loops.append(loop)
+    if not loops:
+        return {}
+    loop = max(loops, key=len)
+    edge = [min(i, j, w - i, h - j) <= 12 for i, j in loop]   # the closing pulls the river back from the edge a little
+    if all(edge) or not any(edge):
+        return {}
+    k0 = edge.index(True)               # start on the map's edge, so each shore is one unbroken run
+    loop, edge = loop[k0:] + loop[:k0], edge[k0:] + edge[:k0]
+    runs, cur = [], []
+    for p, e in zip(loop, edge):
+        if e:
+            if len(cur) > 20:
+                runs.append(cur)
+            cur = []
+        else:
+            cur.append((west + p[0] * cell, north - p[1] * cell))
+    if len(cur) > 20:
+        runs.append(cur)
+    if len(runs) != 2:
+        return {}
+    for k, pts in enumerate(runs):
+        for _ in range(6):              # the cells' staircase smoothed into a shore line
+            pts = pts[:2] + [tuple(sum(q[c] for q in pts[i - 2:i + 3]) / 5 for c in (0, 1)) for i in range(2, len(pts) - 2)] + pts[-2:]
+        runs[k] = rdp_long(pts, 0.5)
+    return shores_out(runs, ref)
+
+
+def waterside_access(raw, geo, banks):
+    """The canton's stairs and ladders down to the Rhine (data.bs.ch dataset 100285, Geodaten Kanton Basel-Stadt) within
+    40 m of a shore in the map: [x, z, kind, ...] in game units, kind 0 a stair, 1 a stair that is also a way out for
+    swimmers, 2 a ladder; [] without the data."""
+    src = os.path.join(raw, "access_bs.json")
+    if not os.path.exists(src) or not banks:
+        return []
+    shores = [list(zip(b[0::2], b[1::2])) for b in banks.values()]
+
+    def dist(x, z):
+        best = 1e9
+        for line in shores:
+            for (ax, az), (bx, bz) in zip(line, line[1:]):
+                dx, dz = bx - ax, bz - az
+                t = max(0.0, min(1.0, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz or 1e-9)))
+                best = min(best, math.hypot(ax + t * dx - x, az + t * dz - z))
+        return best
+    out = []
+    for r in json.load(open(src)):
+        p = r.get("geo_point_2d") or {}
+        if p.get("lat") is None:
+            continue
+        x, y = geo.local(p["lat"], p["lon"])
+        if dist(x / S, -y / S) * S > 40:
+            continue
+        kind = 2 if r.get("typ_bez") == "Ausstiegsleiter" else 1 if str(r.get("ausstieg_moeglich")).lower() == "true" else 0
+        out += [round(x / S, 2), round(-y / S, 2), kind]
+    return out
 
 
 def rail_tracks(raw, geo):
@@ -2065,13 +2198,20 @@ def main(raw, work, out_js):
                         if 0 <= i < RW and 0 <= j < RH:
                             extra.append(j * RW + i)
     river = river_mask(cand, RW, RH, seeds, extra) if ref else bytearray(RW * RH)
-    water_png = mask_png(river, RW, RH, work, "water-today")
+    shores = river_shores(xjs, geo)
+    access = waterside_access(raw, geo, shores)
     for br in bridges:
         del br["_ring"], br["id"], br["_obb"]
     for k, (lat, lon) in {"sbb": (47.54762, 7.58964), "tinguely": (47.55917, 7.61234), "moh": (47.54611, 7.58697),
                           "uni": (47.5582338, 7.5834589), "alte_uni": (47.5588605, 7.5893384)}.items():
         # station building, museum, the Meret Oppenheim Hochhaus, the Kollegienhaus and the Alte Universität on the
         # Rheinsprung, the university's home from 1460 until 1939 (OSM way 137472411)
+        x, y = geo.local(lat, lon)
+        places[k] = [round(x / S, 2), round(-y / S, 2)]
+    for k, (lat, lon) in {"steiger": (47.56725, 7.58377), "bad_stjohann": (47.56509, 7.58403),
+                          "bad_breite": (47.55639, 7.61095)}.items():
+        # on the Rhine, read off the aerial photo: where the hotel ships moor at St. Johann (the passenger-boat
+        # terminal's Steiger 1 and 2), and the Rhine baths at St. Johann and at the Breite
         x, y = geo.local(lat, lon)
         places[k] = [round(x / S, 2), round(-y / S, 2)]
     if "schuetzenmatt" not in places:
@@ -2094,14 +2234,15 @@ def main(raw, work, out_js):
 
     data = {
         "S": S, "VS": VS,
-        "ground": {"x0": W / S, "x1": E / S, "z0": -N / S, "z1": -Sth / S, "avg": [round(c) for c in avg], "water": water_png,
-                   "src": "data:image/avif;base64," + ground_b64, "fallback": "data:image/jpeg;base64," + small_b64},
+        "ground": {"x0": W / S, "x1": E / S, "z0": -N / S, "z1": -Sth / S, "avg": [round(c) for c in avg],
+                   "src": "data:image/avif;base64," + ground_b64, "fallback": "data:image/jpeg;base64," + small_b64,
+                   "banks": shores},
         "lod2": {"count": len(recs), "gz": base64.b64encode(packed).decode()},
         "facades": {"count": len(frecs), "gz": base64.b64encode(fpacked).decode(), "styles": FACADE_STYLES},
         "trees": b64(trees), "treeInfo": b64(tree_info),
         "towers": towers, "landmarks": landmarks, "iconic": dict(iconic, sbb=sbb_front, uni=uni), "places": places, "bridges": bridges, "ferries": ferries,
         "rail": rail, "tracks": rail_lines(raw, geo), "awnings": awnings, "market": market,
-        "tramTracks": tram_tracks, "trams": trams, "buses": buses,
+        "tramTracks": tram_tracks, "trams": trams, "buses": buses, "access": access,
     }
     js = "const BASEL=" + json.dumps(data, separators=(",", ":"), ensure_ascii=False) + ";\n"
     with open(out_js, "w") as f:
@@ -2112,6 +2253,7 @@ def main(raw, work, out_js):
                       "trees": {"register": n_register, "osm": len(tree_info) - n_register}, "stats": stats,
                       "bridges": [[b["name"], b["structure"], b["axis"][2] * S, b["water"]] for b in bridges],
                       "ferries": [x["name"] for x in ferries],
+                      "shores": {k: len(v) // 2 for k, v in shores.items()}, "access": len(access) // 3,
                       "rail": [{k: v for k, v in t.items() if k != "p"} for t in rail], "sbb_front": sbb_front,
                       "uni": uni and {"eaves": len(uni["eaves"]) // 7, "door": uni["door"], "top": uni["top"]},
                       "awnings": len(awnings) // 4, "market": market and len(market["square"]),

@@ -16,16 +16,16 @@ python3 -I secret-pigeon/build/assemble.py secret-pigeon/build/game.template.htm
 
 `fetch_data.py` downloads about 360 MB, most of it the four swissBUILDINGS3D map sheets, and the timetable on top:
 Switzerland's whole public transport timetable (GTFS, about 290 MB), from which the build keeps Basel's trams and buses.
-Add part names (`osm`, `rail`, `tram`, `bus`, `timetable`, `streets`, `ortho`, `sb3d`, `trees`) to fetch only some of
-them.
+Add part names (`osm`, `rail`, `tram`, `bus`, `timetable`, `streets`, `ortho`, `sb3d`, `trees`, `access`) to fetch only
+some of them.
 
 | File | Does |
 |---|---|
-| `fetch_data.py` | Downloads the swisstopo aerial photo at 1 m per pixel (WMS), swissBUILDINGS3D 3.0 (CityGML), Basel's tree register (data.bs.ch) and the OpenStreetMap landmarks, bridges, ferries, railway tracks, tram tracks and lines, bus lines and the roads around them, shopping streets and place names (Swiss Overpass mirror), and Switzerland's public transport timetable (GTFS, opentransportdata.swiss). |
+| `fetch_data.py` | Downloads the swisstopo aerial photo at 1 m per pixel (WMS), swissBUILDINGS3D 3.0 (CityGML), Basel's tree register and its register of the stairs and ladders down to the rivers (data.bs.ch) and the OpenStreetMap landmarks, bridges, ferries, railway tracks, tram tracks and lines, bus lines and the roads around them, shopping streets and place names (Swiss Overpass mirror), and Switzerland's public transport timetable (GTFS, opentransportdata.swiss). |
 | `fetch_1615.py` | Downloads the canton's "Übersichtsplan 1615" (WMS, 0.5 m pixels), the outline of the historic core inside the old wall (WFS), and OSM streets used to place the demolished gates. |
 | `sb3d.py` | Streams the CityGML, merges each building's roof triangles back into roof planes, drops vertices on straight edges and closes seams between planes. |
-| `build_city.py` | Today's city: the 3D roofs in compact gzip form (the game raises the walls from the roof edges, skipping the ones another roof hides; platform roofs and train sheds over the tracks stand open on posts), roof colours from the aerial photo, the 1 m ground as AVIF with a small JPEG fallback, the Rhine's outline for the animated water, trees by species and age, each bridge's axis and stretch over the Rhine, the measurements of the landmarks, of Basel SBB's front, of the Kollegienhaus's eaves and entrance and of the walls and flat roof of Les Trois Rois, the shop houses and their awnings, every railway and tram track, each tram line's route both ways with its stops, colour and operator and every trip of an ordinary weekday on it (from the timetable, with the stops laid on the route), the same for every bus line of BVB, BLT, AAGL and SWEG that comes into the map (OSM's route variants joined way by way, a roundabout driven only from where the route enters it to where it leaves; for a line without one, such as the EV8 replacement bus, the shortest drive along the roads between its stops), each laid in the middle of the rightmost lane its way's tags allow and kept clear of the walls, covered footbridges (OSM `building=bridge`, which swisstopo models down to the street) open underneath, two train tracks from Basel SBB over the Rhine to the Badischer Bahnhof and north off the map, and one from its French platforms towards France (shortest paths along OSM's running lines that never turn back). |
-| `build_1615.py` | Basel in 1615: traces every house on the plan into its own outline, builds the wall, towers and gates, plants garden and orchard trees, and paints the 1 m ground from the plan's own pixels (the Rhine beyond the plan follows the aerial photo); the river's outline from the plan gives the 1615 water. |
+| `build_city.py` | Today's city: the 3D roofs in compact gzip form (the game raises the walls from the roof edges, skipping the ones another roof hides; platform roofs and train sheds over the tracks stand open on posts), roof colours from the aerial photo, the 1 m ground as AVIF with a small JPEG fallback, the Rhine's two shores (OpenStreetMap's outline of the river) and the canton's stairs and ladders down to it, where the hotel ships moor at St. Johann and where the two Rhine baths stand (read off the aerial photo), trees by species and age, each bridge's axis and stretch over the Rhine, the measurements of the landmarks, of Basel SBB's front, of the Kollegienhaus's eaves and entrance and of the walls and flat roof of Les Trois Rois, the shop houses and their awnings, every railway and tram track, each tram line's route both ways with its stops, colour and operator and every trip of an ordinary weekday on it (from the timetable, with the stops laid on the route), the same for every bus line of BVB, BLT, AAGL and SWEG that comes into the map (OSM's route variants joined way by way, a roundabout driven only from where the route enters it to where it leaves; for a line without one, such as the EV8 replacement bus, the shortest drive along the roads between its stops), each laid in the middle of the rightmost lane its way's tags allow and kept clear of the walls, covered footbridges (OSM `building=bridge`, which swisstopo models down to the street) open underneath, two train tracks from Basel SBB over the Rhine to the Badischer Bahnhof and north off the map, and one from its French platforms towards France (shortest paths along OSM's running lines that never turn back). |
+| `build_1615.py` | Basel in 1615: traces every house on the plan into its own outline, builds the wall, towers and gates, plants garden and orchard trees, and paints the 1 m ground from the plan's own pixels (the Rhine beyond the plan follows the aerial photo); the river's outline from the plan gives the 1615 shores. |
 | `assemble.py` | Injects both cities into the template and writes the colomba.link copy: it loads three.js and the fonts from the game's own `vendor/` and `fonts/` folders (the site promises no third-party scripts or fonts) and adds the parts in `site-parts.html` (share previews, a byline, a line on the final screen). With a sixth argument it also writes the Artifact copy, which keeps the cdnjs and Google Fonts links, leaves those parts out and drops the page wrapper. |
 | `site-parts.html` | What only the colomba.link copy gets: its description, canonical address, Open Graph and Twitter previews (`og.jpg`), structured data and the links back to the site. |
 
@@ -37,7 +37,19 @@ in front of the mosaic), Les Trois Rois (Amadeus Merian's hotel of 1842–44: ye
 terrace over the quay with its iron railing, the winter garden and the gold letters between the two corner pavilions,
 Basel's flag on the south one's roof and the Swiss flag on the north one's, the porch with the Three Kings on the
 Blumenrain, and beside it the sandstone corner building put up for the Kantonalbank in 1901–03), the bridges and the
-Rhine ferries. In 1615 it marks the university's first home instead, the
+Rhine ferries. The Rhine runs in its bed, about 6.5 m below the promenades, between banks built after photos of
+each stretch of them: Kleinbasel's sloped stone Rheinweg with a lower path at the water and broad seating steps from
+the Leu ferry past the Kaserne to the Johanniterbrücke, grassy slopes at Solitude and below the Dreirosenbrücke, the
+Pfalz's and the Rheinsprung's tall walls over a narrow path, the quay at the Schifflände and Les Trois Rois, and the
+St. Alban- and St. Johanns-Rheinweg along the water under a railed wall; in 1615 town walls stand in the water on
+both sides. The bridges stand on the water with their decks as high over it as before, the ferries land at small
+stages with gangways and hang from masts on the promenades, the canton's stairs and ladders lead down to the water
+where its register puts them, and the river runs on past the edge of the map to the horizon. BPG's MS Rhystärn lies
+at the Schifflände landing stage below the Mittlere Brücke, MS Christoph Merian at the next one down, leaving now and
+then for a trip up the Rhine towards Birsfelden through the bridge's middle arch, a Viking longship at the hotel
+ships' landing stage in St. Johann, and the Rhine baths of St. Johann and the Breite stand on their stilts (after the
+operators' figures and photos). In the tour the pigeon can dive into the river's bed and fly along the water. In
+1615 it marks the university's first home instead, the
 college on the Rheinsprung, used from 1460 until the Kollegienhaus opened. It also paints the facades of the Messe, the Kunstmuseum, the two stations, Museum Tinguely, the Meret
 Oppenheim Hochhaus and the shop houses from Barfüsserplatz to Marktplatz (with awnings, and market stalls on the
 Marktplatz by day), lays every railway and tram track in the map, runs a DB ICE and an SBB EuroCity towards Germany and a TGV
@@ -70,5 +82,5 @@ version, replace both files and the version in the template's import and in `ass
 from the game's own canvas: the pigeon beside the Münster in tour mode, drawn at twice the size and scaled down.
 
 Credits shown in the game: 3D buildings (swissBUILDINGS3D) and aerial imagery (SWISSIMAGE) © swisstopo; landmarks,
-bridges, railways, roads, tram and bus lines and places © OpenStreetMap contributors (ODbL); tram and bus timetable: opentransportdata.swiss; tree register (Baumkataster) and the 1615 plan and
-wall line: Quelle: Geodaten Kanton Basel-Stadt (CC BY 4.0).
+bridges, the Rhine's banks, railways, roads, tram and bus lines and places © OpenStreetMap contributors (ODbL); tram and bus timetable: opentransportdata.swiss; tree register (Baumkataster), the
+stairs and ladders down to the Rhine, and the 1615 plan and wall line: Quelle: Geodaten Kanton Basel-Stadt (CC BY 4.0).

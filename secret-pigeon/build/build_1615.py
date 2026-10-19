@@ -23,7 +23,7 @@ from array import array
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from build_city import (S, VS, AREA, Geo, ORIGIN_LATLON, read_bmp, write_bmp, area2, centroid,  # noqa: E402
                         inside, rdp, simplify_ring, obb, element_rings, star_shaped, convex, tree_byte, LANDMARKS, IN_1615,
-                        river_mask, mask_png)
+                        river_mask, river_banks, GROSSBASEL)
 from fetch_1615 import TRACE, COLS, ROWS, MPP  # noqa: E402
 
 LEVEL = 3.3
@@ -562,7 +562,7 @@ def main(raw, work, out_js, preview=None):
                 y = bo["cy"] + u[1] * t * bo["len"] + v[1] * side * (bo["wid"] / 2 + 25)
                 seeds.append((int((x - W_) / 2), int((N_ - y) / 2)))
     river = river_mask(cls.translate(bytes([1 if k == 3 else 0 for k in range(256)])), GW, GH, seeds)
-    water_png = mask_png(river, GW, GH, work, "water-1615")
+    shores = river_banks(river, GW, GH, W_, N_, geo.local(*GROSSBASEL))
 
     # ---------- paint the ground: the plan's own pixels (0.5 m), recoloured by what they show, on a canvas over
     # the whole map with the Rhine beyond the plan from the classes above; sips then scales it to 1 m, which
@@ -725,8 +725,8 @@ def main(raw, work, out_js, preview=None):
     data = {"count": len(rings_per), "ringsPer": b64(rings_per), "ringLen": b64(ring_len), "verts": b64(verts),
             "base": b64(base_dm), "top": b64(top_dm), "roofH": b64(roof_dm), "roofType": b64(roof_type),
             "roofRGB": b64(roof_rgb), "wallRGB": b64(wall_rgb), "trees": b64(trees), "treeInfo": b64(tree_info), "gates": gate_list,
-            "places": places, "ground": {"avg": [round(c) for c in avg], "water": water_png, "src": "data:image/avif;base64," + ground_b64,
-                                         "fallback": "data:image/jpeg;base64," + small_b64}}
+            "places": places, "ground": {"avg": [round(c) for c in avg], "src": "data:image/avif;base64," + ground_b64,
+                                         "fallback": "data:image/jpeg;base64," + small_b64, "banks": shores}}
     js = "const BASEL1615=" + json.dumps(data, separators=(",", ":"), ensure_ascii=False) + ";\n"
     with open(out_js, "w") as f:
         f.write(js)
