@@ -23,7 +23,7 @@ from array import array
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from build_city import (S, VS, AREA, Geo, ORIGIN_LATLON, read_bmp, write_bmp, area2, centroid,  # noqa: E402
                         inside, rdp, simplify_ring, obb, element_rings, star_shaped, convex, tree_byte, LANDMARKS, IN_1615,
-                        river_mask, river_banks, GROSSBASEL)
+                        river_mask, river_banks, river_shores, scan_fill, GROSSBASEL)
 from fetch_1615 import TRACE, COLS, ROWS, MPP  # noqa: E402
 
 LEVEL = 3.3
@@ -421,7 +421,7 @@ def main(raw, work, out_js, preview=None):
 
     # the Rhine bridge (the only one in 1615), its piers and trestles and the Käppeli chapel are built in the game
 
-    # ---------- the ground: the plan, hand-tinted, with the Rhine from the aerial photo beyond its edges ----------
+    # ---------- the ground: the plan, hand-tinted, with today's Rhine beyond its edges ----------
     GW, GH = int(round((E_ - W_) / 2)), int(round((N_ - S_) / 2))
     # where the plan has content
     ys = [y for y in range(0, PH, 8) if dark.find(b"\x01", y * PW, (y + 1) * PW) >= 0]
@@ -478,7 +478,7 @@ def main(raw, work, out_js, preview=None):
                 nf += fill[o:o + 4].count(1)
                 nw += water[o:o + 4].count(1)
             cls[gy * GW + gx] = 1 if nd else 2 if nf >= 6 else 3 if nw >= 8 else 0
-    # river colour statistics from plan water, then grow it outside the plan through similar aerial pixels
+    # river colour statistics from plan water, to grow it outside the plan through similar aerial pixels if need be
     samp = []
     for gy in range(0, GH, 3):
         for gx in range(0, GW, 3):
@@ -488,8 +488,20 @@ def main(raw, work, out_js, preview=None):
                     samp.append(a)
     mean = [sum(s[k] for s in samp) / len(samp) for k in range(3)]
     sd = [max(6, (sum((s[k] - mean[k]) ** 2 for s in samp) / len(samp)) ** 0.5) for k in range(3)]
-    # continue the Rhine beyond the plan: follow its banks outward line by line through water-coloured
-    # aerial pixels, keeping the band solid and letting each bank move only a little per step
+    # continue the Rhine beyond the plan, line by line outward from its edge, as it is today: within OpenStreetMap's
+    # outline of it (the game's shores today, which go on under the bridges), easing over from the plan's river in the
+    # first EASE lines. Without that outline, through water-coloured aerial pixels, keeping the band solid and letting
+    # each bank move only a little per step
+    today, wet, EASE = river_shores(xjs, geo), None, 100      # 200 m
+    if today:
+        grid = lambda x, z: ((x * S - W_) / 2, (N_ + z * S) / 2)
+        ring = [grid(*p) for p in zip(today["g"][0::2], today["g"][1::2])]
+        ring += [grid(*p) for p in list(zip(today["k"][0::2], today["k"][1::2]))[::-1]]
+        wet = bytearray(GW * GH)
+        for ix, iy in scan_fill(ring):
+            if 0 <= ix < GW and 0 <= iy < GH:
+                wet[iy * GW + ix] = 1
+
     def smooth(x2, y2):
         vals = []
         for dx, dy in ((0, 0), (2, 0), (-2, 0), (0, 2), (0, -2)):
@@ -500,6 +512,8 @@ def main(raw, work, out_js, preview=None):
         return max(vals) - min(vals) < 70
 
     def waterish(x2, y2):
+        if wet is not None:
+            return wet[y2 * GW + x2] == 1
         a = aerial_px(W_ + (x2 + 0.5) * 2, N_ - (y2 + 0.5) * 2)
         return bool(a) and all(abs(a[k] - mean[k]) < 2.2 * sd[k] for k in range(3)) and smooth(x2, y2)
 
@@ -524,9 +538,9 @@ def main(raw, work, out_js, preview=None):
                     runs.append((u0, u - 1))
             u += 1
         for a, b in runs:
-            width = b - a
-            for v in steps:
-                lo, hi = max(0, a - 15), min(extent - 1, b + 15)
+            a0, b0, width = a, b, b - a
+            for n, v in enumerate(steps):
+                lo, hi = (0, extent - 1) if wet is not None else (max(0, a - 15), min(extent - 1, b + 15))
                 flags = [waterish(uu, v) if horizontal else waterish(v, uu) for uu in range(lo, hi + 1)]
                 best, cur = None, None
                 gap = 0
@@ -542,14 +556,19 @@ def main(raw, work, out_js, preview=None):
                                 best = (cur[0] + lo, cur[1] + lo, ov)
                             cur, gap = None, 0
                 if best and best[1] - best[0] >= 0.5 * width:
-                    a = max(a - 2, min(a + 2, best[0]))
-                    b = max(b - 2, min(b + 2, best[1]))
+                    if wet is not None:
+                        t = min(1.0, (n + 1) / EASE)
+                        t = t * t * (3 - 2 * t)
+                        a, b = round(a0 + (best[0] - a0) * t), round(b0 + (best[1] - b0) * t)
+                    else:
+                        a = max(a - 2, min(a + 2, best[0]))
+                        b = max(b - 2, min(b + 2, best[1]))
                 for uu in range(a, b + 1):
                     i = (v * GW + uu) if horizontal else (uu * GW + v)
                     if cls[i] == 9:
                         cls[i] = 3
                         grown += 1
-    print("river pixels grown from the aerial photo:", grown, flush=True)
+    print("river pixels grown beyond the plan:", grown, "(today's outline)" if wet is not None else "(aerial photo)", flush=True)
 
     # the Rhine for the game's animated water: the plan's water connected to points beside the bridge
     seeds = []

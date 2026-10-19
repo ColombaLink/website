@@ -1,13 +1,15 @@
 """Download the raw map data for Secret Pigeon's Basel.
 
-Usage: python3 -I secret-pigeon/build/fetch_data.py <output-dir> [osm] [rail] [tram] [bus] [timetable] [streets] [ortho]
-       [sb3d] [trees] [access] [dem]
+Usage: python3 -I secret-pigeon/build/fetch_data.py <output-dir> [osm] [rhine] [rail] [tram] [bus] [timetable] [streets]
+       [ortho] [sb3d] [trees] [access] [dem]
   (no part names: all of them)
 
 Writes into <output-dir>:
   osm_buildings.json   buildings and building parts (OpenStreetMap, ODbL) via the Swiss Overpass mirror; used for
                        the landmarks and the facade buildings
   osm_extras.json      trees, bridges, ferries, water, parks and a few named places
+  osm_rhine.json       the Rhine's centreline (the main stream of its waterway relation) for 22 km round the city, for
+                       its way on beyond the map; from the main Overpass instance, as it runs on into Germany and France
   osm_rail.json        railway tracks and stations for the trains to Germany and France (a little wider than the
                        map: the lines loop out of it and back in)
   osm_streets.json     the shopping streets between Barfüsserplatz and Marktplatz, for the shop fronts
@@ -32,11 +34,12 @@ import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import horizon  # noqa: E402
-from build_city import ORIGIN_LATLON, lv95  # noqa: E402
+from build_city import COURSE_R, ORIGIN_LATLON, RHINE, lv95  # noqa: E402
 
 BBOX = (47.5440, 7.5690, 47.5735, 7.6170)  # south, west, north, east
 UA = "SecretPigeonGame/0.1 (educational game; https://colomba.link, info@colomba.link)"
 OVERPASS = "https://overpass.osm.ch/api/interpreter"
+OVERPASS_WORLD = "https://overpass-api.de/api/interpreter"   # the Swiss mirror's data stops at the border
 STAC = "https://data.geo.admin.ch/api/stac/v0.9/collections"
 WMS = "https://wms.geo.admin.ch/"
 ORTHO_PX = 1000            # pixels per kilometre tile: 1 m
@@ -56,8 +59,8 @@ def get(url, data=None, tries=5):
     raise SystemExit(f"giving up on {url}")
 
 
-def overpass(query, path):
-    body = get(OVERPASS, urllib.parse.urlencode({"data": query}).encode())
+def overpass(query, path, server=OVERPASS):
+    body = get(server, urllib.parse.urlencode({"data": query}).encode())
     if not body.startswith(b"{"):
         raise SystemExit(f"Overpass did not return JSON for {path}: {body[:200]!r}")
     with open(path, "wb") as f:
@@ -82,6 +85,19 @@ out body geom;""", os.path.join(out, "osm_buildings.json"))
  way["natural"="water"];relation["natural"="water"];
  way["leisure"="park"];relation["leisure"="park"];);
 out body geom({bb});""", os.path.join(out, "osm_extras.json"))
+
+
+def fetch_rhine(out):
+    """The Rhine's course beyond the map: the ways of its waterway relation (Wikidata Q584) that are its main stream,
+    within COURSE_R of the Mittlere Brücke, in the direction it flows. The Swiss mirror has nothing past the border,
+    so this one small query goes to the main Overpass instance."""
+    la, lo = ORIGIN_LATLON
+    dla = COURSE_R / 111000.0 + 0.02
+    dlo = COURSE_R / (111000.0 * math.cos(math.radians(la))) + 0.02
+    overpass(f"""[out:json][timeout:300];
+relation["type"="waterway"]["wikidata"="{RHINE}"];
+way(r:"main_stream")({la - dla:.3f},{lo - dlo:.3f},{la + dla:.3f},{lo + dlo:.3f});
+out tags geom;""", os.path.join(out, "osm_rhine.json"), OVERPASS_WORLD)
 
 
 def fetch_rail(out):
@@ -238,7 +254,7 @@ def fetch_dem(out):
         print(f"DEM {name}: {os.path.getsize(path) / 1e6:.1f} MB", flush=True)
 
 
-PARTS = {"osm": fetch_osm, "rail": fetch_rail, "tram": fetch_tram, "bus": fetch_bus, "timetable": fetch_timetable,
+PARTS = {"osm": fetch_osm, "rhine": fetch_rhine, "rail": fetch_rail, "tram": fetch_tram, "bus": fetch_bus, "timetable": fetch_timetable,
          "streets": fetch_streets, "ortho": fetch_ortho, "sb3d": fetch_buildings, "trees": fetch_trees, "access": fetch_access,
          "dem": fetch_dem}
 

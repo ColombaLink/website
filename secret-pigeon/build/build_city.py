@@ -37,6 +37,8 @@ EH = 1.4            # vertical exaggeration
 VS = EH / S         # game units per metre of height
 AREA = (-1450.0, 1950.0, -1650.0, 1450.0)   # west, east, south, north in metres around the origin
 ORIGIN_LATLON = (47.56015, 7.58972)          # Mittlere Brücke, replaced by the bridge outline's centre if found
+RHINE = "Q584"      # the Rhine's Wikidata item, which names its waterway relation in OpenStreetMap
+COURSE_R = 22000.0  # metres from the origin to which the Rhine's way beyond the map is kept (the game's land ends 15 km out)
 LEVEL = 3.0         # metres per storey
 MARKT = (-152.0, -228.0)                     # rough Marktplatz offset, refined from data
 
@@ -358,7 +360,8 @@ def river_mask(cand, w, h, seeds, extra=()):
 
 
 def close_mask(mask, w, h, r):
-    """Morphological closing (dilate, then erode, by r cells) of a 0/1 byte grid, a row at a time as big integers."""
+    """Morphological closing (dilate, then erode, by r cells) of a 0/1 byte grid, a row at a time as big integers.
+    It can't see beyond the grid, so the cells within r of its edges are left as they are."""
     full = (1 << (8 * w)) - 1
     rows = [int.from_bytes(mask[y * w:(y + 1) * w], "big") for y in range(h)]
 
@@ -378,8 +381,10 @@ def close_mask(mask, w, h, r):
                 acc = (acc | a | b) if grow else (acc & a & b)
             res.append(acc)
         return res
-    rows = sweep(sweep(rows, True), False)
-    return bytearray(b"".join(v.to_bytes(w, "big") for v in rows))
+    rim = int.from_bytes(b"\x01" * r + b"\x00" * (w - 2 * r) + b"\x01" * r, "big")
+    out = [v if r <= y < h - r else rows[y] for y, v in enumerate(sweep(sweep(rows, True), False))]
+    out = [(v & ~rim) | (rows[y] & rim) for y, v in enumerate(out)]
+    return bytearray(b"".join(v.to_bytes(w, "big") for v in out))
 
 
 GROSSBASEL = (47.5550, 7.5880)   # the Barfüsserplatz: which of the Rhine's shores is Grossbasel's
@@ -446,10 +451,63 @@ def shores_out(runs, ref):
     return {"g": [c for p in out[0] for c in p], "k": [c for p in out[1] for c in p]}
 
 
+def rhine_course(raw, geo):
+    """The Rhine's way beyond the map, for the game to run the river on round its real bends: OpenStreetMap's
+    centreline of its main stream (upstream through the Birsfelden power station's weir towards Augst and Rheinfelden,
+    downstream north past the Märkt weir down the Old Rhine, not the Grand Canal d'Alsace) within COURSE_R of the
+    origin, as a flat list x, z, x, z, ... in game units from upstream to downstream. The farther from the map, the more
+    its bends are eased (they are in the haze there), so that the shores the game lays beside it never fold over.
+    [] without <raw>/osm_rhine.json."""
+    src = os.path.join(raw, "osm_rhine.json")
+    if not os.path.exists(src):
+        print("no <raw-dir>/osm_rhine.json: run fetch_data.py <raw-dir> rhine for the Rhine's way beyond the map", flush=True)
+        return []
+    chains = [[geo.local(p["lat"], p["lon"]) for p in el.get("geometry") or [] if p]
+              for el in json.load(open(src))["elements"] if el["type"] == "way"]
+    chains = [c for c in chains if len(c) > 1]
+    joined = True
+    while joined:                        # the ways run with the river: each goes on where another one ends
+        joined = False
+        for i, a in enumerate(chains):
+            j = next((j for j, b in enumerate(chains) if j != i and math.dist(a[-1], b[0]) < 1), None)
+            if j is not None:
+                chains[i] = a + chains[j][1:]
+                del chains[j]
+                joined = True
+                break
+    if not chains:
+        return []
+    line = min(chains, key=lambda c: min(math.hypot(*p) for p in c))     # the one through Basel
+    mid = min(range(len(line)), key=lambda i: math.hypot(*line[i]))
+    i0, i1 = mid, mid
+    while i0 > 0 and math.hypot(*line[i0]) < COURSE_R:
+        i0 -= 1
+    while i1 < len(line) - 1 and math.hypot(*line[i1]) < COURSE_R:
+        i1 += 1
+    line = line[i0:i1 + 1]
+    pts = [line[0]]                      # every 10 m along it
+    for a, b in zip(line, line[1:]):
+        n = max(1, round(math.dist(a, b) / 10))
+        pts += [(a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n) for k in range(1, n + 1)]
+    W, E, Sth, N = AREA
+    smooth = []
+    for i, (x, y) in enumerate(pts):     # eased with a Gaussian that widens from 300 m off the map to 250 m 2 km out
+        sigma = min(250.0, max(0.0, max(W - x, x - E, Sth - y, y - N) - 300.0) * 0.15) / 10
+        if sigma < 0.5:
+            smooth.append((x, y))
+            continue
+        r = int(3 * sigma)
+        ks = range(max(0, i - r), min(len(pts), i + r + 1))
+        ws = [math.exp(-((k - i) / sigma) ** 2 / 2) for k in ks]
+        smooth.append(tuple(sum(w * pts[k][c] for w, k in zip(ws, ks)) / sum(ws) for c in (0, 1)))
+    return [c for x, y in rdp_long(smooth, 1.0) for c in (round(x / S, 2), round(-y / S, 2))]
+
+
 def river_banks(mask, w, h, west, north, ref, cell=2.0):
     """The two shores of the river in a mask (`cell`-metre cells from `west`, `north`; 1 = water), for a river that
     OpenStreetMap doesn't have (Basel in 1615): its edge, smoothed over the landing stages, as river_shores() gives
-    them. `ref` (local metres) lies in Grossbasel. {} if the river doesn't cross the map."""
+    them, each from the map's edge to the map's edge. `ref` (local metres) lies in Grossbasel. {} if the river doesn't
+    cross the map."""
     flip = bytes([1, 0] + [0] * 254)
     m = close_mask(mask, w, h, 6)                                  # landing stages, boats: water
     m = close_mask(m.translate(flip), w, h, 2).translate(flip)     # slivers of water-coloured land: land
@@ -483,21 +541,20 @@ def river_banks(mask, w, h, west, north, ref, cell=2.0):
     if not loops:
         return {}
     loop = max(loops, key=len)
-    edge = [min(i, j, w - i, h - j) <= 12 for i, j in loop]   # the closing pulls the river back from the edge a little
+    edge = [min(i, j, w - i, h - j) == 0 for i, j in loop]     # on the map's edge
     if all(edge) or not any(edge):
         return {}
     k0 = edge.index(True)               # start on the map's edge, so each shore is one unbroken run
-    loop, edge = loop[k0:] + loop[:k0], edge[k0:] + edge[:k0]
+    loop, edge = loop[k0:] + loop[:k0 + 1], edge[k0:] + edge[:k0 + 1]
     runs, cur = [], []
     for p, e in zip(loop, edge):
-        if e:
-            if len(cur) > 20:
-                runs.append(cur)
-            cur = []
+        q = (west + p[0] * cell, north - p[1] * cell)
+        if e:                           # a shore runs from where it leaves the map's edge to where it meets it again
+            if len(cur) > 21:
+                runs.append(cur + [q])
+            cur = [q]
         else:
-            cur.append((west + p[0] * cell, north - p[1] * cell))
-    if len(cur) > 20:
-        runs.append(cur)
+            cur.append(q)
     if len(runs) != 2:
         return {}
     for k, pts in enumerate(runs):
@@ -2201,6 +2258,7 @@ def main(raw, work, out_js):
                             extra.append(j * RW + i)
     river = river_mask(cand, RW, RH, seeds, extra) if ref else bytearray(RW * RH)
     shores = river_shores(xjs, geo)
+    course = rhine_course(raw, geo)
     access = waterside_access(raw, geo, shores)
     for br in bridges:
         del br["_ring"], br["id"], br["_obb"]
@@ -2246,7 +2304,7 @@ def main(raw, work, out_js):
         "S": S, "VS": VS,
         "ground": {"x0": W / S, "x1": E / S, "z0": -N / S, "z1": -Sth / S, "avg": [round(c) for c in avg],
                    "src": "data:image/avif;base64," + ground_b64, "fallback": "data:image/jpeg;base64," + small_b64,
-                   "banks": shores},
+                   "banks": shores, "course": course},
         "lod2": {"count": len(recs), "gz": base64.b64encode(packed).decode()},
         "facades": {"count": len(frecs), "gz": base64.b64encode(fpacked).decode(), "styles": FACADE_STYLES},
         "trees": b64(trees), "treeInfo": b64(tree_info),
@@ -2263,7 +2321,8 @@ def main(raw, work, out_js):
                       "trees": {"register": n_register, "osm": len(tree_info) - n_register}, "stats": stats,
                       "bridges": [[b["name"], b["structure"], b["axis"][2] * S, b["water"]] for b in bridges],
                       "ferries": [x["name"] for x in ferries],
-                      "shores": {k: len(v) // 2 for k, v in shores.items()}, "access": len(access) // 3,
+                      "shores": {k: len(v) // 2 for k, v in shores.items()}, "course": len(course) // 2,
+                      "access": len(access) // 3,
                       "rail": [{k: v for k, v in t.items() if k != "p"} for t in rail], "sbb_front": sbb_front,
                       "uni": uni and {"eaves": len(uni["eaves"]) // 7, "door": uni["door"], "top": uni["top"]},
                       "awnings": len(awnings) // 4, "market": market and len(market["square"]),
