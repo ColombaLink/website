@@ -380,7 +380,10 @@ def main(raw, work, out_js, preview=None):
         roof_c = "#7d4a3a" if church else ROOFS[(hsh >> 8) % len(ROOFS)]
         recs.append(([ring], 0.0, wall + rh, rh, rtype, hexrgb(roof_c), hexrgb(wall_c)))
 
-    # wall segments and round towers along the outline, except where the outline runs over the Rhine
+    # wall segments and round towers along the outline, except where the outline runs over the Rhine. Their roof types
+    # tell the game to build them itself (plastered rubble, battlements with sloping caps): 5 a stretch of curtain wall,
+    # its ring starting on the town side and its third and fourth corners on the field side; 6 a tower with a roof
+    # behind its battlements, as on the St. Johanns-Tor; 7 an open one, as in the photo of the St. Alban wall before 1871
     simple = simplify_ring(core + [core[0]], 2.0)
     if area2(simple) < 0:
         simple = simple[::-1]
@@ -389,24 +392,32 @@ def main(raw, work, out_js, preview=None):
         a, b = simple[i], simple[(i + 1) % len(simple)]
         wet = sum(1 for t in (0.2, 0.5, 0.8) if plan_water(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t))
         keep.append(wet < 2)
+
+    def turn_at(i):   # how sharply the outline bends at simple[i]
+        pa, pb, pc = simple[i - 1], simple[i], simple[(i + 1) % len(simple)]
+        t = abs(math.atan2(pc[1] - pb[1], pc[0] - pb[0]) - math.atan2(pb[1] - pa[1], pb[0] - pa[0]))
+        return min(t, 2 * math.pi - t)
+
     towers = []
     for i in range(len(simple)):
         if not keep[i]:
             continue
-        a, b = simple[i], simple[(i + 1) % len(simple)]
+        j = (i + 1) % len(simple)
+        a, b = simple[i], simple[j]
         dx, dy = b[0] - a[0], b[1] - a[1]
         L = math.hypot(dx, dy)
         if L < 1:
             continue
-        nx, ny = dy / L * 1.3, -dx / L * 1.3      # thickness: 2.6 m centred on the line
-        ring = [(a[0] - nx, a[1] - ny), (b[0] - nx, b[1] - ny), (b[0] + nx, b[1] + ny), (a[0] + nx, a[1] + ny)]
-        recs.append(([ring], 0.0, 9.0, 0.0, 0, hexrgb(STONE_ROOF), hexrgb(STONE)))
-        if keep[i - 1]:
-            pa, pb = simple[i - 1], a
-            turn = abs(math.atan2(dy, dx) - math.atan2(pb[1] - pa[1], pb[0] - pa[0]))
-            turn = min(turn, 2 * math.pi - turn)
-            if turn > 0.25:
-                towers.append(a)
+        ux, uy = dx / L, dy / L
+        nx, ny = uy * 1.3, -ux * 1.3      # thickness: 2.6 m centred on the line; n points out of town (the ring runs anticlockwise)
+        # run on into the next stretch at a bend, so the outer corner between the two closes
+        ea = 1.3 * math.tan(min(turn_at(i), 1.2) / 2) + 0.1 if keep[i - 1] else 0.0
+        eb = 1.3 * math.tan(min(turn_at(j), 1.2) / 2) + 0.1 if keep[j] else 0.0
+        a2, b2 = (a[0] - ux * ea, a[1] - uy * ea), (b[0] + ux * eb, b[1] + uy * eb)
+        ring = [(a2[0] - nx, a2[1] - ny), (b2[0] - nx, b2[1] - ny), (b2[0] + nx, b2[1] + ny), (a2[0] + nx, a2[1] + ny)]
+        recs.append(([ring], 0.0, 9.0, 0.0, 5, hexrgb(STONE_ROOF), hexrgb(STONE)))
+        if keep[i - 1] and turn_at(i) > 0.25:
+            towers.append(a)
         k = 1
         while k * 85 < L - 30:
             towers.append((a[0] + dx * k * 85 / L, a[1] + dy * k * 85 / L))
@@ -417,7 +428,10 @@ def main(raw, work, out_js, preview=None):
             continue
         placed.append(t)
         ring = [(t[0] + 4.3 * math.cos(k * math.pi / 4 + math.pi / 8), t[1] + 4.3 * math.sin(k * math.pi / 4 + math.pi / 8)) for k in range(8)]
-        recs.append(([ring], 0.0, 20.0, 6.0, 3, hexrgb(TOWER_ROOF), hexrgb(STONE)))
+        if len(placed) % 3:   # walk at 14 m: roofed to 20 m, or open with its battlements up to 16.2 m
+            recs.append(([ring], 0.0, 20.0, 6.0, 6, hexrgb(TOWER_ROOF), hexrgb(STONE)))
+        else:
+            recs.append(([ring], 0.0, 16.2, 0.0, 7, hexrgb(TOWER_ROOF), hexrgb(STONE)))
 
     # the Rhine bridge (the only one in 1615), its piers and trestles and the Käppeli chapel are built in the game
 

@@ -750,7 +750,7 @@ function buildCity(DATA){
   }
   const ctr=r=>{let x=0,z=0;for(const p of r){x+=p[0];z+=p[1];}return [x/r.length,z/r.length];};
   const bMinX=new Float32Array(n),bMaxX=new Float32Array(n),bMinZ=new Float32Array(n),bMaxZ=new Float32Array(n),bTop=new Float32Array(n),bBase=new Float32Array(n);
-  const ringStart=new Uint32Array(n+1),outerXZ=[],windows=[];
+  const ringStart=new Uint32Array(n+1),outerXZ=[],windows=[],forts=[];
   let vi=0,ri=0;
   for(let b=0;b<n;b++){
     const rings=[];
@@ -762,7 +762,8 @@ function buildCity(DATA){
     const base=baseA[b]*0.1*VS,top=topA[b]*0.1*VS,rh=roofHA[b]*0.1*VS,wallTop=top-rh,type=roofT[b];
     const rc=[roofC[b*3],roofC[b*3+1],roofC[b*3+2]],wc=[wallC[b*3],wallC[b*3+1],wallC[b*3+2]];
     const outer=rings[0],[cx,cz]=ctr(outer);
-    rings.forEach((r,ringNo)=>{
+    if(type>=5)forts.push({type,ring:outer,top,rh});   // the town wall and its towers: buildFortifications draws them
+    else rings.forEach((r,ringNo)=>{
       const s=(signedArea(r)>0?1:-1)*(ringNo===0?1:-1);
       for(let i=0;i<r.length;i++){
         const a=r[i],c2=r[(i+1)%r.length],dx=c2[0]-a[0],dz=c2[1]-a[1];
@@ -800,7 +801,7 @@ function buildCity(DATA){
         for(const p of inner)V(p[0],top,p[2],0,1,0,rc,1);
         for(const t of tris)tri2(first,inner,t);
       }
-    }else{
+    }else if(type<5){
       const contour=outer.map(p=>new THREE.Vector2(p[0],p[1])),holes=rings.slice(1).map(r=>r.map(p=>new THREE.Vector2(p[0],p[1])));
       const tris=THREE.ShapeUtils.triangulateShape(contour,holes),pts=rings.flat(),first=nv;
       for(const p of pts)V(p[0],top,p[1],0,1,0,rc,1);
@@ -853,7 +854,7 @@ function buildCity(DATA){
     }
     return -1;
   }
-  return {mesh,mat,topAt,hitAt,bTop,windows,tris:ni/3};
+  return {mesh,mat,topAt,hitAt,bTop,windows,forts,tris:ni/3};
 }
 
 /* ---------- Basel today: swissBUILDINGS3D roofs; the walls drop from each roof's outer edges to the ground ---------- */
@@ -3234,12 +3235,177 @@ if(BASEL.iconic.troisrois){const T=BASEL.iconic.troisrois,w=T.walls;troisRois(T,
   landmarkLabel('Les Trois Rois','Grand Hotel, 1844','#b08d3c',PL.troisrois[0],roofsAround(PL.troisrois[0],PL.troisrois[1],4)+3,PL.troisrois[1],0.85,'today');}
 landmarkLabel('Schützenmattpark',null,'#4caf6a',PL.schuetzenmatt[0],10,PL.schuetzenmatt[1],0.8,'today');
 
+/* ---------- the town wall of 1615 and its towers ----------
+   After the photos taken before the wall came down (the Fröschenbollwerk towards the Spalentor about 1865, Staatsarchiv
+   Basel-Stadt NEG 3195; the St. Alban stretch before 1871) and the canton archaeologists' inventory of the outer wall
+   (Helmig and Matt 1989: limestone rubble and Rhine cobbles in hard lime mortar): a fairly continuous face of lime
+   plaster, patchy and open more often low down, where the rubble shows in its broad pale mortar; and a parapet of
+   merlons with small sloping caps. The textures are drawn here, not taken from the photos, and their colour is a
+   guess (the photos are black and white). Two of three towers have a roof behind their battlements, as the
+   St. Johanns-Tor does; every third stands open, as one does in the St. Alban photo. */
+// lime plaster over rubble, wU by hU world units with the ground at the bottom, seamless across; wear (0..1) is how
+// much of the rubble shows. Three layers: the rubble wall itself, the plaster over it, worn through along a soft noise
+// field (most often low down, thinning before it breaks), then rain streaks and damp. Returns colour and bump maps
+function fortTexture(wU,hU,wear,seed){
+  const PX=160,w=Math.round(wU*PX),h=Math.round(hU*PX),r=mulberry32(seed);
+  const hash=(i,j,s)=>{let t=Math.imul(i,374761393)+Math.imul(j,668265263)+Math.imul(s,982451653)|0;t=Math.imul(t^t>>>13,1274126177);return ((t^t>>>16)>>>0)/4294967296;};
+  const sm=t=>t*t*(3-2*t),step=(a,b,v)=>v<=a?0:v>=b?1:sm((v-a)/(b-a));
+  function fbm(x,y,cell,oct,salt){   // value noise, periodic across the width
+    let s=0,a=1,tot=0;
+    for(let o=0;o<oct;o++){const P=Math.max(1,Math.round(w/cell)),c=w/P,u=x/c,v=y/c,i=Math.floor(u),j=Math.floor(v),fu=sm(u-i),fv=sm(v-j);
+      const i0=((i%P)+P)%P,i1=(i0+1)%P,q=salt+o*7;
+      s+=a*((hash(i0,j,q)*(1-fu)+hash(i1,j,q)*fu)*(1-fv)+(hash(i0,j+1,q)*(1-fu)+hash(i1,j+1,q)*fu)*fv);tot+=a;a*=0.5;cell/=2;}
+    return s/tot;
+  }
+  // the rubble: limestone and rounded Rhine cobbles in rough courses, set in a pale lime mortar (colour and bump)
+  const cv=[0,1].map(()=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c;});
+  const x=cv[0].getContext('2d'),b=cv[1].getContext('2d');
+  x.fillStyle='#c9bb9c';x.fillRect(0,0,w,h);b.fillStyle='#4a4a4a';b.fillRect(0,0,w,h);
+  const LIME=['#9b8f7e','#8e8475','#a89a84','#857d72','#a3906f','#968c7f','#b2a28a','#7e7468'],COBBLE=['#7f7c76','#737069','#958d80','#9a8670','#686661','#8a8073'];
+  const wrap=(X,R,f)=>{f(X);if(X-R<0)f(X+w);if(X+R>w)f(X-w);};
+  for(let y=-6;y<h+12;){const ch=9+r()*11,x0=r()*40;   // each course closes on itself across the seam
+    for(let xx=x0;xx<x0+w-6;){
+      const cobble=r()<0.35,cw=Math.min(cobble?ch*(0.9+r()*0.6):ch*(1.2+r()*2.2),x0+w-1.5-xx);
+      const sx=xx+cw/2,sy=y+ch/2+(r()-0.5)*3,nv=cobble?14:5+Math.floor(r()*3),pts=[],a0=r()*Math.PI;
+      for(let k=0;k<nv;k++){const a=a0+(k+(cobble?0:(r()-0.5)*0.5))/nv*Math.PI*2,c=Math.cos(a),s=Math.sin(a);
+        const m=cobble?0.9+r()*0.1:(0.84+r()*0.18)/Math.max(Math.abs(c),Math.abs(s));   // limestone: facets round a block
+        pts.push([c*cw/2*Math.min(m,1.25),s*ch/2*Math.min(m,1.25)]);}
+      const col=(cobble?COBBLE:LIME)[Math.floor(r()*(cobble?COBBLE:LIME).length)],hi=150+r()*80|0,spots=[];
+      for(let k=0;k<3;k++)spots.push([(r()-0.5)*cw*0.6,(r()-0.5)*ch*0.5,1+r()*cw*0.15,r()<0.5?'rgba(255,248,235,.12)':'rgba(40,34,28,.12)']);
+      wrap(sx,cw,(X)=>{
+        const path=(c,dx,dy,k=1)=>{c.beginPath();pts.forEach(([px,py],j)=>j?c.lineTo(X+px*k+dx,sy+py*k+dy):c.moveTo(X+px*k+dx,sy+py*k+dy));c.closePath();};
+        path(x,1.2,1.6);x.fillStyle='rgba(66,56,44,.5)';x.fill();path(x,0,0);x.fillStyle=col;x.fill();
+        const g=x.createLinearGradient(X-cw/2,sy-ch/2,X+cw/2,sy+ch/2);g.addColorStop(0,'rgba(255,250,240,.18)');g.addColorStop(0.5,'rgba(255,250,240,0)');g.addColorStop(1,'rgba(30,24,18,.18)');
+        x.fillStyle=g;x.fill();for(const [px,py,pr,pc] of spots){x.fillStyle=pc;x.beginPath();x.arc(X+px,sy+py,pr,0,Math.PI*2);x.fill();}
+        path(b,1,1.4);b.fillStyle='#2a2a2a';b.fill();path(b,0,0);b.fillStyle=`rgb(${hi},${hi},${hi})`;b.fill();
+      });
+      xx+=cw+1.5+r()*3;}
+    y+=ch+1.5+r()*2;}
+  const R=x.getImageData(0,0,w,h).data,RB=b.getImageData(0,0,w,h).data;
+  // where the plaster has gone (1) or thinned to a wash over the stones; sampled every 4 px, then smoothed between
+  const G=4,gw=Math.ceil(w/G)+2,gh=Math.ceil(h/G)+2,E=new Float32Array(gw*gh),M=new Float32Array(gw*gh),N=new Float32Array(gw*gh),Q=new Float32Array(gw*gh),F=new Float32Array(gw*gh);
+  for(let j=0;j<gh;j++)for(let i=0;i<gw;i++){const px=i*G,py=j*G,low=Math.max(0,py/h),k=j*gw+i;
+    E[k]=fbm(px,py,150,5,11)+wear*0.2+0.22*low*low*low-0.12;M[k]=fbm(px,py,260,3,23);N[k]=fbm(px,py,70,3,29);Q[k]=fbm(px,py,130,4,53);F[k]=fbm(px,py,14,2,59);}
+  const at=(F,px,py)=>{const u=px/G,v=py/G,i=Math.floor(u),j=Math.floor(v),fu=u-i,fv=v-j,k=j*gw+i;
+    return (F[k]*(1-fu)+F[k+1]*fu)*(1-fv)+(F[k+gw]*(1-fu)+F[k+gw+1]*fu)*fv;};
+  const gone=new Float32Array(w*h),wash=new Float32Array(w*h);
+  for(let y=0;y<h;y++)for(let X=0;X<w;X++){const e=at(E,X,y);gone[y*w+X]=step(0.71,0.735,e);wash[y*w+X]=step(0.6,0.72,e);}
+  // a few rain streaks down from the top, each its own width, length and strength; damp up from the foot
+  const streak=new Float32Array(w),sLen=new Float32Array(w).fill(1),foot=new Float32Array(w);
+  for(let i=0;i<w/70;i++){const X0=r()*w,wd=6+r()*16,a=0.3+r()*0.6,L=h*(0.2+r()*0.6);
+    for(let d=0;d<wd;d++){const X=Math.floor(X0+d)%w,v=a*Math.sin(Math.PI*(d+0.5)/wd);if(v>streak[X]){streak[X]=v;sLen[X]=L;}}}
+  for(let X=0;X<w;X++)foot[X]=h*(0.8+0.12*fbm(X,0,60,4,41));
+  const out=x.createImageData(w,h),bo=b.createImageData(w,h),O=out.data,BO=bo.data;
+  for(let y=0;y<h;y++)for(let X=0;X<w;X++){
+    const k=y*w+X,p=k*4,m=at(M,X,y),gn=gone[k],ws=wash[k]*0.55;
+    // plaster: pale and warm, mottled broadly; thinning to a wash where it is about to give
+    const nn=at(N,X,y),rep=step(0.63,0.66,at(Q,X,y))*0.6;   // blotches, and a patch plastered again later, a shade cooler
+    const tone=(m-0.5)*26+(step(0.5,0.64,nn)-0.5)*10+(at(F,X,y)-0.5)*16;   // broad, blotchy and fine unevenness of the lime
+    let pr=212+tone+rep*10,pg=203+tone*0.92+rep*12,pb=184+tone*0.75+rep*16;
+    const a=gn+(1-gn)*ws,lip=gn-gone[Math.max(0,y-2)*w+((X-1+w)%w)];   // >0 just under the plaster's broken edge
+    let cr=pr*(1-a)+R[p]*a,cg=pg*(1-a)+R[p+1]*a,cb=pb*(1-a)+R[p+2]*a,bump=168*(1-a)+RB[p]*a*0.85;
+    if(lip>0){cr*=1-0.4*lip;cg*=1-0.4*lip;cb*=1-0.4*lip;}else if(lip<0){cr+=-lip*18;cg+=-lip*18;cb+=-lip*16;bump+=-lip*30;}
+    const sX=(X+Math.round((nn-0.5)*12)+w)%w,st=streak[sX]*Math.pow(Math.max(0,1-y/sLen[sX]),1.5)*(0.6+0.8*nn),ft=(step(foot[X],foot[X]+h*0.05,y)*0.22+step(foot[X],h,y)*0.18)*(0.5+nn);
+    const n=(hash(X,y,seed)-0.5)*12;
+    cr=(cr*(1-0.3*st)+n)*(1-ft)+74*ft;cg=(cg*(1-0.3*st)+n)*(1-ft)+77*ft;cb=(cb*(1-0.27*st)+n)*(1-ft)+58*ft;
+    O[p]=cr;O[p+1]=cg;O[p+2]=cb;O[p+3]=255;BO[p]=BO[p+1]=BO[p+2]=bump+n*0.5;BO[p+3]=255;
+  }
+  x.putImageData(out,0,0);b.putImageData(bo,0,0);
+  const tex=(c,srgb)=>{const t=new THREE.CanvasTexture(c);if(srgb)t.colorSpace=THREE.SRGBColorSpace;
+    t.wrapS=THREE.RepeatWrapping;t.wrapT=THREE.ClampToEdgeWrapping;t.anisotropy=8;return t;};
+  return {map:tex(cv[0],true),bump:tex(cv[1],false),wU,hU};
+}
+// the wall's stretches (roof type 5) and towers (6 roofed, 7 open) from the 1615 city data: buildCity keeps them for
+// collisions and leaves the drawing to this
+function buildFortifications(forts,parent){
+  const U=1/BASEL.S,PT=0.8*U,PERIOD=2.6*U,OV=0.08*U,CAP=hM(0.4);   // parapet 0.8 m thick, a merlon and a crenel every 2.6 m
+  const WH={walk:hM(6.8),sill:hM(7.8),top:hM(9)},TH={walk:hM(14),sill:hM(15),top:hM(16.2)};
+  const towers=forts.filter(f=>f.type>=6).map(f=>{let cx=0,cz=0;for(const p of f.ring){cx+=p[0];cz+=p[1];}cx/=f.ring.length;cz/=f.ring.length;
+    return {f,cx,cz,R:Math.hypot(f.ring[0][0]-cx,f.ring[0][1]-cz)};});
+  const tR=towers.length?towers[0].R:0.86;
+  const mat=(t)=>Object.assign(stdMat({map:t.map,bumpMap:t.bump,bumpScale:1,roughness:.93}),{userData:{wU:t.wU,hU:t.hU}});
+  const wallM=[mat(fortTexture(6,WH.top,0.3,1615)),mat(fortTexture(6,WH.top,0.7,1356))],towerM=mat(fortTexture(2*Math.PI*tR,TH.top,0.5,1444));
+  const walkM=stdMat({map:speckled('#a89d88','rgba(70,62,50,.35)',24),roughness:.95});
+  const capM=stdMat({map:speckled('#918679','rgba(58,50,42,.4)',18),roughness:.9});
+  const roofM=tileRoof('#76493a',8,4);
+  const buckets=new Map(),r=mulberry32(1386);
+  // a triangle or quad; ns is one normal for a flat face or one a corner, and the winding follows it
+  function facet(m,ps,uvs,ns){
+    const per=Array.isArray(ns[0]),[a,b,c]=ps,e=[b[0]-a[0],b[1]-a[1],b[2]-a[2]],f=[c[0]-a[0],c[1]-a[1],c[2]-a[2]];
+    const want=per?ns.reduce((s,v)=>[s[0]+v[0],s[1]+v[1],s[2]+v[2]],[0,0,0]):ns;
+    const ord=ps.map((_,i)=>i);if((e[1]*f[2]-e[2]*f[1])*want[0]+(e[2]*f[0]-e[0]*f[2])*want[1]+(e[0]*f[1]-e[1]*f[0])*want[2]<0)ord.reverse();
+    const l=per?1:Math.hypot(...ns)||1;
+    if(!buckets.has(m))buckets.set(m,{p:[],n:[],u:[]});const B=buckets.get(m);
+    for(let i=1;i<ord.length-1;i++)for(const k of [ord[0],ord[i],ord[i+1]]){
+      B.p.push(...ps[k]);B.n.push(...(per?ns[k]:ns.map(v=>v/l)));B.u.push(...uvs[k]);}
+  }
+  // faces in a local frame: s along, d across (out of town, or out from a tower's middle), y up; u runs from uo
+  const frame=(ox,oz,tx,tz,nx,nz)=>({P:(s,d,y)=>[ox+tx*s+nx*d,y,oz+tz*s+nz*d],t:[tx,0,tz],n:[nx,0,nz]});
+  const along=(F,m,s0,s1,d,y0,y1,dir,uo)=>facet(m,[F.P(s0,d,y0),F.P(s1,d,y0),F.P(s1,d,y1),F.P(s0,d,y1)],   // a face along the wall
+    [[(s0+uo)/m.userData.wU,y0/m.userData.hU],[(s1+uo)/m.userData.wU,y0/m.userData.hU],[(s1+uo)/m.userData.wU,y1/m.userData.hU],[(s0+uo)/m.userData.wU,y1/m.userData.hU]],F.n.map(v=>v*dir));
+  const across=(F,m,s,d0,d1,y0,y1,dir,uo)=>facet(m,[F.P(s,d0,y0),F.P(s,d1,y0),F.P(s,d1,y1),F.P(s,d0,y1)],   // an end
+    [[(d0+uo+s)/m.userData.wU,y0/m.userData.hU],[(d1+uo+s)/m.userData.wU,y0/m.userData.hU],[(d1+uo+s)/m.userData.wU,y1/m.userData.hU],[(d0+uo+s)/m.userData.wU,y1/m.userData.hU]],F.t.map(v=>v*dir));
+  const flat=(F,m,s0,s1,d0,d1,y)=>facet(m,[F.P(s0,d0,y),F.P(s1,d0,y),F.P(s1,d1,y),F.P(s0,d1,y)],[[s0,d0],[s1,d0],[s1,d1],[s0,d1]],[0,1,0]);
+  function merlon(F,m,s0,s1,d0,d1,y0,y1,uo){   // a merlon and its cap, pitched both ways and a little overhanging
+    along(F,m,s0,s1,d1,y0,y1,1,uo);along(F,m,s0,s1,d0,y0,y1,-1,uo);across(F,m,s0,d0,d1,y0,y1,-1,uo);across(F,m,s1,d0,d1,y0,y1,1,uo);
+    const S0=s0-OV,S1=s1+OV,D0=d0-OV,D1=d1+OV,dm=(d0+d1)/2,yr=y1+CAP,up=(dir)=>[F.n[0]*dir*CAP,(D1-D0)/2,F.n[2]*dir*CAP];
+    facet(capM,[F.P(S0,D1,y1),F.P(S1,D1,y1),F.P(S1,dm,yr),F.P(S0,dm,yr)],[[S0,0],[S1,0],[S1,0.3],[S0,0.3]],up(1));
+    facet(capM,[F.P(S0,D0,y1),F.P(S1,D0,y1),F.P(S1,dm,yr),F.P(S0,dm,yr)],[[S0,0],[S1,0],[S1,0.3],[S0,0.3]],up(-1));
+    for(const [s,dir] of [[S0,-1],[S1,1]])facet(capM,[F.P(s,D0,y1),F.P(s,D1,y1),F.P(s,dm,yr)],[[D0,0],[D1,0],[dm,0.3]],F.t.map(v=>v*dir));
+    facet(capM,[F.P(S0,D0,y1),F.P(S1,D0,y1),F.P(S1,D1,y1),F.P(S0,D1,y1)],[[S0,D0],[S1,D0],[S1,D1],[S0,D1]],[0,-1,0]);
+  }
+  const inTower=(x,z,pad)=>towers.some(t=>Math.hypot(x-t.cx,z-t.cz)<t.R+pad);
+  // the stretches, in order round the outline: the plaster runs on from one to the next, and changes at a tower or gap
+  let uEnd=0,wm=wallM[0],last=null;
+  for(const f of forts)if(f.type===5){
+    const [p0,p1,,p3]=f.ring,L=Math.hypot(p1[0]-p0[0],p1[1]-p0[1]),T=Math.hypot(p3[0]-p0[0],p3[1]-p0[1]);
+    if(L<1e-3||T<1e-3)continue;
+    const F=frame(p0[0],p0[1],(p1[0]-p0[0])/L,(p1[1]-p0[1])/L,(p3[0]-p0[0])/T,(p3[1]-p0[1])/T);
+    const st=F.P(0,T/2,0);let uo;
+    if(!last||Math.hypot(st[0]-last[0],st[2]-last[2])>0.5||inTower(st[0],st[2],0.2)){uo=r()*6;wm=wallM[r()<0.5?0:1];}
+    else uo=uEnd-((last[0]-p0[0])*(p1[0]-p0[0])+(last[2]-p0[1])*(p1[1]-p0[1]))/L;   // the last stretch's end, measured along this one
+    along(F,wm,0,L,T,0,WH.sill,1,uo);along(F,wm,0,L,0,0,WH.walk,-1,uo);along(F,wm,0,L,T-PT,WH.walk,WH.sill,-1,uo);
+    flat(F,walkM,0,L,0,T-PT,WH.walk);flat(F,walkM,0,L,T-PT,T,WH.sill);
+    for(const [s,dir] of [[0,-1],[L,1]]){across(F,wm,s,0,T,0,WH.walk,dir,uo);across(F,wm,s,T-PT,T,WH.walk,WH.sill,dir,uo);}
+    const n=Math.max(1,Math.round(L/PERIOD)),mw=0.62*L/n;
+    for(let k=0;k<n;k++){const c=(k+0.5)*L/n,q=F.P(c,T-PT/2,0);if(inTower(q[0],q[2],mw/2+0.02))continue;
+      merlon(F,wm,c-mw/2,c+mw/2,T-PT,T,WH.sill,WH.top,uo);}
+    uEnd=uo+L;last=F.P(L,T/2,0);
+  }
+  // the towers: a round shaft, an open walk inside the parapet, merlons all round, and a conical roof or none
+  for(const {f,cx,cz,R} of towers){
+    const N=20,Ri=R-PT,uo=r(),m=towerM,hU=m.userData.hU,circ=2*Math.PI*R;
+    for(let k=0;k<N;k++){
+      const a0=k/N*Math.PI*2,a1=(k+1)/N*Math.PI*2,c0=[Math.cos(a0),0,Math.sin(a0)],c1=[Math.cos(a1),0,Math.sin(a1)];
+      const at=(c,rr,y)=>[cx+c[0]*rr,y,cz+c[2]*rr],u0=k/N+uo,u1=(k+1)/N+uo;
+      facet(m,[at(c0,R,0),at(c1,R,0),at(c1,R,TH.sill),at(c0,R,TH.sill)],[[u0,0],[u1,0],[u1,TH.sill/hU],[u0,TH.sill/hU]],[c0,c1,c1,c0]);
+      const i0=c0.map(v=>-v),i1=c1.map(v=>-v);
+      facet(m,[at(c0,Ri,TH.walk),at(c1,Ri,TH.walk),at(c1,Ri,TH.sill),at(c0,Ri,TH.sill)],[[u0,TH.walk/hU],[u1,TH.walk/hU],[u1,TH.sill/hU],[u0,TH.sill/hU]],[i0,i1,i1,i0]);
+      facet(walkM,[at(c0,Ri,TH.sill),at(c1,Ri,TH.sill),at(c1,R,TH.sill),at(c0,R,TH.sill)],[[c0[0]*Ri,c0[2]*Ri],[c1[0]*Ri,c1[2]*Ri],[c1[0]*R,c1[2]*R],[c0[0]*R,c0[2]*R]],[0,1,0]);
+      facet(walkM,[[cx,TH.walk,cz],at(c0,Ri,TH.walk),at(c1,Ri,TH.walk)],[[0,0],[c0[0]*Ri,c0[2]*Ri],[c1[0]*Ri,c1[2]*Ri]],[0,1,0]);
+      if(f.type===6){   // the roof springs from the walk, behind the battlements
+        const H=f.top-TH.walk,rr=Ri*0.97,nrm=(c)=>{const l=Math.hypot(H,rr);return [c[0]*H/l,rr/l,c[2]*H/l];};
+        facet(roofM,[at(c0,rr,TH.walk),at(c1,rr,TH.walk),[cx,f.top,cz]],[[k/N,0],[(k+1)/N,0],[(k+0.5)/N,1]],[nrm(c0),nrm(c1),nrm([Math.cos((a0+a1)/2),0,Math.sin((a0+a1)/2)])]);
+      }
+    }
+    const n=Math.max(4,Math.round(circ/PERIOD)),mw=0.62*circ/n;
+    for(let k=0;k<n;k++){const a=(k+0.5)/n*Math.PI*2;
+      merlon(frame(cx,cz,-Math.sin(a),Math.cos(a),Math.cos(a),Math.sin(a)),m,-mw/2,mw/2,Ri,R,TH.sill,TH.top,(uo+(k+0.5)/n)*m.userData.wU);}
+  }
+  for(const [m,B] of buckets){
+    const g=new THREE.BufferGeometry();
+    g.setAttribute('position',new THREE.Float32BufferAttribute(B.p,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(B.n,3));
+    g.setAttribute('uv',new THREE.Float32BufferAttribute(B.u,2));g.computeBoundingSphere();parent.add(new THREE.Mesh(g,m));
+  }
+}
+
 /* ---------- Basel in 1615, built the first time the time machine is used ---------- */
 const Y1615=ERA_GROUP['1615'];
 let city1615=null,win1615=null,towerA_1615=null,towerB_1615=null,G1_1615=null,G2_1615=null;
 function build1615(){
   if(city1615)return;
   city1615=buildCity(BASEL1615);Y1615.add(city1615.mesh);
+  buildFortifications(city1615.forts,Y1615);
   RIVERS['1615']=buildRiver(BASEL1615.ground.banks,{g:[['wall1615',null]],k:[['wall1615',null]]},Y1615);
   openChannel(RIVERS['1615']);   // the hills keep both eras' ways out open
   {const mb=BASEL.bridges.find(b=>/Mittlere/.test(b.name));if(mb){const B=Batch();buildBridge(mb,B,'1615');B.build(Y1615);}}
