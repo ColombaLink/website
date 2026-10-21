@@ -126,9 +126,16 @@ Credits shown in the game: 3D buildings (swissBUILDINGS3D) and aerial imagery (S
 bridges, the Rhine's banks and course, railways, roads, tram and bus lines and places © OpenStreetMap contributors (ODbL); tram and bus timetable: opentransportdata.swiss; the newer 3D buildings in
 places (3D-Stadtmodell), tree register (Baumkataster), the
 stairs and ladders down to the Rhine, and the 1615 plan and wall line: Quelle: Geodaten Kanton Basel-Stadt (CC BY 4.0);
-the fountains: Quelle: IWB / Geodaten Kanton Basel-Stadt; the statues' places: the canton's public art collection,
-Quelle: Geodaten Kanton Basel-Stadt (CC BY 4.0), and OpenStreetMap, the works named with their artists;
+the fountains' places and names: IWB's fountain inventory, Quelle: IWB / Geodaten Kanton Basel-Stadt; the statues'
+places: the canton's collection of art in public space, Quelle: Geodaten Kanton Basel-Stadt (CC BY 4.0), and
+OpenStreetMap for the Hammering Man; the artworks, shown as simple models after photographs: Jean Tinguely,
+Fasnachtsbrunnen (1977); Bettina Eichin, Sitzende Helvetia (1980); Carl Nathan Burckhardt, Amazone, Pferd führend
+(1926); Frédéric Auguste Bartholdi, Strassburger-Denkmal (1873); Lukas Ferdinand Schlöth, St. Jakobs-Denkmal (1872);
+Jonathan Borofsky, Hammering Man;
 the river bridges' piers, measured on the canton's bridge 3D model: Quelle: Geodaten Kanton Basel-Stadt; the hills and mountains on the horizon: produced using Copernicus WorldDEM™-90 © DLR e.V. 2010-2014 and © Airbus Defence
 and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved. As its licence
 (COP-DEM-GLO-90-F) asks, the credits add: "The organisations in charge of the Copernicus programme by law or by
 delegation do not incur any liability for any use of the Copernicus WorldDEM™-90".
+
+The colomba.link copy also lists these sources in its structured data (`site-parts.html`, schema.org `isBasedOn`). The
+game is free to play, with no charge, ads or sign-in.
