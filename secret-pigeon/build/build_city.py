@@ -83,6 +83,28 @@ CONIFERS = {"Pinus", "Picea", "Abies", "Taxus", "Thuja", "Cedrus", "Larix", "Pse
             "Metasequoia", "Taxodium", "Juniperus", "Chamaecyparis", "Cupressus", "Cryptomeria", "Tsuga", "Calocedrus",
             "Platycladus", "Cupressocyparis"}
 COLUMNAR = ("Fastigiata", "fastigiata", "Italica", "italica", "Columnar", "columnar", "Pyramidalis", "pyramidalis")
+# The river bridges' piers, measured on Basel-Stadt's bridge 3D layer ("Brücken BS", Quelle: Geodaten Kanton
+# Basel-Stadt): "p" a pier's centre (LV95, as lv95() gives it), its thickness along the bridge and its length across it
+# in metres; "a" the face of an abutment where the end span springs. Where the layer leaves an end unclear, the end
+# span is the engineers' figure: Johanniterbrücke 59 / 137 / 64 m, Dreirosenbrücke 77 / 105 / 84 m, the new SBB
+# bridge 59.7 / 117.2 / 59.7 m, the old one 48 / 59.4 / 59.4 / 48 m (the 1962 elevation), as are the Mittlere
+# Brücke's spans of 29 / 30 / 32.5 / 32.5 / 30 / 28.25 m, which the layer matches to half a metre.
+BRIDGE_PIERS = [
+    ["a", 2611298.5, 1267671.9, 0, 20.0], ["p", 2611321.9, 1267689.1, 3.5, 25.0], ["p", 2611346.1, 1267706.8, 3.5, 25.0],
+    ["p", 2611372.8, 1267725.2, 6.8, 31.3], ["p", 2611398.6, 1267745.4, 3.5, 25.0], ["p", 2611422.7, 1267763.2, 3.5, 25.0],
+    ["a", 2611445.6, 1267779.7, 0, 20.0],                                                       # Mittlere Brücke
+    ["a", 2611806.4, 1267234.3, 0, 21.0], ["p", 2611838.9, 1267292.8, 6.0, 25.5], ["p", 2611871.1, 1267350.4, 6.0, 25.5],
+    ["a", 2611904.4, 1267409.8, 0, 20.5],                                                       # Wettsteinbrücke
+    ["a", 2610952.8, 1268198.3, 0, 21.0], ["p", 2611006.2, 1268223.4, 4.3, 23.0], ["p", 2611130.8, 1268281.2, 4.3, 23.0],
+    ["a", 2611188.5, 1268308.9, 0, 21.0],                                                       # Johanniterbrücke
+    ["a", 2610889.4, 1268901.9, 0, 40.0], ["p", 2610966.4, 1268900.7, 4.4, 40.2], ["p", 2611071.4, 1268899.1, 4.4, 40.2],
+    ["a", 2611155.4, 1268898.0, 0, 40.0],                                                       # Dreirosenbrücke
+    ["p", 2613173.0, 1267537.0, 1.6, 46.0], ["p", 2613221.7, 1267428.8, 1.6, 44.0],             # Schwarzwaldbrücke
+    ["a", 2613199.3, 1267611.1, 0, 14.5], ["p", 2613223.5, 1267556.6, 5.0, 14.5], ["p", 2613272.0, 1267448.6, 5.0, 13.5],
+    ["a", 2613296.2, 1267394.0, 0, 13.5],                                                       # the new SBB bridge
+    ["a", 2613193.6, 1267595.2, 0, 17.0], ["p", 2613212.7, 1267552.2, 4.8, 16.4], ["p", 2613237.2, 1267497.8, 4.7, 16.4],
+    ["p", 2613261.3, 1267443.9, 4.7, 16.4], ["a", 2613280.7, 1267399.7, 0, 16.5],             # the old SBB bridge
+]
 
 
 def tree_byte(shape, size):
@@ -97,6 +119,35 @@ def lv95(lat, lon):
     e = 2600072.37 + 211455.93 * l - 10938.51 * l * p - 0.36 * l * p * p - 44.54 * l ** 3
     n = 1200147.07 + 308807.95 * p + 3745.25 * l * l + 76.63 * p * p - 194.56 * l * l * p + 119.79 * p ** 3
     return e, n
+
+
+def bridge_piers(bridges, e0, n0):
+    """Give each bridge the surveyed piers (BRIDGE_PIERS) under it: "piers" [u, v, thickness, length] (u along its
+    axis, v across it, all in game units) and "ends" [u0, u1], the faces of its abutments. A pier goes to the bridge
+    whose axis it lies nearest, so the two railway bridges side by side each get their own."""
+    for kind, e, n, thick, length in BRIDGE_PIERS:
+        x, z = (e - e0) / S, -(n - n0) / S
+        best = None
+        for br in bridges:
+            cx, cz, L, W, ang = br["axis"]
+            u = (x - cx) * math.cos(ang) - (z - cz) * math.sin(ang)
+            v = (x - cx) * math.sin(ang) + (z - cz) * math.cos(ang)
+            if abs(u) <= L / 2 + 3 and abs(v) <= W / 2 + 3 and (best is None or abs(v) < best[0]):
+                best = (abs(v), br, u, v)
+        if best:
+            _, br, u, v = best
+            if kind == "p":
+                br.setdefault("piers", []).append([round(u, 2), round(v, 2), round(thick / S, 2), round(length / S, 2)])
+            else:
+                br.setdefault("ends", []).append(round(u, 2))
+    for br in bridges:
+        if "piers" in br:
+            br["piers"].sort()
+        if "ends" in br:
+            if len(br["ends"]) == 2:
+                br["ends"].sort()
+            else:
+                del br["ends"]
 
 
 def num(v):
@@ -2284,6 +2335,7 @@ def main(raw, work, out_js):
     shores = river_shores(xjs, geo)
     course = rhine_course(raw, geo)
     access = waterside_access(raw, geo, shores)
+    bridge_piers(bridges, geo.e0, geo.n0)
     for br in bridges:
         del br["_ring"], br["id"], br["_obb"]
     for k, (lat, lon) in {"sbb": (47.54762, 7.58964), "tinguely": (47.55917, 7.61234), "moh": (47.54611, 7.58697),
