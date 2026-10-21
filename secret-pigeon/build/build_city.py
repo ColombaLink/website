@@ -647,6 +647,60 @@ def waterside_access(raw, geo, banks):
     return out
 
 
+# Statues the game models, by their number in the canton's public art collection, and the Hammering Man, which a bank
+# owns and the collection leaves out (OpenStreetMap node 5009975061)
+STATUES = {"B-E03/01": "helvetia", "B-B30/02": "amazone", "B-B09/01": "strassburg", "B-S12/01": "stjakob"}
+HAMMERING_MAN = (47.5514362, 7.5963731)
+# the Tinguely fountain's pool on the Theaterplatz, measured on SWISSIMAGE 10 cm: LV95 centre, metres across (about
+# east) and along (about north), and the degrees its across side is turned clockwise from east
+TINGUELY_POOL = (2611440.0, 1267005.5, 16.0, 18.5, 5.0)
+
+
+def point(v):
+    """A dataset's geo_point_2d: as the export gives it, or as the research copy saved it (a dict's text)."""
+    return v if isinstance(v, dict) else json.loads(v.replace("'", '"')) if isinstance(v, str) else {}
+
+
+def fountains_and_statues(raw, geo):
+    """Basel's public fountains (IWB's inventory, data.bs.ch dataset 100008, <raw>/fountains_bs.json: names and points,
+    no sizes or types) in the map: [x, z, kind, ...] in game units, kind 0 a stone trough with its column, the most
+    common, 1 a basilisk drinking fountain (cast iron), 2 the Fischmarktbrunnen; paddling pools are left out, and the
+    Tinguely fountain, which the game builds from its measured pool: [x, z, ux, uz, across, along] (u its across
+    direction). Statues (the canton's public art, dataset 100214, <raw>/art_bs.json, and the Hammering Man):
+    [[id, x, z], ...]. Empty lists without the data."""
+    W, E, Sth, N = AREA
+
+    def at(lat, lon):
+        x, y = geo.local(lat, lon)
+        return (round(x / S, 2), round(-y / S, 2)) if W <= x <= E and Sth <= y <= N else None
+    fountains, statues = [], []
+    src = os.path.join(raw, "fountains_bs.json")
+    for r in json.load(open(src)) if os.path.exists(src) else []:
+        p, name = point(r.get("geo_point_2d")), (r.get("name") or "").lower()
+        if p.get("lat") is None or "planschbecken" in name or "fasnachts" in name or "tinguely" in name:
+            continue
+        xz = at(p["lat"], p["lon"])
+        if xz:
+            fountains += [*xz, 1 if "basilisk" in name else 2 if "fischmarkt" in name else 0]
+    src = os.path.join(raw, "art_bs.json")
+    for r in json.load(open(src)) if os.path.exists(src) else []:
+        p = point(r.get("geo_point_2d"))
+        if r.get("id_invnr") in STATUES and p.get("lat") is not None and str(r.get("rueckbau")).lower() != "true":
+            xz = at(p["lat"], p["lon"])
+            if xz:
+                statues.append([STATUES[r["id_invnr"]], *xz])
+    if statues or fountains:
+        xz = at(*HAMMERING_MAN)
+        if xz:
+            statues.append(["hammering", *xz])
+    e, n, across, along, turn = TINGUELY_POOL
+    x, y = e - geo.e0, n - geo.n0
+    a = math.radians(turn)
+    tinguely = [round(x / S, 2), round(-y / S, 2), round(math.cos(a), 4), round(math.sin(a), 4),
+                round(across / S, 2), round(along / S, 2)] if fountains else []
+    return fountains, statues, tinguely
+
+
 def rail_tracks(raw, geo):
     """Tracks for the game's trains, out of OpenStreetMap's: two from Basel SBB over the Rhine to the Badischer Bahnhof
     and on north towards Germany (DB line 4000), the second kept off the first one's rails so the trains pass side by
@@ -2335,6 +2389,7 @@ def main(raw, work, out_js):
     shores = river_shores(xjs, geo)
     course = rhine_course(raw, geo)
     access = waterside_access(raw, geo, shores)
+    fountains, statues, tinguely = fountains_and_statues(raw, geo)
     bridge_piers(bridges, geo.e0, geo.n0)
     for br in bridges:
         del br["_ring"], br["id"], br["_obb"]
@@ -2387,6 +2442,7 @@ def main(raw, work, out_js):
         "towers": towers, "landmarks": landmarks, "iconic": dict(iconic, sbb=sbb_front, uni=uni), "places": places, "bridges": bridges, "ferries": ferries,
         "rail": rail, "tracks": rail_lines(raw, geo), "awnings": awnings, "market": market,
         "tramTracks": tram_tracks, "trams": trams, "buses": buses, "access": access, "horizon": sky,
+        "fountains": fountains, "statues": statues, "tinguely": tinguely,
     }
     js = "const BASEL=" + json.dumps(data, separators=(",", ":"), ensure_ascii=False) + ";\n"
     with open(out_js, "w") as f:

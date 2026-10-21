@@ -17,7 +17,7 @@ python3 -I secret-pigeon/build/assemble.py secret-pigeon/build/game.template.htm
 `fetch_data.py` downloads about 410 MB, most of it the four swissBUILDINGS3D map sheets and nine tiles of the Copernicus
 elevation model (47 MB, for the hills on the horizon), and the timetable on top: Switzerland's whole public transport
 timetable (GTFS, about 290 MB), from which the build keeps Basel's trams and buses. Add part names (`osm`, `rhine`,
-`rail`, `tram`, `bus`, `timetable`, `streets`, `ortho`, `sb3d`, `trees`, `access`, `dem`) to fetch only some of them.
+`rail`, `tram`, `bus`, `timetable`, `streets`, `ortho`, `sb3d`, `trees`, `access`, `fountains`, `art`, `dem`) to fetch only some of them.
 
 One input can't be fetched: Basel-Stadt's own 3D city model (MapBS "3D-Stadtmodell"), which is newer than
 swissBUILDINGS3D in places. The canton's Geodaten-Shop (shop.geo.bs.ch) sends it free by email: order "Wavefront OBJ"
@@ -26,7 +26,7 @@ with georeferencing (LV95) for areas of up to 5 km² covering the map, and put t
 
 | File | Does |
 |---|---|
-| `fetch_data.py` | Downloads the swisstopo aerial photo at 1 m per pixel (WMS), swissBUILDINGS3D 3.0 (CityGML), Basel's tree register and its register of the stairs and ladders down to the rivers (data.bs.ch) and the OpenStreetMap landmarks, bridges, ferries, railway tracks, tram tracks and lines, bus lines and the roads around them, shopping streets and place names (Swiss Overpass mirror), the Rhine's centreline for 22 km round the city (the ways of its OpenStreetMap waterway relation that are its main stream; one small query to the main Overpass instance, since the Swiss mirror's data stops at the border), Switzerland's public transport timetable (GTFS, opentransportdata.swiss), and the Copernicus DEM GLO-90 (a 3 arc-second surface model, heights over the EGM2008 geoid) within 75 km of the Mittlere Brücke: nine 1-degree tiles from the AWS open data registry, no sign-in. |
+| `fetch_data.py` | Downloads the swisstopo aerial photo at 1 m per pixel (WMS), swissBUILDINGS3D 3.0 (CityGML), Basel's tree register and its register of the stairs and ladders down to the rivers, IWB's fountain inventory and the canton's public art collection (data.bs.ch) and the OpenStreetMap landmarks, bridges, ferries, railway tracks, tram tracks and lines, bus lines and the roads around them, shopping streets and place names (Swiss Overpass mirror), the Rhine's centreline for 22 km round the city (the ways of its OpenStreetMap waterway relation that are its main stream; one small query to the main Overpass instance, since the Swiss mirror's data stops at the border), Switzerland's public transport timetable (GTFS, opentransportdata.swiss), and the Copernicus DEM GLO-90 (a 3 arc-second surface model, heights over the EGM2008 geoid) within 75 km of the Mittlere Brücke: nine 1-degree tiles from the AWS open data registry, no sign-in. |
 | `fetch_1615.py` | Downloads the canton's "Übersichtsplan 1615" (WMS, 0.5 m pixels), the outline of the historic core inside the old wall (WFS), and OSM streets used to place the demolished gates. |
 | `sb3d.py` | Streams the CityGML, merges each building's roof triangles back into roof planes, drops vertices on straight edges and closes seams between planes. |
 | `mapbs.py`, `mapbs-updates.json` | The places where the canton's 3D city model is newer than swissBUILDINGS3D: 22 sites, each checked against the aerial photo the game lays on the ground and the shadows in it (buildings finished since swisstopo's survey, often marked "Im Bau" there, demolished ones, a missing house, the rebuilt Messe block). The list names the swisstopo buildings to drop and the canton's to put in their place, so that a site is swapped whole, without holes or doubled buildings; `mapbs.py` reads those buildings out of the OBJ archives (roof faces, the floor slab's height as the ground, the lowest wall point). Everywhere else the two models agree to within about a metre and the game keeps swissBUILDINGS3D, which also tells canopies, towers and churches apart. |
@@ -37,8 +37,11 @@ with georeferencing (LV95) for areas of up to 5 km² covering the map, and put t
 | `site-parts.html` | What only the colomba.link copy gets: its description, canonical address, Open Graph and Twitter previews (`og.jpg`), structured data and the links back to the site. |
 
 The game itself (`game.template.html`) models the landmarks by hand on top of these measurements: the Münster and its
-cloister, the Rathaus (its old front building, north wing and tower told apart by the roof heights behind the front),
-the three city gates, the medieval churches, the Elisabethenkirche, Basel SBB's front, the University's Kollegienhaus
+cloister, the Rathaus (its old front building, north wing and tower told apart by the roof heights behind the front;
+on the tower's corners four turrets on stepped corbels with eight-sided window stages and glazed spires, the railing
+round the roof and the gilded bell cage, after the photos, as the Blender reference model of the city has them),
+the three city gates (the Spalentor in its pink and purple ashlar, with the wooden gallery under the roof and the
+barbican's six tall merlons), the medieval churches, the Elisabethenkirche (red sandstone), Basel SBB's front, the University's Kollegienhaus
 at Petersplatz (Roland Rohn, 1937–39: deep wooden eaves, and the bare stone block over its entrance standing on pillars
 in front of the mosaic), Les Trois Rois (Amadeus Merian's hotel of 1842–44: yellow plaster and grey pilasters, the
 terrace over the quay with its iron railing, the winter garden and the gold letters between the two corner pavilions,
@@ -68,7 +71,17 @@ ships' landing stage in St. Johann; no boat stands in a bridge: moored ones are 
 head, and the Merian passes each bridge square to it, straight through its widest opening that her decks fit under, and the Rhine baths of St. Johann and the Breite stand on their stilts (after the
 operators' figures and photos). In the tour the pigeon can dive into the river's bed and fly along the water. In
 1615 it marks the university's first home instead, the
-college on the Rheinsprung, used from 1460 until the Kollegienhaus opened. It also paints the facades of the Messe, the Kunstmuseum, the two stations, Museum Tinguely, the Meret
+college on the Rheinsprung, used from 1460 until the Kollegienhaus opened. Basel's public fountains stand where IWB's
+inventory puts them (data.bs.ch 100008; it has names and places, no sizes, so the shapes follow photos of a few): most a
+limestone trough with a painted column and a gilded figure, set along the nearest wall, the cast-iron basilisk
+drinking fountains, and the Fischmarktbrunnen's Gothic pillar; Jean Tinguely's fountain on the Theaterplatz has its
+pool as measured on the 10 cm aerial photo and ten black machines turning, rocking and spraying in it (after photos, in
+kind rather than machine by machine). Five statues stand where the canton's public art collection (data.bs.ch 100214)
+and, for the Hammering Man, OpenStreetMap put them, as simple models after photos: Bettina Eichin's Helvetia on the
+Mittlere Brücke's Kleinbasel terrace, Carl Burckhardt's Amazone at its Grossbasel end, Bartholdi's
+Strassburger-Denkmal, Schlöth's St. Jakobs-Denkmal and Jonathan Borofsky's Hammering Man on the Aeschenplatz, his arm
+striking every seven seconds. At night the Rathaus, the Münster and the city gates are floodlit (their painted faces
+glow, dimmed, under their lit windows). It also paints the facades of the Messe, the Kunstmuseum, the two stations, Museum Tinguely, the Meret
 Oppenheim Hochhaus and the shop houses from Barfüsserplatz to Marktplatz (with awnings, and market stalls on the
 Marktplatz by day), lays every railway and tram track in the map, runs a DB ICE and an SBB EuroCity towards Germany and a TGV
 Lyria towards France, and runs Basel's twelve tram lines to their real weekday timetable, three times faster than life and from the
@@ -113,6 +126,8 @@ Credits shown in the game: 3D buildings (swissBUILDINGS3D) and aerial imagery (S
 bridges, the Rhine's banks and course, railways, roads, tram and bus lines and places © OpenStreetMap contributors (ODbL); tram and bus timetable: opentransportdata.swiss; the newer 3D buildings in
 places (3D-Stadtmodell), tree register (Baumkataster), the
 stairs and ladders down to the Rhine, and the 1615 plan and wall line: Quelle: Geodaten Kanton Basel-Stadt (CC BY 4.0);
+the fountains: Quelle: IWB / Geodaten Kanton Basel-Stadt; the statues' places: the canton's public art collection,
+Quelle: Geodaten Kanton Basel-Stadt (CC BY 4.0), and OpenStreetMap, the works named with their artists;
 the river bridges' piers, measured on the canton's bridge 3D model: Quelle: Geodaten Kanton Basel-Stadt; the hills and mountains on the horizon: produced using Copernicus WorldDEM™-90 © DLR e.V. 2010-2014 and © Airbus Defence
 and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved. As its licence
 (COP-DEM-GLO-90-F) asks, the credits add: "The organisations in charge of the Copernicus programme by law or by

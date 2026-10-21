@@ -1,7 +1,7 @@
 """Download the raw map data for Secret Pigeon's Basel.
 
 Usage: python3 -I secret-pigeon/build/fetch_data.py <output-dir> [osm] [rhine] [rail] [tram] [bus] [timetable] [streets]
-       [ortho] [sb3d] [trees] [access] [dem]
+       [ortho] [sb3d] [trees] [access] [fountains] [art] [dem]
   (no part names: all of them)
 
 Writes into <output-dir>:
@@ -21,6 +21,8 @@ Writes into <output-dir>:
   sb3d/*.citygml.zip   swisstopo swissBUILDINGS3D 3.0 (CityGML, LOD2 roofs), newest release of each map sheet
   trees_bs.json        Basel's public tree register (species and age), Geodaten Kanton Basel-Stadt
   access_bs.json       the stairs and ladders down to the water along the rivers, Geodaten Kanton Basel-Stadt
+  fountains_bs.json    Basel's public fountains (IWB's inventory): names and positions
+  art_bs.json          the canton's public art collection, for the statues the game models
   dem/*.tif            the Copernicus DEM GLO-90 (WorldDEM-90, 3 arc-seconds) around Basel out to 75 km, nine
                        1-degree tiles, for the hills and mountains on the horizon (about 47 MB)
 """
@@ -236,6 +238,35 @@ def fetch_access(out):
     print(f"wrote {path} ({len(json.loads(body))} stairs and ladders)", flush=True)
 
 
+def fetch_fountains(out):
+    """Basel's public fountains (IWB, data.bs.ch dataset 100008): name, place and position. Credit "Quelle: IWB /
+    Geodaten Kanton Basel-Stadt"; IWB asks to be asked before any commercial use."""
+    s, w, n, e = BBOX
+    q = urllib.parse.urlencode({"select": "name,desc,geo_point_2d", "where": f"in_bbox(geo_point_2d,{s},{w},{n},{e})"})
+    body = get(f"https://data.bs.ch/api/explore/v2.1/catalog/datasets/100008/exports/json?{q}")
+    if not body.startswith(b"["):
+        raise SystemExit(f"the fountain inventory did not come as a JSON list: {body[:200]!r}")
+    path = os.path.join(out, "fountains_bs.json")
+    with open(path, "wb") as f:
+        f.write(body)
+    print(f"wrote {path} ({len(json.loads(body))} fountains)", flush=True)
+
+
+def fetch_art(out):
+    """The canton's public art collection (data.bs.ch dataset 100214, CC BY 4.0): inventory number, artist, title,
+    place and position, for the statues the game models (build_city.STATUES)."""
+    s, w, n, e = BBOX
+    q = urllib.parse.urlencode({"select": "id_invnr,ku_name,werktitel,datierung,standort,rueckbau,geo_point_2d",
+                                "where": f"in_bbox(geo_point_2d,{s},{w},{n},{e})"})
+    body = get(f"https://data.bs.ch/api/explore/v2.1/catalog/datasets/100214/exports/json?{q}")
+    if not body.startswith(b"["):
+        raise SystemExit(f"the public art collection did not come as a JSON list: {body[:200]!r}")
+    path = os.path.join(out, "art_bs.json")
+    with open(path, "wb") as f:
+        f.write(body)
+    print(f"wrote {path} ({len(json.loads(body))} works)", flush=True)
+
+
 def fetch_dem(out):
     """The terrain for the horizon: the Copernicus DEM GLO-90 tiles (Cloud Optimized GeoTIFFs from the AWS open data
     registry, no sign-in) within horizon.R_OUT of the Mittlere Brücke. Licence: free and open, with the notice in
@@ -256,7 +287,7 @@ def fetch_dem(out):
 
 PARTS = {"osm": fetch_osm, "rhine": fetch_rhine, "rail": fetch_rail, "tram": fetch_tram, "bus": fetch_bus, "timetable": fetch_timetable,
          "streets": fetch_streets, "ortho": fetch_ortho, "sb3d": fetch_buildings, "trees": fetch_trees, "access": fetch_access,
-         "dem": fetch_dem}
+         "fountains": fetch_fountains, "art": fetch_art, "dem": fetch_dem}
 
 if __name__ == "__main__":
     if len(sys.argv) < 2 or any(a not in PARTS for a in sys.argv[2:]):
