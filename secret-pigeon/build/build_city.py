@@ -60,10 +60,22 @@ FACADES = [("rathaus", "relation", 7634307), ("messe1", "way", 315916587), ("kun
            ("tinguely", "way", 317500933), ("messe1", "relation", 18445990), ("moh", "way", 562039631),
            ("uni", "way", 270630550),
            ("troisrois", "way", 148034746), ("troisroisbank", "way", 148034745),   # Les Trois Rois, and its corner building
+           # after the photo-based facades of the Blender reference world (data/basel-reference/reference-world/,
+           # 22-23 October 2026): the Novartis buildings inside the map, the Zoo's houses and the Lällekönig house
+           ("forum3", "way", 56125299), ("maerkli", "way", 235374754), ("novartisgate", "way", 144383413),
+           ("pavillon", "way", 949622090), ("etoscha", "way", 26532461), ("tembea", "way", 336130794),
+           ("zooentrance", "way", 26532380), ("vogelhaus", "way", 26532412), ("affenhaus", "way", 242890119),
+           ("laelle", "way", 148255764),
            ("highrise", None, None), ("sacral", None, None),     # every other high-rise and church
-           ("shops1", None, None), ("shops2", None, None), ("shops3", None, None), ("shops4", None, None)]
+           ("shops1", None, None), ("shops2", None, None), ("shops3", None, None), ("shops4", None, None),
+           ("andreas1", None, None), ("andreas2", None, None), ("andreas3", None, None), ("andreas4", None, None),
+           ("andreas5", None, None)]                              # the houses round the Andreasplatz
 UNI_ENTRANCE = (47.5578479, 7.5841403)   # the Kollegienhaus's main door, by Carl Gutknecht's relief (OSM)
 SHOP_STYLES = ["shops1", "shops2", "shops3", "shops4"]   # houses with shop fronts along the streets below
+ANDREAS_STYLES = ["andreas1", "andreas2", "andreas3", "andreas4", "andreas5"]
+AFFENBRUNNEN = (47.558155, 7.5864002)    # the Andreasplatz's fountain: the houses within ANDREAS_R m of it front the square
+ANDREAS_R = 25.0
+LAELLE_HEAD = (47.5595595, 7.5883587)    # the Lällekönig's copper head at the Schifflände (OSM tourism=artwork)
 # the shopping streets from Barfüsserplatz to Marktplatz (OSM names, half their width in metres) and the two squares
 SHOP_STREETS = {"Gerbergasse": 4.5, "Falknerstrasse": 6.0, "Freie Strasse": 5.0, "Streitgasse": 4.0,
                 "Barfüssergasse": 4.0, "Eisengasse": 5.0, "Marktgasse": 4.5}
@@ -1707,6 +1719,7 @@ def main(raw, work, out_js):
     # ---------- buildings: swissBUILDINGS3D roofs ----------
     blds = load_3d(raw, work, geo, lambda x, y: in_area(x, y, m=-15))
     stats = Counter()
+    andreas_c = geo.local(*AFFENBRUNNEN)
     blds = update_from_mapbs(raw, work, geo, blds, lambda x, y: in_area(x, y, m=-15), stats)
     # covered footbridges (OSM building=bridge): swisstopo models them down to the ground, often as one building with
     # the houses they join, so the street under them would be walled off. Their roofs become buildings of their own,
@@ -1840,6 +1853,9 @@ def main(raw, work, out_js):
             hi = [p for p in pts if p[2] - g > top_rel - 15]   # a real tower is still wide near its top; a chimney is not
             if max(max(p[0] for p in hi) - min(p[0] for p in hi), max(p[1] for p in hi) - min(p[1] for p in hi)) >= 12:
                 style = FACADE_STYLES.index("highrise")
+        if style is None and kind in (0, 10) and top_rel < 40 and math.dist(c, andreas_c) < ANDREAS_R:
+            style = FACADE_STYLES.index(ANDREAS_STYLES[int(abs(c[0] * 5.17 + c[1] * 2.91)) % len(ANDREAS_STYLES)])
+            stats["andreasplatz"] += 1
         if style is None and kind in (0, 10) and top_rel < 40 and fronts_shops(pts):
             style = FACADE_STYLES.index(SHOP_STYLES[int(abs(c[0] * 7.31 + c[1] * 3.17)) % len(SHOP_STYLES)])
             stats["shops"] += 1
@@ -2390,6 +2406,10 @@ def main(raw, work, out_js):
     course = rhine_course(raw, geo)
     access = waterside_access(raw, geo, shores)
     fountains, statues, tinguely = fountains_and_statues(raw, geo)
+    # the Lällekönig's copper head beside the Lällekönig house's entrance (OSM node, tourism=artwork, direction 70);
+    # the game puts the house's gable, name and both heads on the front facing that way
+    lx, ly = geo.local(*LAELLE_HEAD)
+    details = {"laelle": {"head": [round(lx / S, 2), round(-ly / S, 2)], "facing": 70}}
     bridge_piers(bridges, geo.e0, geo.n0)
     for br in bridges:
         del br["_ring"], br["id"], br["_obb"]
@@ -2442,7 +2462,7 @@ def main(raw, work, out_js):
         "towers": towers, "landmarks": landmarks, "iconic": dict(iconic, sbb=sbb_front, uni=uni), "places": places, "bridges": bridges, "ferries": ferries,
         "rail": rail, "tracks": rail_lines(raw, geo), "awnings": awnings, "market": market,
         "tramTracks": tram_tracks, "trams": trams, "buses": buses, "access": access, "horizon": sky,
-        "fountains": fountains, "statues": statues, "tinguely": tinguely,
+        "fountains": fountains, "statues": statues, "tinguely": tinguely, "details": details,
     }
     js = "const BASEL=" + json.dumps(data, separators=(",", ":"), ensure_ascii=False) + ";\n"
     with open(out_js, "w") as f:

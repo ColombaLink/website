@@ -41,7 +41,9 @@ cloister, the Rathaus (its old front building, north wing and tower told apart b
 on the tower's corners four turrets on stepped corbels with eight-sided window stages and glazed spires, the railing
 round the roof and the gilded bell cage, after the photos, as the Blender reference model of the city has them),
 the three city gates (the Spalentor in its pink and purple ashlar, with the wooden gallery under the roof and the
-barbican's six tall merlons), the medieval churches, the Elisabethenkirche (red sandstone), Basel SBB's front, the University's Kollegienhaus
+barbican's six tall merlons; the St. Alban-Tor with its passage open from the town to the field, after the photos
+of it: buff and red voussoirs round both pointed arches, a whitewashed hall under dark beams, the portcullis raised
+behind the field arch, the door leaves open against the walls, a lantern and cobbles), the medieval churches, the Elisabethenkirche (red sandstone), Basel SBB's front, the University's Kollegienhaus
 at Petersplatz (Roland Rohn, 1937–39: deep wooden eaves, and the bare stone block over its entrance standing on pillars
 in front of the mosaic), Les Trois Rois (Amadeus Merian's hotel of 1842–44: yellow plaster and grey pilasters, the
 terrace over the quay with its iron railing, the winter garden and the gold letters between the two corner pavilions,
@@ -83,7 +85,13 @@ Strassburger-Denkmal, Schlöth's St. Jakobs-Denkmal and Jonathan Borofsky's Hamm
 striking every seven seconds. At night the Rathaus, the Münster and the city gates are floodlit (their painted faces
 glow, dimmed, under their lit windows). It also paints the facades of the Messe, the Kunstmuseum, the two stations, Museum Tinguely, the Meret
 Oppenheim Hochhaus and the shop houses from Barfüsserplatz to Marktplatz (with awnings, and market stalls on the
-Marktplatz by day), lays every railway and tram track in the map, runs a DB ICE and an SBB EuroCity towards Germany and a TGV
+Marktplatz by day); after the photo-based facades of the Blender reference world of the city (October 2026), the
+Novartis buildings inside the map (Forum 3's coloured glass, Märkli's silver grid, Serra's glass main gate, the
+Pavillon's dark diamond skin), the Zoo's Etoscha house in rammed earth, its elephant house, Vogelhaus and Affenhaus,
+the houses round the Andreasplatz (pastel plaster with shutters, one half-timbered, over shopfronts) and the
+Lällekönig house at the Schifflände in ochre sandstone, with its curved gable, its name carved across the front
+facing the bridge and the Lällekönig's two crowned heads with their tongues out, the copper one beside the entrance
+where OpenStreetMap has it and the painted one on the corner above. It lays every railway and tram track in the map, runs a DB ICE and an SBB EuroCity towards Germany and a TGV
 Lyria towards France, and runs Basel's twelve tram lines to their real weekday timetable, three times faster than life and from the
 time it is in Basel, every trip stopping at each of its stations. A tram waits behind one ahead of it on its track, and
 where two tram tracks cross, join, or run closer than two trams can pass (lines 10 and 17 run both ways on one track

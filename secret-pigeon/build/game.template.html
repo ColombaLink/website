@@ -893,6 +893,7 @@ function roofTriangles(X,Z,loops,tri){
   }
 }
 // the city as one vertex-coloured mesh; buildings in `fac` keep their shape but get the textures in FACADE_STYLES
+const FACADE_WALLS={laelle:[]};   // the walls of these facade styles' buildings, for the details put on them
 function buildCity3D(bytes,count,fac){
   const CELL=0.4;
   let cap=1<<19,pos=new Float32Array(cap*3),col=new Uint8Array(cap*3),nv=0,icap=1<<20,idx=new Uint32Array(icap),ni=0;
@@ -954,6 +955,8 @@ function buildCity3D(bytes,count,fac){
     const put=(m,pts,uvs)=>{let a=acc.get(m);if(!a)acc.set(m,a={pos:[],uv:[]});for(const q of pts)a.pos.push(q[0],q[1],q[2]);for(const t of uvs)a.uv.push(t[0],t[1]);};
     decodePack(fac.bytes,fac.count,({kind,zb,X,Y,Z,loops,walls})=>{
       const st=FACADE_STYLES[fac.styles[kind]];if(!st)return;
+      if(fac.styles[kind] in FACADE_WALLS)for(let e=0;e<walls.length;e+=2){const a=walls[e],c=walls[e+1];   // kept for the details on them
+        FACADE_WALLS[fac.styles[kind]].push({ax:X[a],az:Z[a],cx:X[c],cz:Z[c],ya:Y[a],yc:Y[c],zb});}
       roofTriangles(X,Z,loops,(a,c,d)=>{
         raster(X[a],Y[a],Z[a],X[c],Y[c],Z[c],X[d],Y[d],Z[d]);
         const ux=X[c]-X[a],uy=Y[c]-Y[a],uz=Z[c]-Z[a],vx=X[d]-X[a],vy=Y[d]-Y[a],vz=Z[d]-Z[a];
@@ -1428,6 +1431,67 @@ function buildBridge(br,B,era){
    sandstone under a green copper roof; buttresses that end in pinnacles, a pierced parapet, tall three-light tracery
    windows over small lancets, a five-sided choir to the west, and the 72 m east tower with its portal, great window,
    clock, belfry, pinnacled octagon and openwork spire. Sizes follow swisstopo's 3D model of it. Not there in 1615. ---------- */
+/* the Lällekönig house at the Schifflände, after the Blender reference world (REF 162 of its priority photos): on the
+   front facing the bridge, the curved gable over the middle bays (10.4 m wide, 4.6 m over the eaves: straight sides,
+   then a segmental arc) with three windows, the name carved across the front over the first floor's windows, and the
+   Lällekönig's two crowned heads with their tongues out: the copper one (Rosa Bratteler, 1941) on its green plate
+   beside the entrance, where OpenStreetMap has it, and the painted stone one on the corner above. Built in metres */
+function laelleHouse(walls,det,parent){
+  if(!walls.length||!det)return;
+  const f=det.facing*Math.PI/180,dir=[Math.sin(f),-Math.cos(f)];
+  let cx=0,cz=0;for(const w of walls){cx+=w.ax+w.cx;cz+=w.az+w.cz;}cx/=2*walls.length;cz/=2*walls.length;
+  const segs=[];
+  for(const w of walls){const dx=w.cx-w.ax,dz=w.cz-w.az,L=Math.hypot(dx,dz);if(L<0.05)continue;
+    let n=[dz/L,-dx/L];const mx=(w.ax+w.cx)/2,mz=(w.az+w.cz)/2;if((mx-cx)*n[0]+(mz-cz)*n[1]<0)n=[-n[0],-n[1]];
+    if(n[0]*dir[0]+n[1]*dir[1]>0.8)segs.push({...w,n,L,out:(mx-cx)*n[0]+(mz-cz)*n[1]});}
+  if(!segs.length)return;
+  const far=Math.max(...segs.map(s=>s.out)),front=segs.filter(s=>s.out>far-0.2);   // the outermost: others are party walls
+  let nx=0,nz=0;for(const s of front){nx+=s.n[0]*s.L;nz+=s.n[1]*s.L;}const nl=Math.hypot(nx,nz);nx/=nl;nz/=nl;
+  const tx=-nz,tz=nx,ts=front.flatMap(s=>[s.ax*tx+s.az*tz,s.cx*tx+s.cz*tz]),t0=Math.min(...ts),t1=Math.max(...ts),tm=(t0+t1)/2;
+  const off=Math.max(...front.flatMap(s=>[s.ax*nx+s.az*nz,s.cx*nx+s.cz*nz]));
+  const foot=Math.min(...front.map(s=>s.zb)),eave=(Math.min(...front.flatMap(s=>[s.ya,s.yc]))-foot)/VS;
+  const G=new THREE.Group();G.position.set(tx*tm+nx*off,foot,tz*tm+nz*off);G.rotation.y=Math.atan2(nx,nz);   // local +z out
+  G.scale.set(1/BASEL.S,VS,1/BASEL.S);parent.add(G);
+  const X=u=>-(u-tm)*BASEL.S;   // a place along the front (game units) to the group's x (metres)
+  const ochre=stdMat({color:0xc9a76e,roughness:.9}),mansard=stdMat({color:0x5e4436,roughness:.8,side:THREE.DoubleSide});
+  const R=7.76,half=5.2,shape=new THREE.Shape();shape.moveTo(-half,0);
+  for(let k=0;k<=16;k++){const u=-half+2*half*k/16;shape.lineTo(u,2.6+Math.sqrt(R*R-u*u)-(R-2));}shape.lineTo(half,0);shape.closePath();
+  const gableTex=glowMat((x,glow)=>{const w=416,h=184;   // 10.4 m by 4.6 m, 40 px a metre
+    if(glow){x.fillStyle='#000';x.fillRect(0,0,w,h);}else{x.fillStyle='#c9a76e';x.fillRect(0,0,w,h);
+      for(let y=h;y>0;y-=17){x.fillStyle='rgba(120,90,50,.35)';x.fillRect(0,y,w,2);}
+      x.strokeStyle='#dec28c';x.lineWidth=5;for(let k=0;k<3;k++){x.beginPath();x.arc(w/2,R*40,(R-0.05-0.12*k)*40,Math.PI,2*Math.PI);x.stroke();}
+      x.fillStyle='#d6b882';for(const u of [-4.1,4.1]){x.beginPath();x.arc(w/2+u*40,h-116,14,0,Math.PI*2);x.fill();}
+      x.beginPath();x.moveTo(w/2-28,h-118);x.lineTo(w/2+28,h-118);x.lineTo(w/2+16,h-154);x.lineTo(w/2-16,h-154);x.closePath();x.fill();
+      x.fillRect(0,h-12,w,12);}
+    for(const u of [-2.4,0,2.4]){const X0=w/2+u*40-22;if(!glow){x.fillStyle='#d6b882';x.fillRect(X0-6,h-112,56,92);}
+      x.fillStyle=glow?'#ffd590':'#343c42';x.fillRect(X0,h-104,44,84);
+      if(!glow){x.fillStyle='#e8e4d8';x.fillRect(X0+21,h-104,2,84);x.fillRect(X0,h-76,44,2);}}},416,184);
+  const fg=new THREE.ShapeGeometry(shape),pa=fg.attributes.position,uv=fg.attributes.uv;
+  for(let i=0;i<pa.count;i++)uv.setXY(i,(pa.getX(i)+half)/(2*half),pa.getY(i)/4.6);
+  const front3=new THREE.Mesh(fg,gableTex);front3.position.set(0,eave,0.12);G.add(front3);
+  const body=new THREE.ExtrudeGeometry(shape,{depth:3,bevelEnabled:false});body.translate(0,0,-2.94);
+  const back=new THREE.Mesh(body,mansard);back.position.set(0,eave,0);G.add(back);
+  // the name over the first floor's windows
+  const name=stdMat({transparent:true,alphaTest:.3,roughness:.9,map:canvasTexture(1200,140,(x)=>{x.clearRect(0,0,1200,140);
+    x.fillStyle='#5e4628';x.font='bold 110px Georgia, "Times New Roman", serif';x.textAlign='center';x.textBaseline='middle';x.fillText('LÄLLE - KÖNIG',600,74);},false)});
+  const sign=new THREE.Mesh(new THREE.PlaneGeometry(6.8,0.8),name);sign.position.set(0,12.05,0.1);G.add(sign);
+  // the heads: copper on its plate beside the entrance, painted stone on the corner above
+  const skin={copper:stdMat({color:0x8f5634,roughness:.4,metalness:.6}),painted:stdMat({color:0xb07a5c,roughness:.6})};
+  const dark=stdMat({color:0x1c1a19,roughness:.6}),green=stdMat({color:0x2f5a3c,roughness:.6}),gold=stdMat({color:0xb07a22,roughness:.38,metalness:1});
+  const white=stdMat({color:0xece8e0,roughness:.5}),red=stdMat({color:0xb02a2a,roughness:.5}),ball=new THREE.SphereGeometry(1,12,8);
+  const head=(x0,y0,k,face,plate)=>{const H=new THREE.Group();H.position.set(x0,y0,0);H.scale.setScalar(k);G.add(H);
+    const blob=(m,x,y,z,a,b,c)=>{const o=new THREE.Mesh(ball,m);o.position.set(x,y,z);o.scale.set(a,b,c);H.add(o);};
+    if(plate){const p=new THREE.Mesh(boxGeo,green);p.scale.set(1.1,1.1,0.06);p.position.set(0,-0.6,0);H.add(p);}
+    blob(green,0,-0.3,0.18,0.4,0.15,0.2);blob(dark,0,0.08,0.2,0.24,0.27,0.2);blob(skin[face],0,0.04,0.31,0.19,0.25,0.2);
+    blob(dark,0,-0.13,0.4,0.18,0.17,0.15);for(const s of [-1,1])blob(white,s*0.075,0.1,0.49,0.03,0.025,0.03);
+    const t=new THREE.Mesh(boxGeo,red);t.scale.set(0.09,0.045,0.19);t.position.set(0,-0.08,0.56);H.add(t);   // the tongue
+    const c=new THREE.Mesh(new THREE.CylinderGeometry(0.215,0.215,0.09,10,1,true),gold);c.position.set(0,0.31,0.29);H.add(c);
+    for(let j=0;j<5;j++){const a=j*Math.PI*2/5,p=new THREE.Mesh(new THREE.ConeGeometry(0.05,0.13,4),gold);
+      p.position.set(0.2*Math.sin(a),0.42,0.29+0.2*Math.cos(a));H.add(p);}};
+  const hu=det.head[0]*tx+det.head[1]*tz,end=Math.abs(hu-t0)<Math.abs(hu-t1)?t0+0.1:t1-0.1;
+  head(X(Math.min(Math.max(hu,t0+0.15),t1-0.15)),3.3,1,'copper',true);
+  head(X(end),7.2,1.2,'painted',false);
+}
 function elisabethenkirche(E,parent){
   const tl=E.tower?((E.tower[0]-E.x)*Math.cos(E.ang)-(E.tower[1]-E.z)*Math.sin(E.ang)):4;   // tower along the axis
   const ang=E.ang+(tl<0?Math.PI:0),Mc=frameOf(E.x,E.z,ang),hm=m=>m*VS,um=m=>m/BASEL.S;
@@ -1734,7 +1798,104 @@ const FACADE_STYLES=(()=>{
       if(glow){if(lit){x.fillStyle=rng()<0.5?'#ffd27a':'#fff1cf';x.fillRect(b*32+3,f*32+4,26,20);}}
       else{const v=70+rng()*30|0;x.fillStyle=`rgb(${v},${v+14},${v+28})`;x.fillRect(b*32+3,f*32+4,26,20);x.fillStyle='rgba(255,255,255,.12)';x.fillRect(b*32+3,f*32+4,26,5);}}},256,256,1,1,{roughness:.4,metalness:.15});
   const sacral=glowMat((x,glow)=>{wallBg(x,128,384,glow,'#cdbda2','rgba(90,75,55,.28)');lancetWin(x,42,70,44,250,glow,'#a9967a');},128,384);
+  /* after the photo-based facades of the Blender reference world (data/basel-reference/reference-world/, 22-23 October
+     2026), 40 px a metre unless said otherwise; each draws with its own seeded numbers, so the other textures keep
+     theirs. A tile's foot stands on the ground, so ground floors are drawn at its bottom */
+  const seeded=s=>()=>(s=s*16807%2147483647)/2147483647;
+  const plain=(x,w,h,glow,base,r)=>{x.fillStyle=glow?'#000':base;x.fillRect(0,0,w,h);if(glow)return;
+    for(let i=0;i<w*h/60;i++){x.fillStyle=r()<.5?'rgba(0,0,0,.035)':'rgba(255,255,255,.05)';x.fillRect(r()*w,r()*h,2,2);}};
+  const lit=(x,glow,r,X,Y,Wd,Hd,glass)=>{const on=r()<0.3;x.fillStyle=glow?(on?'#ffd590':'#000'):glass;x.fillRect(X,Y,Wd,Hd);};
+  // Forum 3 (Diener & Diener, Federle, Wiederin): layers of coloured glass panes over the floors, 7.2 m a tile
+  const forum3=glowMat((x,glow)=>{const w=288,h=288,r=seeded(303);plain(x,w,h,glow,'#2f3a40',r);
+    for(let f=0;f<2;f++)for(let k=0;k<3;k++)lit(x,glow,r,k*96+6,f*144+20,84,110,'#384750');
+    if(!glow){const cols=['rgba(70,140,190,.55)','rgba(90,170,120,.5)','rgba(200,80,70,.45)','rgba(230,200,80,.5)','rgba(120,90,170,.45)'];
+      for(let i=0;i<14;i++){x.fillStyle=cols[i%5];x.fillRect(r()*w-30,r()*h-20,50+r()*70,60+r()*90);}
+      x.fillStyle='#c9ccc8';for(let f=0;f<2;f++)x.fillRect(0,f*144,w,8);}},288,288);
+  // Fabrikstrasse 6 (Märkli): a silver grid of floor bands and fins over the glass, 3 m by 3.6 m
+  const maerkli=glowMat((x,glow)=>{const w=120,h=144,r=seeded(606);
+    if(glow){x.fillStyle='#000';x.fillRect(0,0,w,h);lit(x,glow,r,8,4,104,118);return;}
+    const g=x.createLinearGradient(0,0,0,h);g.addColorStop(0,'#86a6b8');g.addColorStop(1,'#68849a');x.fillStyle=g;x.fillRect(0,0,w,h);
+    x.fillStyle='#c8ccd0';x.fillRect(0,h-14,w,14);x.fillRect(0,0,6,h);x.fillRect(60,0,6,h);},120,144,1,1,{roughness:.3,metalness:.3});
+  // Fabrikstrasse 2, the main gate (Marco Serra): clear glass between thin posts under a white roof edge, 3 m by 5 m
+  const novartisGate=glowMat((x,glow)=>{const w=120,h=200;x.fillStyle=glow?'#fff0d0':'#465661';x.fillRect(0,16,w,h-16);
+    x.fillStyle=glow?'#000':'#e8e8e4';x.fillRect(0,0,w,16);x.fillStyle=glow?'#000':'#b0b4b6';x.fillRect(0,16,3,h);x.fillRect(60,16,3,h);},120,200,1,1,{roughness:.15});
+  // the Novartis Pavillon (AMDL Circle, De Lucchi): a skin of dark diamond-shaped modules, 2 m a tile; its roof too
+  const pavDraw=(x,glow)=>{const w=80,h=80;x.fillStyle=glow?'#000':'#807868';x.fillRect(0,0,w,h);if(glow)return;
+    x.fillStyle='#423e3a';for(const [cx,cy] of [[0,0],[w,0],[0,h],[w,h],[w/2,h/2]]){x.beginPath();x.moveTo(cx,cy-h/2+3);x.lineTo(cx+w/2-3,cy);x.lineTo(cx,cy+h/2-3);x.lineTo(cx-w/2+3,cy);x.closePath();x.fill();}};
+  const pavillon=glowMat(pavDraw,80,80,1,1,{roughness:.4,metalness:.2}),pavillonRoof=glowMat(pavDraw,80,80,4,4,{roughness:.4,metalness:.2});
+  // the Zoo's Etoscha house: rammed earth in layers up to 5.5 m, glazing above, 4 m by 9 m; its green roof
+  const etoscha=glowMat((x,glow)=>{const w=160,h=360,r=seeded(808),E=h-220;
+    if(glow){x.fillStyle='#000';x.fillRect(0,0,w,h);}else{
+      for(let y=E;y<h;y+=6){const k=r()*18-9;x.fillStyle=`rgb(${176+k|0},${132+k|0},${92+k|0})`;x.fillRect(0,y,w,6);}
+      x.fillStyle='#5b6c74';x.fillRect(0,0,w,E);x.fillStyle='#c8c6c0';x.fillRect(0,E-6,w,6);x.fillRect(0,0,w,6);x.fillRect(78,0,4,E);}
+    if(glow)lit(x,glow,r,4,10,150,E-20);},160,360);
+  const greenRoof=stdMat({color:0x6c7a48,roughness:.95}),skylights=stdMat({color:0x8fa6b2,roughness:.25,metalness:.2});
+  // the elephant house Tembea: sandy board-marked concrete, 4 m a tile, under skylights
+  const tembea=glowMat((x,glow)=>{const w=160,h=160,r=seeded(909);plain(x,w,h,glow,'#cbb38c',r);if(glow)return;
+    for(let y=0;y<h;y+=10){x.fillStyle='rgba(90,70,40,.22)';x.fillRect(0,y,w,1);}
+    for(let i=0;i<w;i+=40+r()*30){x.fillStyle='rgba(90,70,40,.15)';x.fillRect(i,0,1,h);}},160,160);
+  // the Zoo's main entrance: brick, dark doors below a band of glazing, 4 m by 7 m
+  const zooEntrance=glowMat((x,glow)=>{const w=160,h=280,r=seeded(1010);
+    if(glow){x.fillStyle='#000';x.fillRect(0,0,w,h);}else{x.fillStyle='#8e4a36';x.fillRect(0,0,w,h);
+      for(let y=0;y<h;y+=6){x.fillStyle='rgba(40,20,15,.3)';x.fillRect(0,y,w,1);for(let i=((y/6)%2)*10;i<w;i+=20)x.fillRect(i,y,1,6);}}
+    x.fillStyle=glow?'#000':'#2a3236';x.fillRect(30,h-110,100,110);
+    x.fillStyle=glow?'#ffe7b0':'#51707c';x.fillRect(0,h-200,w,60);if(!glow){x.fillStyle='#d8d8d2';x.fillRect(0,h-204,w,4);x.fillRect(0,h-140,w,4);}},160,280);
+  // the Vogelhaus: brown boards under a band of white-framed glazing, an aviary post, 3 m by 6 m; its roof tiled
+  const vogelhaus=glowMat((x,glow)=>{const w=120,h=240,r=seeded(1111);
+    if(glow){x.fillStyle='#000';x.fillRect(0,0,w,h);}else{x.fillStyle='#8e5a36';x.fillRect(0,0,w,h);
+      for(let i=0;i<w;i+=7){x.fillStyle='rgba(60,35,20,.35)';x.fillRect(i,h-120,1,120);}
+      x.fillStyle='#ecece8';x.fillRect(0,12,w,104);x.fillStyle='#c8c4bc';x.fillRect(0,116,w,6);}
+    for(const X of [6,64]){lit(x,glow,r,X,20,50,88,'#5c6e74');if(!glow){x.fillStyle='#ecece8';x.fillRect(X+24,20,3,88);}}
+    if(!glow){x.fillStyle='#3c4042';x.fillRect(0,0,3,h);}},120,240);
+  // the Affenhaus: plain walls under a turf roof set with sloping skylights (6 m a skylight)
+  const affenhaus=glowMat((x,glow)=>{const r=seeded(1212);plain(x,128,128,glow,'#cfcabd',r);},128,128);
+  const affenRoof=stdMat({roughness:.9,map:scaled(canvasTexture(192,192,(x,w,h)=>{const r=seeded(1313);x.fillStyle='#707c4a';x.fillRect(0,0,w,h);
+    for(let i=0;i<600;i++){x.fillStyle=r()<.5?'#606e40':'#828a54';x.fillRect(r()*w,r()*h,2,2);}
+    x.fillStyle='#96aab4';x.fillRect(32,32,128,108);x.fillStyle='#464a4c';for(let i=32;i<=160;i+=32)x.fillRect(i-1,32,3,108);x.fillRect(32,85,128,3);}),1.33,1.33)});
+  /* the Lällekönig house, Schifflände 1: ochre sandstone in courses, a rusticated ground floor and mezzanine 8.6 m
+     high with an arched shop opening, then storeys of 3.4 m with framed windows and keystones; 3.2 m by 29 m */
+  const laelle=glowMat((x,glow)=>{const w=128,h=1160,G=h-344,r=seeded(1914);
+    if(glow){x.fillStyle='#000';x.fillRect(0,0,w,h);}else{x.fillStyle='#c9a76e';x.fillRect(0,0,w,h);
+      for(let y=0;y<G;y+=17){x.fillStyle='rgba(120,90,50,.35)';x.fillRect(0,y,w,2);}
+      x.fillStyle='#be9c66';x.fillRect(0,G,w,h-G);for(let y=G;y<h;y+=22){x.fillStyle='#8c6e46';x.fillRect(0,y,w,4);}
+      x.fillStyle='#d6b882';x.fillRect(0,G,w,12);}
+    // the ground floor's arched opening, and the mezzanine's window over it
+    x.fillStyle=glow?(r()<.5?'#ffd590':'#000'):'#30363a';x.beginPath();x.moveTo(18,h);x.lineTo(18,h-138);x.arc(64,h-138,46,Math.PI,0);x.lineTo(110,h);x.closePath();x.fill();
+    if(!glow){x.fillStyle='#d6b882';x.fillRect(34,G+40,60,76);}lit(x,glow,r,40,G+46,48,64,'#343c42');
+    for(let f=0;f<6;f++){const top=G-(f+1)*136+30;   // the storeys
+      if(!glow){x.fillStyle='#d6b882';x.fillRect(31,top-10,66,94);x.fillStyle='#debe8c';x.fillRect(58,top-22,12,12);x.fillStyle='#ba9864';x.fillRect(28,top+84,72,5);}
+      lit(x,glow,r,38,top,52,84,'#343c42');if(!glow){x.fillStyle='#e8e4d8';x.fillRect(63,top,2,84);x.fillRect(38,top+28,52,2);}}},128,1160);
+  /* the houses round the Andreasplatz (REF 23, 33, 36 of the reference world's facade-detail photos): plaster with
+     shutters in four colourings, or half-timbering, a storey 3 m high over a shopfront 3.2 m high; 4.5 m by 27.2 m */
+  const andreas=(plaster,shutter,timber,seed0)=>glowMat((x,glow)=>{const w=180,h=1088,G=h-128,r=seeded(seed0);
+    if(glow){x.fillStyle='#000';x.fillRect(0,0,w,h);}else{x.fillStyle=plaster;x.fillRect(0,0,w,h);
+      for(let i=0;i<w*G/60;i++){x.fillStyle=r()<.5?'rgba(0,0,0,.035)':'rgba(255,255,255,.05)';x.fillRect(r()*w,r()*G,2,2);}}
+    for(let f=0;f<8;f++){const y0=G-(f+1)*120;
+      if(timber&&!glow){x.fillStyle='#5a3d2a';x.fillRect(0,y0,w,8);x.fillRect(0,y0+112,w,8);for(const X of [0,86,172])x.fillRect(X,y0,8,120);
+        x.beginPath();x.moveTo(8,y0+112);x.lineTo(40,y0+8);x.lineTo(50,y0+8);x.lineTo(18,y0+112);x.fill();
+        x.beginPath();x.moveTo(164,y0+112);x.lineTo(132,y0+8);x.lineTo(122,y0+8);x.lineTo(154,y0+112);x.fill();}
+      for(const cx of [45,135]){if(shutter&&!glow){x.fillStyle=shutter;x.fillRect(cx-36,y0+26,14,66);x.fillRect(cx+22,y0+26,14,66);}
+        if(!glow){x.fillStyle='#f2efe8';x.fillRect(cx-22,y0+23,44,72);}lit(x,glow,r,cx-18,y0+27,36,64,'#2c3238');
+        if(!glow){x.fillStyle='#f2efe8';x.fillRect(cx-1,y0+27,2,64);x.fillRect(cx-18,y0+50,36,2);}}}
+    if(!glow){x.fillStyle='#5c4836';x.fillRect(16,G+25,148,103);x.fillStyle='#e8e2d2';x.fillRect(0,G,w,24);}  // the shopfront under its fascia
+    x.fillStyle=glow?'#fff1d6':'#303840';x.fillRect(22,G+31,82,79);x.fillStyle=glow?'#000':'#46342a';x.fillRect(116,G+31,42,97);},180,1088);
+  const andreasRoofs={pitched:roofBrown,flat:roofGrey,u:0.9,v:7.616};
   return {
+    forum3:{wall:forum3,pitched:roofGrey,flat:roofGrey,u:1.44,v:2.016},
+    maerkli:{wall:maerkli,pitched:roofGrey,flat:roofGrey,u:0.6,v:1.008},
+    novartisgate:{wall:novartisGate,pitched:roofGrey,flat:roofGrey,u:0.6,v:1.4},
+    pavillon:{wall:pavillon,pitched:pavillonRoof,flat:pavillonRoof,u:0.4,v:0.56},
+    etoscha:{wall:etoscha,pitched:greenRoof,flat:greenRoof,u:0.8,v:2.52},
+    tembea:{wall:tembea,pitched:skylights,flat:skylights,u:0.8,v:1.12},
+    zooentrance:{wall:zooEntrance,pitched:roofGrey,flat:roofGrey,u:0.8,v:1.96},
+    vogelhaus:{wall:vogelhaus,pitched:roofBrown,flat:roofGrey,u:0.6,v:1.68},
+    affenhaus:{wall:affenhaus,pitched:affenRoof,flat:affenRoof,u:0.8,v:0.8},
+    laelle:{wall:laelle,pitched:roofDark,flat:roofDark,u:0.64,v:8.12},
+    andreas1:{wall:andreas('#e8dcc0','#4d6b4f',false,2301),...andreasRoofs},
+    andreas2:{wall:andreas('#c9cfba','#8a8f88',false,2302),...andreasRoofs},
+    andreas3:{wall:andreas('#d9b5a8','#8e3a30',false,2303),...andreasRoofs},
+    andreas4:{wall:andreas('#c4c6c4','#3e5c7c',false,2304),...andreasRoofs},
+    andreas5:{wall:andreas('#ece4d2',null,true,2305),...andreasRoofs},
     highrise:{wall:highrise,pitched:roofGrey,flat:roofDark,u:2.4,v:7.8},
     sacral:{wall:sacral,pitched:roofBrown,flat:roofGrey,u:1.4,v:5.6},
     rathaus:{wall:rathaus,pitched:rathausTiles,flat:roofDark,u:3.0,v:2.6},
@@ -2144,7 +2305,44 @@ function stAlbanTor(lm,parent,B0){   // white tower with red sandstone quoins, c
   const w=Math.min(f.wide,2.1),d=Math.min(f.deep,1.9),h=hM(22.3),top=hM(lm.peak?lm.peak[2]:26.1);
   const wallM=gateWall('#ece6da','#b0564a',(x,glow)=>{x.fillStyle=glow?'#000':'#5b3e30';lancet(x,56,370,80,142);
     for(const yy of [90,190,280])lancetWin(x,86,yy,20,36,glow,'#b0564a');});
-  B.addGroups(boxC,[wallM,wallM,roofBrown,roofBrown,wallM,wallM],M4(M,0,h/2,0,w,h,d));
+  // the passage, after the Blender reference world and the passage photos (data/basel-reference/reference-world/,
+  // 23 October 2026): the drawn arch is cut out of the faces towards the field and the town (a copy of the drawing,
+  // so nothing is drawn again), and behind it stand buff and red voussoirs, a whitewashed hall under dark beams, the
+  // portcullis raised behind the field arch, the door leaves open against the walls, a lantern and cobbles
+  const cut=tex=>{const c=document.createElement('canvas');c.width=tex.image.width;c.height=tex.image.height;const x=c.getContext('2d');
+    x.drawImage(tex.image,0,0);x.globalCompositeOperation='destination-out';lancet(x,56,370,80,142);const t=tex.clone();t.image=c;t.needsUpdate=true;return t;};
+  const portalM=wallM.clone();portalM.map=cut(wallM.map);portalM.alphaTest=0.5;nightGlow.push(portalM);
+  B.addGroups(boxC,[wallM,wallM,roofBrown,roofBrown,portalM,portalM],M4(M,0,h/2,0,w,h,d));
+  {const aw=w*80/192,ys=h*(512-414)/512,yt=h*(512-370)/512,r=hM(1.4),hw=aw*1.4,hh=yt+hM(0.5),e=0.004;
+    const outline=[[-aw/2,0],[-aw/2,ys]];   // the lancet as drawn: straight sides, then two quadratic curves to the point
+    for(let k=1;k<=8;k++){const t=k/8,a=(1-t)*(1-t),b=2*(1-t)*t,c=t*t;outline.push([a*(-aw/2)+b*(-aw/2)+c*0,a*ys+b*yt+c*yt]);}
+    for(let k=1;k<=8;k++){const t=k/8,a=(1-t)*(1-t),b=2*(1-t)*t,c=t*t;outline.push([a*0+b*(aw/2)+c*(aw/2),a*yt+b*yt+c*ys]);}
+    outline.push([aw/2,0]);
+    const both=o=>({side:THREE.DoubleSide,roughness:.9,...o});
+    const buff=stdMat(both({color:0xc8b59a})),red=stdMat(both({color:0xa45f4c})),lime=stdMat(both({color:0xece6da})),
+      beams=stdMat(both({color:0x4a3324})),cobbles=stdMat(both({color:0x857d72,roughness:.95})),iron=stdMat({color:0x2a2c2e,roughness:.5,metalness:.6});
+    const quads=list=>{const p=[];for(const [a,b,c,d] of list)p.push(...a,...b,...c,...a,...c,...d);
+      const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(p,3));return g;};
+    const at=M4(M,0,0,0);
+    for(const s of [1,-1]){const z0=s*(d/2+e),z1=s*(d/2-r);
+      for(let k=1;k<outline.length-2;k++){const [ua,ya]=outline[k],[ub,yb]=outline[k+1],m=k%2?red:buff;   // reveal and voussoirs
+        const out=([u,y])=>{const dx=u,dy=y-ys*0.6,L=Math.hypot(dx,dy)||1;return [u+dx/L*0.12,y+dy/L*0.12];};
+        const [oa,pa]=out([ua,ya]),[ob,pb]=out([ub,yb]);
+        B.add(quads([[[ua,ya,z0],[ub,yb,z0],[ob,pb,z0],[oa,pa,z0]],[[ua,ya,z0],[ub,yb,z0],[ub,yb,z1],[ua,ya,z1]]]),m,at);}
+      for(const u of [-aw/2,aw/2])B.add(quads([[[u,0,z0],[u,ys,z0],[u,ys,z1],[u,0,z1]]]),buff,at);   // the jambs
+      const wall=new THREE.Shape([[-hw/2,0],...outline,[hw/2,0],[hw/2,hh],[-hw/2,hh]].map(p=>new THREE.Vector2(...p)));   // the hall's end
+      const eg=new THREE.ShapeGeometry(wall);eg.translate(0,0,z1);B.add(eg,lime,at);}                                     // walls, over the arch
+    const z1=d/2-r;
+    for(const u of [-hw/2,hw/2])B.add(quads([[[u,0,-z1],[u,0,z1],[u,hh,z1],[u,hh,-z1]]]),lime,at);   // its walls,
+    B.add(quads([[[-hw/2,hh,-z1],[hw/2,hh,-z1],[hw/2,hh,z1],[-hw/2,hh,z1]]]),beams,at);              // ceiling,
+    for(let z=-z1+0.06;z<z1;z+=0.14)B.add(boxC,beams,M4(M,0,hh-0.04,z,hw,0.08,0.05));                 // beams
+    B.add(quads([[[-hw/2,0.005,-d/2-0.1],[hw/2,0.005,-d/2-0.1],[hw/2,0.005,d/2+0.1],[-hw/2,0.005,d/2+0.1]]]),cobbles,at);
+    const zp=z1-0.07,yp=hM(3.6);                                   // the portcullis, raised behind the field arch
+    for(let u=-hw/2+0.06;u<hw/2-0.04;u+=0.072){B.add(boxC,beams,M4(M,u,(yp+hh)/2,zp,0.024,hh-yp,0.024));
+      B.add(cone4,iron,M4(M,u,yp,zp,0.03,0.09,0.03,Math.PI,0,0));}
+    for(let y=yp+0.08;y<hh-0.05;y+=0.14)B.add(boxC,beams,M4(M,0,y,zp-0.025,hw-0.04,0.03,0.016));
+    for(const s of [-1,1])B.add(boxC,beams,M4(M,s*(hw/2-0.02),hM(2.05),z1-0.3,0.025,hM(4.1),0.36));   // the open doors
+    B.add(boxC,iron,M4(M,0,(hM(4.2)+hh)/2,0,0.008,hh-hM(4.2),0.008));B.add(boxC,iron,M4(M,0,hM(4.0),0,0.07,hM(0.45),0.07));}
   for(const [a,b] of [[[-w/2,-d/2],[w/2,-d/2]],[[w/2,-d/2],[w/2,d/2]],[[w/2,d/2],[-w/2,d/2]],[[-w/2,d/2],[-w/2,-d/2]]])
     LMK.merlons(B,M,greyStoneM,a[0]*0.96,a[1]*0.96,b[0]*0.96,b[1]*0.96,h,0.3,0.42);
   B.add(pyramidGeo,roofBrown,M4(M,0,h,0,w*0.86,top-h,d*0.86));
@@ -2556,6 +2754,7 @@ const TODAY=ERA_GROUP.today;
 RIVERS.today=buildRiver(GB.banks,RIVER_PLAN_TODAY,TODAY);
 const cityToday=buildCity3D(await gunzip(BASEL.lod2.gz),BASEL.lod2.count,
   {bytes:await gunzip(BASEL.facades.gz),count:BASEL.facades.count,styles:BASEL.facades.styles});TODAY.add(cityToday.mesh,cityToday.extras);
+if(BASEL.details)laelleHouse(FACADE_WALLS.laelle,BASEL.details.laelle,TODAY);
 {const B=Batch();for(const br of BASEL.bridges)buildBridge(br,B,'today');B.build(TODAY);}
 if(BASEL.landmarks.elisabethen)elisabethenkirche(BASEL.landmarks.elisabethen,TODAY);
 if(BASEL.iconic.sbb)sbbStation(BASEL.iconic.sbb,TODAY);
