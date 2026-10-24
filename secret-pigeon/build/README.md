@@ -43,7 +43,7 @@ round the roof and the gilded bell cage, after the photos, as the Blender refere
 the three city gates (the Spalentor in its pink and purple ashlar, with the wooden gallery under the roof and the
 barbican's six tall merlons; the St. Alban-Tor with its passage open from the town to the field, after the photos
 of it: buff and red voussoirs round both pointed arches, a whitewashed hall under dark beams, the portcullis raised
-behind the field arch, the door leaves open against the walls, a lantern and cobbles), the medieval churches (after the Blender reference world's second pass on them: the Martinskirche's tower under four gables, the Peterskirche's eight-sided lantern and the three dormers on its nave, the Clarakirche's glazed ridge turret and the Leonhardskirche's porch on its north side), the Elisabethenkirche (red sandstone), Basel SBB's front, the University's Kollegienhaus
+behind the field arch, the door leaves open against the walls, a lantern and cobbles), the St. Alban city wall south of the Letziturm (drawn by an outline traced on the canton's 3D model, since OpenStreetMap has none for it: lime plaster worn through to the rubble, a blind arcade of round-headed recesses along its town side and over it the covered wall-walk on timber brackets under a tiled roof), the medieval churches (after the Blender reference world's second pass on them: the Martinskirche's tower under four gables, the Peterskirche's eight-sided lantern and the three dormers on its nave, the Clarakirche's glazed ridge turret and the Leonhardskirche's porch on its north side), the Elisabethenkirche (red sandstone), Basel SBB's front, the University's Kollegienhaus
 at Petersplatz (Roland Rohn, 1937–39: deep wooden eaves, and the bare stone block over its entrance standing on pillars
 in front of the mosaic), Les Trois Rois (Amadeus Merian's hotel of 1842–44: yellow plaster and grey pilasters, the
 terrace over the quay with its iron railing, the winter garden and the gold letters between the two corner pavilions,
@@ -59,8 +59,11 @@ where Basel-Stadt's bridge 3D model has them (`build_city.py`'s `BRIDGE_PIERS`, 
 checked against the engineers' span figures): the Mittlere Brücke's six granite arches on five round-nosed piers, the
 middle one with the Käppelijoch (after the canton's model, the 1962 elevation and photos), the old SBB bridge's
 lattice girders under its tracks and the new one's haunched concrete box. The ferries are built after photos of
-them (Leu, Vogel Gryff, Wild Maa and Ueli, each in its colours where a photo was gathered), keep their bows upstream
-as the current pushes them across, land at landing stages on floats with railed gangways and hang from masts on the
+them (Leu, Vogel Gryff, Wild Maa and Ueli, each in its colours where a photo was gathered), cross as the reaction
+ferries they are (the current presses on the hull the rudder sets at an angle to it, the tether to the trolley on the
+high cable takes the push along the hull and the rest carries the boat over; the Basel ferry friends' *Fähri-Zytig*
+and the reaction-ferry article stored in the research library): bow upstream, turned about 35° towards the bank
+they are making for, straightening as they land; their floors sit above the waterline. They land at landing stages on floats with railed gangways and hang from masts on the
 promenades, waiting while a ship comes by; the canton's stairs and ladders lead down to the water
 where its register puts them, and past the edge of the map the river runs on along its real course into the haze:
 upstream round the bend at the Birsfelden power station (through its weir, OpenStreetMap's main stream) towards Augst

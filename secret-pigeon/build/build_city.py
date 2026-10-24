@@ -66,6 +66,7 @@ FACADES = [("rathaus", "relation", 7634307), ("messe1", "way", 315916587), ("kun
            ("pavillon", "way", 949622090), ("etoscha", "way", 26532461), ("tembea", "way", 336130794),
            ("zooentrance", "way", 26532380), ("vogelhaus", "way", 26532412), ("affenhaus", "way", 242890119),
            ("laelle", "way", 148255764),
+           ("letzimauer", None, None),                           # the St. Alban city wall, by LETZI_WALL's outline
            ("highrise", None, None), ("sacral", None, None),     # every other high-rise and church
            ("shops1", None, None), ("shops2", None, None), ("shops3", None, None), ("shops4", None, None),
            ("andreas1", None, None), ("andreas2", None, None), ("andreas3", None, None), ("andreas4", None, None),
@@ -76,6 +77,13 @@ ANDREAS_STYLES = ["andreas1", "andreas2", "andreas3", "andreas4", "andreas5"]
 AFFENBRUNNEN = (47.558155, 7.5864002)    # the Andreasplatz's fountain: the houses within ANDREAS_R m of it front the square
 ANDREAS_R = 25.0
 LAELLE_HEAD = (47.5595595, 7.5883587)    # the Lällekönig's copper head at the Schifflände (OSM tourism=artwork)
+# the St. Alban city wall south of the Letziturm, which OpenStreetMap has no outline for: its town face (LV95, north to
+# south), as the Blender reference world finds it in the canton's 3D model (data/basel-reference/reference-world/
+# blender/details.py, letzi_walk); the outline runs 0.8 m out on the town side and 8 m out on the ditch side, where the
+# 3D model's wall (one long building, its middle about 6 m east of the town face) has its centre
+LETZI_WALL = [(2612432.93, 1267154.5), (2612433.54, 1267147.0), (2612434.68, 1267139.5), (2612436.1, 1267132.0),
+              (2612437.64, 1267124.5), (2612439.57, 1267117.0), (2612441.28, 1267109.5), (2612442.85, 1267102.0),
+              (2612444.23, 1267094.5), (2612446.17, 1267087.0), (2612447.46, 1267079.5), (2612448.7, 1267072.0)]
 # the shopping streets from Barfüsserplatz to Marktplatz (OSM names, half their width in metres) and the two squares
 SHOP_STREETS = {"Gerbergasse": 4.5, "Falknerstrasse": 6.0, "Freie Strasse": 5.0, "Streitgasse": 4.0,
                 "Barfüssergasse": 4.0, "Eisengasse": 5.0, "Marktgasse": 4.5}
@@ -1685,6 +1693,8 @@ def main(raw, work, out_js):
         if o:
             for r in o["outer"]:
                 facade_rings.append((r, bbox(r), FACADE_STYLES.index(key)))
+    letzi = [(e - 0.8 - geo.e0, n - geo.n0) for e, n in LETZI_WALL] + [(e + 8.0 - geo.e0, n - geo.n0) for e, n in reversed(LETZI_WALL)]
+    facade_rings.append((letzi, bbox(letzi), FACADE_STYLES.index("letzimauer")))
     lm_bb = {k: bbox(r) for k, r in lm_rings.items()}
     lm_heights = {k: [] for k in lm_rings}       # roof heights of the 3D model inside each landmark, and its peak
     lm_peak = {}

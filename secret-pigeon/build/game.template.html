@@ -893,7 +893,7 @@ function roofTriangles(X,Z,loops,tri){
   }
 }
 // the city as one vertex-coloured mesh; buildings in `fac` keep their shape but get the textures in FACADE_STYLES
-const FACADE_WALLS={laelle:[]};   // the walls of these facade styles' buildings, for the details put on them
+const FACADE_WALLS={laelle:[],letzimauer:[]};   // the walls of these facade styles' buildings, for the details put on them
 function buildCity3D(bytes,count,fac){
   const CELL=0.4;
   let cap=1<<19,pos=new Float32Array(cap*3),col=new Uint8Array(cap*3),nv=0,icap=1<<20,idx=new Uint32Array(icap),ni=0;
@@ -955,8 +955,13 @@ function buildCity3D(bytes,count,fac){
     const put=(m,pts,uvs)=>{let a=acc.get(m);if(!a)acc.set(m,a={pos:[],uv:[]});for(const q of pts)a.pos.push(q[0],q[1],q[2]);for(const t of uvs)a.uv.push(t[0],t[1]);};
     decodePack(fac.bytes,fac.count,({kind,zb,X,Y,Z,loops,walls})=>{
       const st=FACADE_STYLES[fac.styles[kind]];if(!st)return;
-      if(fac.styles[kind] in FACADE_WALLS)for(let e=0;e<walls.length;e+=2){const a=walls[e],c=walls[e+1];   // kept for the details on them
-        FACADE_WALLS[fac.styles[kind]].push({ax:X[a],az:Z[a],cx:X[c],cz:Z[c],ya:Y[a],yc:Y[c],zb});}
+      if(fac.styles[kind] in FACADE_WALLS){   // kept for the details on them: the walls, or for the city wall (houses
+        let E=walls;                          // lean on its town side, so it has no walls there) its roof's whole outline
+        if(fac.styles[kind]==='letzimauer'){const es=new Set();for(const L of loops)for(let k=0;k<L.length;k++)es.add(L[k]*65536+L[(k+1)%L.length]);
+          E=[];for(const L of loops)for(let k=0;k<L.length;k++){const a=L[k],c=L[(k+1)%L.length];if(!es.has(c*65536+a))E.push(a,c);}}
+        let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;for(let i=0;i<X.length;i++){x0=Math.min(x0,X[i]);x1=Math.max(x1,X[i]);z0=Math.min(z0,Z[i]);z1=Math.max(z1,Z[i]);}
+        const span=Math.hypot(x1-x0,z1-z0);   // the building's size, to tell the long wall from a tower on it
+        for(let e=0;e<E.length;e+=2){const a=E[e],c=E[e+1];FACADE_WALLS[fac.styles[kind]].push({ax:X[a],az:Z[a],cx:X[c],cz:Z[c],ya:Y[a],yc:Y[c],zb,span});}}
       roofTriangles(X,Z,loops,(a,c,d)=>{
         raster(X[a],Y[a],Z[a],X[c],Y[c],Z[c],X[d],Y[d],Z[d]);
         const ux=X[c]-X[a],uy=Y[c]-Y[a],uz=Z[c]-Z[a],vx=X[d]-X[a],vy=Y[d]-Y[a],vz=Z[d]-Z[a];
@@ -1450,6 +1455,40 @@ function facadeFront(walls,bearing){   // a building's outermost walls facing a 
   return {nx,nz,tx,tz,t0:Math.min(...ts),t1:Math.max(...ts),off:Math.max(...front.flatMap(s=>[s.ax*nx+s.az*nz,s.cx*nx+s.cz*nz])),
     foot:Math.min(...front.map(s=>s.zb)),eave:(Math.min(...front.flatMap(s=>[s.ya,s.yc]))-Math.min(...front.map(s=>s.zb)))/VS};
 }
+/* the St. Alban city wall's town side, after the Blender reference world (its photos REF 13, 14, 72, 75, 76, 96, 97):
+   along each wall facing the town (west), a blind arcade of bays 3.4 m wide (piers 0.8 m wide standing 0.45 m out,
+   round-headed recesses springing at 3.6 m, a ledge at 5.4 m), and over it the covered wall-walk: diagonal brackets
+   every 1.5 m carrying a floor 1.8 m wide a metre and a quarter below the wall's top, posts and a rail along its edge,
+   and a tiled roof sloping down to the town. Built in metres along each wall */
+function letziWalk(walls,parent){
+  if(!walls.length)return;
+  const B=Batch(),timber=stdMat({color:0x5a3d2a,roughness:.85}),plaster=stdMat({color:0xe7e2d6,roughness:.9,side:THREE.DoubleSide}),
+    tiles=stdMat({color:0x8a4b37,roughness:.8,side:THREE.DoubleSide}),US=BASEL.S;
+  let cx=0,cz=0;for(const w of walls){cx+=w.ax+w.cx;cz+=w.az+w.cz;}cx/=2*walls.length;cz/=2*walls.length;
+  for(const w of walls){const dx=w.cx-w.ax,dz=w.cz-w.az,L=Math.hypot(dx,dz);if(L<0.3||w.span*US<20)continue;   // not a tower on it
+    const tx=dx/L,tz=dz/L;let nx=tz,nz=-tx;if(((w.ax+w.cx)/2-cx)*nx+((w.az+w.cz)/2-cz)*nz<0){nx=-nx;nz=-nz;}
+    if(nx>-0.7)continue;                                     // the town side faces west (game x is east)
+    const G=new THREE.Group();G.position.set(w.ax,w.zb,w.az);G.rotation.y=Math.atan2(nx,nz);G.scale.set(1/US,VS,1/US);
+    const Lm=L*US,top=(Math.min(w.ya,w.yc)-w.zb)/VS,flip=(tx*Math.cos(G.rotation.y)-tz*Math.sin(G.rotation.y))<0;
+    const X=u=>flip?-u:u;   // metres along the wall from its start, in the group's x
+    const M=new THREE.Matrix4().compose(G.position,G.quaternion,G.scale);
+    for(let u=0.5;u+3.4<=Lm+0.01;u+=3.4){                    // the blind arcade
+      B.add(boxC,plaster,new THREE.Matrix4().multiplyMatrices(M,M4(null,X(u+0.4),2.7,0.225,0.8,5.4,0.45)));
+      const sh=new THREE.Shape([...Array.from({length:13},(_,k)=>new THREE.Vector2(-1.3*Math.cos(Math.PI*k/12),3.6+1.3*Math.sin(Math.PI*k/12))),
+        new THREE.Vector2(1.3,5.4),new THREE.Vector2(-1.3,5.4)]);   // the spandrel over the recess's round head
+      const sp=new THREE.ShapeGeometry(sh);sp.translate(X(u+0.8+1.3),0,0.45);B.add(sp,plaster,M);}
+    B.add(boxC,plaster,new THREE.Matrix4().multiplyMatrices(M,M4(null,X(Lm/2),5.4,0.25,Lm,0.25,0.5)));   // the ledge
+    const yf=top-1.25;                                       // the walk
+    B.add(boxC,timber,new THREE.Matrix4().multiplyMatrices(M,M4(null,X(Lm/2),yf,0.9,Lm,0.12,1.8)));
+    for(let u=0.75;u<Lm;u+=1.5){const ang=Math.atan2(1.7,1.6);
+      B.add(boxC,timber,new THREE.Matrix4().multiplyMatrices(M,M4(null,X(u),yf-0.8,0.85,0.14,Math.hypot(1.7,1.6),0.14,ang,0,0)));
+      if(Math.round((u-0.75)/1.5)%2===0)B.add(boxC,timber,new THREE.Matrix4().multiplyMatrices(M,M4(null,X(u),yf+1.1,1.75,0.14,2.2,0.14)));}
+    B.add(boxC,timber,new THREE.Matrix4().multiplyMatrices(M,M4(null,X(Lm/2),yf+1.0,1.75,Lm,0.1,0.08)));   // the rail
+    const r=new THREE.BufferGeometry(),y0=top+2.4,y1=yf+2.2;   // the roof, from over the wall down past the posts
+    r.setAttribute('position',new THREE.Float32BufferAttribute([X(0),y0,-0.3, X(Lm),y0,-0.3, X(Lm),y1,2.2, X(0),y0,-0.3, X(Lm),y1,2.2, X(0),y1,2.2],3));
+    B.add(r,tiles,M);}
+  B.build(parent);
+}
 function laelleHouse(walls,det,parent){
   if(!walls.length||!det)return;
   const F=facadeFront(walls,det.facing);if(!F)return;
@@ -1902,6 +1941,13 @@ const FACADE_STYLES=(()=>{
     if(!glow){x.fillStyle='#5c4836';x.fillRect(16,G+25,148,103);x.fillStyle='#e8e2d2';x.fillRect(0,G,w,24);}  // the shopfront under its fascia
     x.fillStyle=glow?'#fff1d6':'#303840';x.fillRect(22,G+31,82,79);x.fillStyle=glow?'#000':'#46342a';x.fillRect(116,G+31,42,97);},180,1088);
   const andreasRoofs={pitched:roofBrown,flat:roofGrey,u:0.9,v:7.616};
+  // the St. Alban city wall (REF 13, 14, 71, 76 of the reference world's photos): lime plaster worn through to the rubble
+  // behind it, more often low down; 4 m by 8 m
+  const letzi=glowMat((x,glow)=>{const w=160,h=320,r=seeded(1615);x.fillStyle=glow?'#000':'#a59a86';x.fillRect(0,0,w,h);if(glow)return;
+    for(let y=0;y<h;y+=9)for(let xx=-r()*14;xx<w;xx+=10+r()*12){const k=r()*30-15|0;x.fillStyle=`rgb(${150+k},${140+k},${122+k})`;x.fillRect(xx,y,9+r()*8,8);}
+    for(let i=0;i<70;i++){const X=r()*w,Y=r()*h*0.9,low=Y/h;if(r()<low*0.7)continue;   // the plaster, worn more low down
+      x.fillStyle=r()<.5?'#e7e2d6':'#ddd7c9';x.beginPath();x.ellipse(X,Y,30+r()*40,20+r()*30,r()*3,0,Math.PI*2);x.fill();}
+    x.fillStyle='rgba(60,55,45,.18)';x.fillRect(0,h-24,w,24);},160,320);
   return {
     forum3:{wall:forum3,pitched:roofGrey,flat:roofGrey,u:1.44,v:2.016},
     maerkli:{wall:maerkli,pitched:roofGrey,flat:roofGrey,u:0.6,v:1.008},
@@ -1913,6 +1959,7 @@ const FACADE_STYLES=(()=>{
     vogelhaus:{wall:vogelhaus,pitched:roofBrown,flat:roofGrey,u:0.6,v:1.68},
     affenhaus:{wall:affenhaus,pitched:affenRoof,flat:affenRoof,u:0.8,v:0.8},
     laelle:{wall:laelle,pitched:roofDark,flat:roofDark,u:0.64,v:8.12},
+    letzimauer:{wall:letzi,pitched:roofBrown,flat:roofGrey,u:0.8,v:2.24},
     andreas1:{wall:andreas('#e8dcc0','#4d6b4f',false,2301),...andreasRoofs},
     andreas2:{wall:andreas('#c9cfba','#8a8f88',false,2302),...andreasRoofs},
     andreas3:{wall:andreas('#d9b5a8','#8e3a30',false,2303),...andreasRoofs},
@@ -2791,6 +2838,7 @@ RIVERS.today=buildRiver(GB.banks,RIVER_PLAN_TODAY,TODAY);
 const cityToday=buildCity3D(await gunzip(BASEL.lod2.gz),BASEL.lod2.count,
   {bytes:await gunzip(BASEL.facades.gz),count:BASEL.facades.count,styles:BASEL.facades.styles});TODAY.add(cityToday.mesh,cityToday.extras);
 if(BASEL.details)laelleHouse(FACADE_WALLS.laelle,BASEL.details.laelle,TODAY);
+letziWalk(FACADE_WALLS.letzimauer,TODAY);
 {const B=Batch();for(const br of BASEL.bridges)buildBridge(br,B,'today');B.build(TODAY);}
 if(BASEL.landmarks.elisabethen)elisabethenkirche(BASEL.landmarks.elisabethen,TODAY);
 if(BASEL.iconic.sbb)sbbStation(BASEL.iconic.sbb,TODAY);
@@ -3261,9 +3309,9 @@ function ferryHull(L,B,D){
   for(let i=0;i<N;i++){const a=st[i],b=st[i+1],ua=i/N,ub=(i+1)/N;
     for(const s of [1,-1]){const A=[a.x,a.lo,s*a.w],Bv=[b.x,b.lo,s*b.w],C=[a.x,a.hi,s*a.w],Dv=[b.x,b.hi,s*b.w];
       if(s>0)quad(outer,ouv,A,Bv,C,Dv,[ua,0,ub,0,ua,1,ua,1,ub,0,ub,1]);else quad(outer,ouv,Bv,A,Dv,C,[ub,0,ua,0,ub,1,ub,1,ua,0,ua,1]);
-      const ai=[a.x,a.lo+D*0.15,s*(a.w-0.025)],bi=[b.x,b.lo+D*0.15,s*(b.w-0.025)],ci=[a.x,a.hi,s*(a.w-0.025)],di=[b.x,b.hi,s*(b.w-0.025)];
+      const ai=[a.x,a.lo+D*0.4,s*(a.w-0.025)],bi=[b.x,b.lo+D*0.4,s*(b.w-0.025)],ci=[a.x,a.hi,s*(a.w-0.025)],di=[b.x,b.hi,s*(b.w-0.025)];
       if(s>0)quad(inner,null,bi,ai,di,ci);else quad(inner,null,ai,bi,ci,di);}
-    quad(inner,null,[a.x,a.lo+D*0.15,-a.w],[b.x,b.lo+D*0.15,-b.w],[a.x,a.lo+D*0.15,a.w],[b.x,b.lo+D*0.15,b.w]);   // the floor
+    quad(inner,null,[a.x,a.lo+D*0.4,-a.w],[b.x,b.lo+D*0.4,-b.w],[a.x,a.lo+D*0.4,a.w],[b.x,b.lo+D*0.4,b.w]);   // the floor, over the waterline
     const top=(p,s)=>[p.x,p.hi,s*p.w],topi=(p,s)=>[p.x,p.hi,s*(p.w-0.025)];
     quad(inner,null,top(a,1),top(b,1),topi(a,1),topi(b,1));quad(inner,null,topi(a,-1),topi(b,-1),top(a,-1),top(b,-1));}
   const a=st[0],e=st[N];
@@ -3359,9 +3407,12 @@ function runFerries(dt){
   for(const f of ferries){
     if(f.wait>0){f.wait-=dt;if(f.wait<=0&&shipComing(f))f.wait=1;}
     else{f.k+=(f.to?1:-1)*dt/f.cross;if(f.k>=1||f.k<=0){f.k=clamp(f.k,0,1);f.to=f.k<0.5?1:0;f.wait=f.dwell;}}
-    const e=f.k*f.k*(3-2*f.k),going=f.wait>0?0:f.to?1:-1,lean=0.38*Math.sin(Math.PI*e)*going;
+    // a reaction ferry (data/basel-reference/landmarks/faehren/research/): the current presses on the hull set at an
+    // angle to it by the rudder, the tether to the trolley on the high cable takes the push along the hull and the
+    // rest carries her across, so she crosses sideways, bow upstream and turned about 35 degrees towards the bank she
+    // is making for; she turns in as she leaves and straightens as she lands, where the tether is moved to the other side
+    const e=f.k*f.k*(3-2*f.k),going=f.wait>0?0:f.to?1:-1,ramp=clamp(Math.min(f.k,1-f.k)/0.15,0,1),lean=0.61*ramp*ramp*(3-2*ramp)*going;
     f.boat.position.lerpVectors(f.l0,f.l1,e);f.boat.position.y=RIVER_Y-0.06;   // drawing 0.2 m
-    // the bow upstream, turned towards the bank it is heading for
     const across=f.l1.clone().sub(f.l0).normalize(),bow=f.upv.clone().multiplyScalar(Math.cos(lean)).addScaledVector(across,Math.sin(lean));
     f.boat.rotation.y=Math.atan2(-bow.z,bow.x);
     const t=f.u0+(f.u1-f.u0)*e,q=f.a.clone().lerp(f.b,t);q.y=f.mastH-f.sag*4*t*(1-t);f.pulley.position.copy(q);
