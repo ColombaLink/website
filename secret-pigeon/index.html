@@ -1475,20 +1475,24 @@ function buildBridge(br,B,era){
    then a segmental arc) with three windows, the name carved across the front over the first floor's windows, and the
    Lällekönig's two crowned heads with their tongues out: the copper one (Rosa Bratteler, 1941) on its green plate
    beside the entrance, where OpenStreetMap has it, and the painted stone one on the corner above. Built in metres */
-function laelleHouse(walls,det,parent){
-  if(!walls.length||!det)return;
-  const f=det.facing*Math.PI/180,dir=[Math.sin(f),-Math.cos(f)];
+function facadeFront(walls,bearing){   // a building's outermost walls facing a compass bearing: their plane and extent
+  const f=bearing*Math.PI/180,dir=[Math.sin(f),-Math.cos(f)];
   let cx=0,cz=0;for(const w of walls){cx+=w.ax+w.cx;cz+=w.az+w.cz;}cx/=2*walls.length;cz/=2*walls.length;
   const segs=[];
   for(const w of walls){const dx=w.cx-w.ax,dz=w.cz-w.az,L=Math.hypot(dx,dz);if(L<0.05)continue;
     let n=[dz/L,-dx/L];const mx=(w.ax+w.cx)/2,mz=(w.az+w.cz)/2;if((mx-cx)*n[0]+(mz-cz)*n[1]<0)n=[-n[0],-n[1]];
     if(n[0]*dir[0]+n[1]*dir[1]>0.8)segs.push({...w,n,L,out:(mx-cx)*n[0]+(mz-cz)*n[1]});}
-  if(!segs.length)return;
+  if(!segs.length)return null;
   const far=Math.max(...segs.map(s=>s.out)),front=segs.filter(s=>s.out>far-0.2);   // the outermost: others are party walls
   let nx=0,nz=0;for(const s of front){nx+=s.n[0]*s.L;nz+=s.n[1]*s.L;}const nl=Math.hypot(nx,nz);nx/=nl;nz/=nl;
-  const tx=-nz,tz=nx,ts=front.flatMap(s=>[s.ax*tx+s.az*tz,s.cx*tx+s.cz*tz]),t0=Math.min(...ts),t1=Math.max(...ts),tm=(t0+t1)/2;
-  const off=Math.max(...front.flatMap(s=>[s.ax*nx+s.az*nz,s.cx*nx+s.cz*nz]));
-  const foot=Math.min(...front.map(s=>s.zb)),eave=(Math.min(...front.flatMap(s=>[s.ya,s.yc]))-foot)/VS;
+  const tx=-nz,tz=nx,ts=front.flatMap(s=>[s.ax*tx+s.az*tz,s.cx*tx+s.cz*tz]);
+  return {nx,nz,tx,tz,t0:Math.min(...ts),t1:Math.max(...ts),off:Math.max(...front.flatMap(s=>[s.ax*nx+s.az*nz,s.cx*nx+s.cz*nz])),
+    foot:Math.min(...front.map(s=>s.zb)),eave:(Math.min(...front.flatMap(s=>[s.ya,s.yc]))-Math.min(...front.map(s=>s.zb)))/VS};
+}
+function laelleHouse(walls,det,parent){
+  if(!walls.length||!det)return;
+  const F=facadeFront(walls,det.facing);if(!F)return;
+  const {nx,nz,tx,tz,t0,t1,off,foot,eave}=F,tm=(t0+t1)/2;
   const G=new THREE.Group();G.position.set(tx*tm+nx*off,foot,tz*tm+nz*off);G.rotation.y=Math.atan2(nx,nz);   // local +z out
   G.scale.set(1/BASEL.S,VS,1/BASEL.S);parent.add(G);
   const X=u=>-(u-tm)*BASEL.S;   // a place along the front (game units) to the group's x (metres)
@@ -1514,6 +1518,24 @@ function laelleHouse(walls,det,parent){
   const name=stdMat({transparent:true,alphaTest:.3,roughness:.9,map:canvasTexture(1200,140,(x)=>{x.clearRect(0,0,1200,140);
     x.fillStyle='#5e4628';x.font='bold 110px Georgia, "Times New Roman", serif';x.textAlign='center';x.textBaseline='middle';x.fillText('LÄLLE - KÖNIG',600,74);},false)});
   const sign=new THREE.Mesh(new THREE.PlaneGeometry(6.8,0.8),name);sign.position.set(0,12.05,0.1);G.add(sign);
+  // the mansard's dormers either side of the gable, an oval window over each (REF 40 of the passage-front photos)
+  const glassD=stdMat({color:0x343c42,roughness:.4}),half2=(t1-t0)*BASEL.S/2;
+  for(const xd of [-(5.2+1.6),5.2+1.6]){if(Math.abs(xd)+0.7>half2)continue;
+    const d=new THREE.Mesh(boxGeo,ochre);d.scale.set(1.3,1.9,1.6);d.position.set(xd,eave+0.3,-0.8);G.add(d);
+    const gl=new THREE.Mesh(planeGeo,glassD);gl.scale.set(0.8,1.3,1);gl.position.set(xd,eave+1.25,0.01);G.add(gl);
+    const r=new THREE.Mesh(prismGeo,mansard);r.scale.set(1.5,0.5,1.7);r.position.set(xd,eave+2.2,-0.8);G.add(r);
+    const ob=new THREE.Mesh(boxGeo,ochre);ob.scale.set(1.0,1.2,1.5);ob.position.set(xd,eave+2.8,-0.75);G.add(ob);   // the oval's own
+    const og=new THREE.Mesh(circleGeo,glassD);og.scale.set(0.33,0.44,1);og.position.set(xd,eave+3.4,0.01);G.add(og);}  // small dormer
+  // the Eisengasse front's panel, RESTAURANT over LÄLLE - KÖNIG, near the corner (REF 38)
+  const E=facadeFront(walls,135);
+  if(E){const toFront=t=>Math.abs((E.tx*t+E.nx*E.off)*nx+(E.tz*t+E.nz*E.off)*nz-off);   // its end nearest the bridge front
+    const corner=toFront(E.t0)<toFront(E.t1)?E.t0:E.t1,uc=corner+(corner===E.t0?1:-1)*1.9/BASEL.S;
+    const pm=stdMat({transparent:true,alphaTest:.3,roughness:.9,map:canvasTexture(720,310,(x)=>{x.clearRect(0,0,720,310);x.fillStyle='#5e4628';
+      x.textAlign='center';x.textBaseline='middle';x.font='bold 92px Georgia, "Times New Roman", serif';x.fillText('RESTAURANT',360,80);
+      x.font='bold 100px Georgia, "Times New Roman", serif';x.fillText('LÄLLE - KÖNIG',360,230);},false)});
+    const H=new THREE.Group();H.position.set(E.tx*uc+E.nx*(E.off+0.012),E.foot,E.tz*uc+E.nz*(E.off+0.012));H.rotation.y=Math.atan2(E.nx,E.nz);
+    H.scale.set(1/BASEL.S,VS,1/BASEL.S);parent.add(H);
+    const pl=new THREE.Mesh(new THREE.PlaneGeometry(3.6,1.55),pm);pl.position.set(0,11.8,0);H.add(pl);}
   // the heads: copper on its plate beside the entrance, painted stone on the corner above
   const skin={copper:stdMat({color:0x8f5634,roughness:.4,metalness:.6}),painted:stdMat({color:0xb07a5c,roughness:.6})};
   const dark=stdMat({color:0x1c1a19,roughness:.6}),green=stdMat({color:0x2f5a3c,roughness:.6}),gold=stdMat({color:0xb07a22,roughness:.38,metalness:1});
@@ -2342,11 +2364,10 @@ function spalentor(lm,parent,B0){   // a steep glazed roof between two round cre
 function stAlbanTor(lm,parent,B0){   // white tower with red sandstone quoins, clock, a timber oriel, battlements and a hipped roof
   const f=facing(lm,PL.markt[0],PL.markt[1]),M=frameOf(lm.x,lm.z,f.ang),B=B0||Batch();
   const w=Math.min(f.wide,2.1),d=Math.min(f.deep,1.9),h=hM(22.3),top=hM(lm.peak?lm.peak[2]:26.1);
-  const wallM=gateWall('#ece6da','#b0564a',(x,glow)=>{x.fillStyle=glow?'#000':'#5b3e30';lancet(x,56,370,80,142);
-    for(const yy of [90,190,280])lancetWin(x,86,yy,20,36,glow,'#b0564a');});
+  const wallM=gateWall('#ece6da','#b0564a',(x,glow)=>{for(const yy of [90,190,280])lancetWin(x,86,yy,20,36,glow,'#b0564a');});
   // the passage, after the Blender reference world and the passage photos (data/basel-reference/reference-world/,
-  // 23 October 2026): the drawn arch is cut out of the faces towards the field and the town (a copy of the drawing,
-  // so nothing is drawn again), and behind it stand buff and red voussoirs, a whitewashed hall under dark beams, the
+  // 23 October 2026): the arch's shape is cut out of the faces towards the field and the town (a copy of the wall's
+  // drawing, so nothing is drawn again; the side faces, with no passage, stay whole), and behind it stand buff and red voussoirs, a whitewashed hall under dark beams, the
   // portcullis raised behind the field arch, the door leaves open against the walls, a lantern and cobbles
   const cut=tex=>{const c=document.createElement('canvas');c.width=tex.image.width;c.height=tex.image.height;const x=c.getContext('2d');
     x.drawImage(tex.image,0,0);x.globalCompositeOperation='destination-out';lancet(x,56,370,80,142);const t=tex.clone();t.image=c;t.needsUpdate=true;return t;};
@@ -2494,11 +2515,11 @@ function muenster(M0,K,parent,B0){
 /* the medieval parish and convent churches, from their real outlines, heights and photos */
 const CHURCHES={
   barfuesser:{name:'Barfüsserkirche',plaster:'#ece6da',frame:'#b98a6b',eave:15,ridge:36,wid:24,turret:'copper'},
-  martins:{name:'Martinskirche',plaster:'#e8dfcf',frame:'#b09070',eave:13,ridge:26,wid:20,tower:{w:7,shaft:36,top:'pyramid'}},
-  peters:{name:'Peterskirche',plaster:'#f1ede4',frame:'#b5826a',eave:11,ridge:24,wid:20,tower:{w:5.5,shaft:24,top:'spire'}},
-  leonhard:{name:'Leonhardskirche',plaster:'#ece7dd',frame:'#b9a58a',eave:15,ridge:30,wid:26,tower:{w:7,shaft:31,top:'saddle',tip:0xb24a30}},
+  martins:{name:'Martinskirche',plaster:'#e8dfcf',frame:'#b09070',eave:13,ridge:26,wid:20,tower:{w:7,shaft:36,top:'gables'}},
+  peters:{name:'Peterskirche',plaster:'#f1ede4',frame:'#b5826a',eave:11,ridge:24,wid:20,tower:{w:5.5,shaft:24,top:'lantern'},dormers:3},
+  leonhard:{name:'Leonhardskirche',plaster:'#ece7dd',frame:'#b9a58a',eave:15,ridge:30,wid:26,tower:{w:7,shaft:31,top:'saddle',tip:0xb24a30},porch:true},
   theodor:{name:'Theodorskirche',plaster:'#e6dccb',frame:'#b3906c',eave:12,ridge:25,wid:20,tower:{w:6.5,shaft:24,top:'saddle',tip:'copper'}},
-  clara:{name:'Clarakirche',plaster:'#e3cfc5',frame:'#a8584a',eave:11,ridge:24,wid:18,turret:'dark',clock:true},
+  clara:{name:'Clarakirche',plaster:'#e3cfc5',frame:'#a8584a',eave:11,ridge:24,wid:18,turret:'glazed',clock:true},
   prediger:{name:'Predigerkirche',plaster:'#efe9df',frame:'#b5654f',eave:12,ridge:27,wid:18,turret:'open'},
   stalbankirche:{name:'St. Alban-Kirche',plaster:'#b97f72',frame:'#a7a196',eave:12,ridge:26,wid:16,tower:{w:6,shaft:28,top:'saddle'}},
   kartaeuser:{name:'Kartäuserkirche',plaster:'#e9e2d4',frame:'#b0957a',eave:10,ridge:20,wid:16,turret:'dark'},
@@ -2535,6 +2556,14 @@ function church(lm,P,parent,B0){
     LMK.clock(B,M,clockFace('#2b5f9e'),px,sh*0.82,pz+w/2+0.02,0.22,0);
     const tipM=T.tip==='copper'?copperFlat:T.tip?stdMat({color:T.tip,flatShading:true}):stdMat({color:0x4a4f55,flatShading:true});
     if(T.top==='pyramid')B.add(pyramidGeo,roofBrownDark,M4(M,px,sh,pz,w*1.05,peakH-sh,w*1.05));
+    else if(T.top==='gables'){const gh=(peakH-sh)*0.8;   // four gables under two crossing roofs (the Martinskirche)
+      B.add(prismGeo,roofBrown,M4(M,px,sh,pz,w*1.04,gh,w*1.04,0,Math.PI/2,0));B.add(prismGeo,roofBrown,M4(M,px,sh,pz,w*1.04,gh,w*1.04));
+      for(const s of [-1,1]){LMK.gable(B,M,plasterM,px+s*w*0.5,sh,pz,w,gh,0.08,Math.PI/2);LMK.gable(B,M,plasterM,px,sh,pz+s*w*0.5,w,gh,0.08,0);}
+      B.add(cone6,tipM,M4(M,px,sh+gh-0.1,pz,0.12,peakH-sh-gh+0.1,0.12));}
+    else if(T.top==='lantern'){const ph=(peakH-sh)*0.4,lh=hM(3.2),slate=stdMat({color:0x4a4f55,flatShading:true});   // the Peterskirche:
+      B.add(pyramidGeo,slate,M4(M,px,sh,pz,w*1.05,ph,w*1.05));                                                         // an eight-sided
+      B.add(cyl8,stdMat({color:0x2d3135,flatShading:true}),M4(M,px,sh+ph*0.8,pz,w*0.2,lh,w*0.2,0,Math.PI/8,0));       // lantern on its roof
+      LMK.spire(B,M,slate,goldMat,px,sh+ph*0.8+lh,pz,w*0.24,Math.max(0.3,peakH-sh-ph*0.8-lh),8,false);}
     else if(T.top==='spire'){B.add(cyl8,stdMat({color:0x4a4f55,flatShading:true}),M4(M,px,sh,pz,w*0.42,0.35,w*0.42,0,Math.PI/8,0));
       LMK.spire(B,M,stdMat({color:0x4a4f55,flatShading:true}),goldMat,px,sh+0.35,pz,w*0.42,peakH-sh-0.35,8,false);}
     else{const gh=(peakH-sh)*0.42;B.add(prismGeo,roofBrown,M4(M,px,sh,pz,w*1.04,gh,w*1.04,0,Math.PI/2,0));
@@ -2542,8 +2571,15 @@ function church(lm,P,parent,B0){
       B.add(cone6,tipM,M4(M,px,sh+gh-0.1,pz,0.14,peakH-sh-gh+0.1,0.14));}
     bothEras({x:pk[0],z:pk[1],w:w+0.3,d:w+0.3,h:peakH});
   }
+  if(P.dormers){   // dormers on the nave's roof (the Peterskirche's three, after the reference world's photos)
+    const f=0.3,zd=(hw+0.125)*(1-f),yd=eave+(ridge-eave)*f,dw=0.18,dh=hM(1.1);
+    for(let k=0;k<P.dormers;k++){const x=bxc+(k-(P.dormers-1)/2)*bL/(P.dormers+1);
+      B.add(boxC,plasterM,M4(M,x,yd+dh/2,zd,dw,dh,0.22));B.add(prismGeo,roofBrown,M4(M,x,yd+dh,zd-0.02,dw*1.2,dh*0.6,0.3));}}
+  if(P.porch){   // a porch on the north side's western half (the Leonhardskirche's, facing about 345 degrees)
+    const s=Math.cos(ang)>0?-1:1,x0=bxc-choirEnd*bL*0.25,z0=s*(hw+0.3),ph=hM(4.5);   // local +z is world (sin, cos) of ang
+    B.add(boxC,plasterM,M4(M,x0,ph/2,z0,0.72,ph,0.6));B.add(prismGeo,roofBrown,M4(M,x0,ph,z0,0.84,hM(2.4),0.68));}
   if(P.turret){   // the ridge turret
-    const tm=P.turret==='copper'?copperFlat:P.turret==='open'?alphaMat(64,128,(x)=>{x.fillRect(0,0,8,128);x.fillRect(56,0,8,128);for(let y=0;y<128;y+=32){x.fillRect(0,y,64,5);x.lineWidth=4;x.beginPath();x.arc(32,y+18,10,0,Math.PI*2);x.stroke();}},0xa9574a)
+    const tm=P.turret==='glazed'?stdMat({color:0x9fb6c2,roughness:.15,metalness:.35,flatShading:true}):P.turret==='copper'?copperFlat:P.turret==='open'?alphaMat(64,128,(x)=>{x.fillRect(0,0,8,128);x.fillRect(56,0,8,128);for(let y=0;y<128;y+=32){x.fillRect(0,y,64,5);x.lineWidth=4;x.beginPath();x.arc(32,y+18,10,0,Math.PI*2);x.stroke();}},0xa9574a)
       :stdMat({color:0x3d4247,flatShading:true});
     const tx=Math.max(-bL/2,Math.min(bL/2,px-bxc))+bxc,base=ridge-0.25;
     B.add(cyl8,P.turret==='open'?redSandM:timberM,M4(M,tx,base,0,0.22,0.9,0.22,0,Math.PI/8,0));
