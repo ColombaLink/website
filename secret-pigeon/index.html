@@ -2669,6 +2669,8 @@ const BANK_KINDS={   // pw, ph: the lower path's width and height over the river
   rheinbord:{pw:3.5,ph:1,sw:9,st:0,rail:0,kerb:0x8a8883,path:0x9d988d,bank:0x8e877a},
   steps:{pw:2.5,ph:1,sw:9,st:1,rail:0,kerb:0x9a978f,path:0xaca89f,bank:0xb7b3a9},
   park:{pw:3,ph:0.9,sw:13,st:0,rail:0,kerb:0x8a8883,path:0xa29b8e,bank:0x6d8a4c},
+  // the lower promenade under the Mittlere Brücke's Kleinbasel terraces: broad, 3.5 m over the river, a wall behind
+  terrace:{pw:13.5,ph:3.5,sw:0.5,st:0,rail:0,kerb:0x8a8883,path:0xa7a297,bank:0x9b978d},
   wall1615:{pw:0,ph:1,sw:0.8,st:0,rail:0,kerb:0x857a6b,path:0x857a6b,bank:0x8e8170},
 };
 for(const k of Object.values(BANK_KINDS))for(const c of ['kerb','path','bank'])k[c]=new THREE.Color(k[c]);
@@ -2766,10 +2768,11 @@ function buildRiver(banks,plan,parent){
     const anchorS=u=>{if(!u)return -Infinity;let bi=-1,bd=1e18;
       for(let i=0;i<n;i++){if(!inMap(sh.P[i]))continue;for(const p of u.pts){const d=(sh.P[i][0]-p[0])**2+(sh.P[i][1]-p[1])**2;if(d<bd){bd=d;bi=i;}}}
       return bi<0?-Infinity:sh.S[bi]+(u.off||0);};
-    const st=plan[sh.side].map(([kind,until],i,all)=>({kind:BANK_KINDS[kind],end:i===all.length-1?Infinity:anchorS(until)}));
+    // (a stretch may give its own blend into the next, in game units: a short one would otherwise never come through)
+    const st=plan[sh.side].map(([kind,until,blend],i,all)=>({kind:BANK_KINDS[kind],end:i===all.length-1?Infinity:anchorS(until),blend:blend??BANK_BLEND}));
     sh.p=sh.S.map(s=>{let m=0;while(m<st.length-1&&s>=st[m].end)m++;
-      if(m>0&&s-st[m-1].end<BANK_BLEND)return mixKind(st[m-1].kind,st[m].kind,smooth01((s-st[m-1].end+BANK_BLEND)/(2*BANK_BLEND)));
-      if(m<st.length-1&&st[m].end-s<BANK_BLEND)return mixKind(st[m].kind,st[m+1].kind,smooth01((s-st[m].end+BANK_BLEND)/(2*BANK_BLEND)));
+      if(m>0&&s-st[m-1].end<st[m-1].blend){const b=st[m-1].blend;return mixKind(st[m-1].kind,st[m].kind,smooth01((s-st[m-1].end+b)/(2*b)));}
+      if(m<st.length-1&&st[m].end-s<st[m].blend){const b=st[m].blend;return mixKind(st[m].kind,st[m+1].kind,smooth01((s-st[m].end+b)/(2*b)));}
       return st[m].kind;});
     sh.Q=sh.P.map((p,i)=>{const w=(sh.p[i].pw+sh.p[i].sw)/US;return [p[0]+sh.N[i][0]*w,p[1]+sh.N[i][1]*w];});   // the bank's top edge
   }
@@ -2867,8 +2870,13 @@ const RIVER_PLAN_TODAY=(()=>{   // after the photos mapped to stretches of shore
   const ferry=re=>{const f=BASEL.ferries.find(f=>re.test(f.name));return f?{pts:[f.a,f.b]}:null;};
   const T=BASEL.iconic.troisrois;let trois=null;
   if(T){let x=0,z=0,n=0;for(let k=0;k+6<T.walls.length;k+=7){x+=T.walls[k]+T.walls[k+2];z+=T.walls[k+1]+T.walls[k+3];n+=2;}trois={pts:[[x/n,z/n]],off:9};}
+  // the Mittlere Brücke's Kleinbasel abutment face: the broad lower promenade runs from 37 m upstream of it to 32 m
+  // downstream, under the terraces (bridgeheads())
+  const mb=BASEL.bridges.find(b=>/Mittlere/.test(b.name));let mkb=null;
+  if(mb&&mb.ends){const [cx,cz,L,,a]=mb.axis,e=Math.min(mb.ends[1],L/2-0.25);mkb=off=>({pts:[[cx+Math.cos(a)*e,cz-Math.sin(a)*e]],off});}
   return {g:[['path',br(/Wettstein/)],['pfalz',br(/Mittlere/)],['quay',trois],['path',br(/Johanniter/)],['park',null]],
-          k:[['park',br(/Wettstein/)],['rheinbord',ferry(/Münster/)],['steps',br(/Johanniter/)],['rheinbord',null]]};
+          k:mkb?[['park',br(/Wettstein/)],['rheinbord',ferry(/Münster/)],['steps',mkb(-7.6),1],['terrace',mkb(6.7),1],['steps',br(/Johanniter/)],['rheinbord',null]]
+              :[['park',br(/Wettstein/)],['rheinbord',ferry(/Münster/)],['steps',br(/Johanniter/)],['rheinbord',null]]};
 })();
 
 /* ---------- Basel today ---------- */
@@ -2878,7 +2886,146 @@ const cityToday=buildCity3D(await gunzip(BASEL.lod2.gz),BASEL.lod2.count,
   {bytes:await gunzip(BASEL.facades.gz),count:BASEL.facades.count,styles:BASEL.facades.styles});TODAY.add(cityToday.mesh,cityToday.extras);
 if(BASEL.details)laelleHouse(FACADE_WALLS.laelle,BASEL.details.laelle,TODAY);
 letziWalk(FACADE_WALLS.letzimauer,TODAY);
-{const B=Batch();for(const br of BASEL.bridges)buildBridge(br,B,'today');B.build(TODAY);}
+/* the bridgeheads, after the Basel reference world's pass on them (its bridgeheads.py: the bridge-bank photos and the
+   canton's bridge model and ground). Where the Mittlere Brücke lands in Kleinbasel (Nussbaumer Trüssel's promenade of
+   2004) the lower promenade runs under the bridge's land arch and under a terrace on either side of it, level with
+   the deck and ceiled in blue-green glass between concrete beams, with columns along the river and a glazed slot along
+   the downstream deck edge; a stair at the river's edge comes down from each corner of the deck in two flights, and
+   swimmers' steps go down into the Rhine beside them; Helvetia sits on the pier at the downstream terrace's corner.
+   At the Wettsteinbrücke's Grossbasel end a stair runs down beside the abutment to a platform at the water, and
+   downstream the narrow path along the foot of the wall under the Pfalz has a chain on concrete posts. The levels are
+   the game's (the street 6.5 m over the Rhine, the promenade 3.5 m); plans after the canton's model, details after
+   the photos. */
+const HEADS={tops:[],skip:[],helvetia:null};   // terrace tops, the register's stairs built here, Helvetia's seat
+HEADS.top=(x,z)=>{let y=null;
+  for(const t of HEADS.tops){const dx=x-t.x,dz=z-t.z,u=dx*Math.cos(t.ang)-dz*Math.sin(t.ang),v=dx*Math.sin(t.ang)+dz*Math.cos(t.ang);
+    if(u>=t.u0&&u<=t.u1&&v>=t.v0&&v<=t.v1)y=Math.max(y??-9,t.y);}
+  return y;};
+function bridgeheads(B){
+  const US=BASEL.S,m=v=>v/US,R=RIVERS.today;if(!R)return;
+  const ceiling=stdMat({color:0x9fd6cc,emissive:0x4fc4ae,emissiveIntensity:0.45,roughness:.3});
+  const slotGlass=stdMat({color:0xd9efe9,emissive:0xbfe8df,emissiveIntensity:0.35,roughness:.15});
+  const paving=stdMat({color:0xa49e93,roughness:.9}),iron=BR.steel,stone=BR.granite;
+  const P3=(F,u,y,v)=>new V3(u,y,v).applyMatrix4(F);
+  const bar=(a,b,t,mat)=>{const d=b.clone().sub(a),l=d.length();if(l<1e-4)return;
+    B.put(cyl6,mat,new THREE.Matrix4().compose(a,new THREE.Quaternion().setFromUnitVectors(new V3(0,1,0),d.divideScalar(l)),new V3(t,l,t)));};
+  const railing=(F,pts,h,mat=iron)=>{   // posts every 1.5 m, a handrail and a middle rail, along frame points [u, y, v]
+    for(let i=0;i+1<pts.length;i++){const a=P3(F,...pts[i]),b=P3(F,...pts[i+1]),n=Math.max(1,Math.ceil(a.distanceTo(b)/m(1.5)));
+      for(let k=0;k<=n;k++){const p=a.clone().lerp(b,k/n);bar(p,p.clone().add(new V3(0,h,0)),m(0.05),mat);}
+      for(const f of [1,0.5])bar(a.clone().add(new V3(0,h*f,0)),b.clone().add(new V3(0,h*f,0)),m(f===1?0.06:0.04),mat);}};
+  const downSign=(x,z,ang)=>{   // which way across the bridge (+v or -v) is downstream: along the nearest shore
+    let best=null,bd=1e9;for(const sh of R.shores)for(let i=0;i+1<sh.P.length;i++){const d=(sh.P[i][0]-x)**2+(sh.P[i][1]-z)**2;if(d<bd){bd=d;best={sh,i};}}
+    const {sh,i}=best,tx=sh.P[i+1][0]-sh.P[i][0],tz=sh.P[i+1][1]-sh.P[i][1];return Math.sign(tx*Math.sin(ang)+tz*Math.cos(ang))||1;};
+  // a flight of steps along v, from its foot (v, y) up to its top, across u0..u1, standing on `base`: its nosing line
+  const flight=(F,vFoot,yFoot,vTop,yTop,u0,u1,base,mat=stone)=>{
+    const n=Math.max(2,Math.round((yTop-yFoot)/hM(0.165))),rise=(yTop-yFoot)/n,run=(vTop-vFoot)/n,line=[];
+    for(let i=0;i<n;i++){const va=vFoot+i*run,vb=va+run,y=yFoot+(i+1)*rise;
+      B.add(boxGeo,mat,M4(F,(u0+u1)/2,base,(va+vb)/2,u1-u0,y-base,Math.abs(run)+0.002));line.push([va,vb,y]);}
+    return line;};
+
+  const mb=BASEL.bridges.find(b=>/Mittlere/.test(b.name));
+  if(mb&&mb.ends){
+    const [cx,cz,L,,ang]=mb.axis,e1=Math.min(mb.ends[1],L/2-0.25),W=19/US;
+    const fx=cx+Math.cos(ang)*e1,fz=cz-Math.sin(ang)*e1,F=frameOf(fx,fz,ang),dn=downSign(fx,fz,ang);
+    // u inland from the abutment's river face, v across the bridge (dn*v downstream); the game's levels
+    const T=0.12,S=T-hM(1.0),P=(BANK_KINDS.terrace.ph-RIVER_TOP)*VS,berm=P-hM(2.0),mid=(T+P)/2;
+    // the land arch: the abutment pier ends 2.2 m inland, the arch spans the promenade to the back wall at 12.7 m, the
+    // back abutment meets the street at 17.2 m (the canton's bridge model); springing 1.4 m over the promenade
+    const xs=Array.from({length:36},(_,i)=>m(17.2)*i/35),top=x=>x<m(15.5)?T:T*(1-(x-m(15.5))/m(1.7));
+    const hole=archOpening(m(2.2),m(12.7),P+hM(1.4),T-hM(0.8),P-0.02);
+    B.addGroups(profileGeo(xs,top,()=>P-0.08,[hole],W),[BR.ashlar,BR.graniteDark],F);
+    {const arc=hole.slice(1,-1),sh=new THREE.Shape();sh.moveTo(arc[0][0],arc[0][1]);for(const [x,y] of arc)sh.lineTo(x,y);
+      for(let i=arc.length-1;i>=0;i--){const [x,y]=arc[i];sh.lineTo(x,Math.min(y+0.22,T-0.05));}
+      for(const s of [-1,1]){const g=new THREE.ExtrudeGeometry(sh,{depth:0.04,bevelEnabled:false,curveSegments:1});
+        g.translate(0,0,s>0?W/2-0.01:-W/2-0.03);B.add(g,BR.voussoir,F);}}
+    B.add(strip(xs,x=>top(x)+0.005,-W/2+0.12,W/2-0.12,3),BR.tram,F);
+    const dc=P3(F,m(8.6),0,0);BRIDGE_DECKS.push({cx:dc.x,cz:dc.z,ang,L:m(17.2),W,deckY:u=>top(u+m(8.6)),piers:[],spans:[]});
+    // the terraces either side, 24 m upstream and 20 m downstream of the deck, 1.2-12.8 m inland: a 1 m slab ceiled in
+    // glass, an edge beam over the river-edge columns, cross beams every 5-6 m
+    for(const side of [1,-1]){const s=side*dn,len=side>0?m(32):m(36.6),v0=W/2,v1=len;   // side 1: downstream
+      B.addGroups(boxGeo,[BR.concrete,BR.concrete,paving,ceiling,BR.concrete,BR.concrete],M4(F,m(7),S,s*(v0+v1)/2,m(11.6),T-S,v1-v0));
+      B.add(boxGeo,BR.concrete,M4(F,m(1.65),S-hM(0.55),s*(v0+v1)/2,m(0.9),hM(0.55),v1-v0));
+      const n=Math.max(2,Math.round((v1-v0)/m(5.5)));
+      for(let k=0;k<=n;k++)B.add(boxGeo,BR.concrete,M4(F,m(7.45),S-hM(0.45),s*(v0+(v1-v0)*k/n),m(10.7),hM(0.45),m(0.4)));
+      HEADS.tops.push({x:fx,z:fz,ang,u0:m(1.2),u1:m(12.8),v0:Math.min(s*v0,s*v1),v1:Math.max(s*v0,s*v1),y:T});
+      // the deck's corner over the abutment, where the stair arrives, with the river parapet round it
+      B.addGroups(boxGeo,[stone,stone,paving,stone,stone,stone],M4(F,m(-0.6),P-0.08,s*(W/2+m(12.4))/2,m(3.6),T-P+0.08,m(12.4)-W/2));
+      B.add(boxGeo,stone,M4(F,m(-2.22),T,s*(W/2+m(12.4))/2,m(0.35),hM(1.0),m(12.4)-W/2));
+    }
+    // columns and walls along the river edge, where the canton's model has them: [v from, v to (m), column?]
+    const colAt=(s,v0,v1,col)=>{const vc=s*(v0+v1)/2;
+      if(col)B.put(cyl16,BR.concrete,M4(F,m(1.55),P-0.05,vc,m(0.3),S-hM(0.55)-P+0.05,m(0.3)));
+      else B.add(boxGeo,BR.ashlarPier,M4(F,m(1.6),berm,vc,m(0.8),S-berm,m(v1-v0)));};
+    for(const [v0,v1,col] of [[25.2,25.7,1],[34.6,35.1,1],[18.5,21.1,0],[12.4,16.7,0]])colAt(-dn,v0,v1,col);
+    for(const [v0,v1,col] of [[26.4,27.4,1],[18.3,19.3,0],[12.4,14.8,0]])colAt(dn,v0,v1,col);
+    B.add(boxGeo,BR.ashlarPier,M4(F,m(12.75),P-0.05,dn*(W/2+m(32))/2,m(0.3),S-P+0.05,m(32)-W/2));   // the downstream passage's back wall
+    // parapets: downstream solid stone, upstream an iron railing
+    B.add(boxGeo,stone,M4(F,m(1.38),T,dn*m(21.55),m(0.35),hM(1.0),m(18.3)));
+    B.add(boxGeo,stone,M4(F,m(7.6),T,dn*m(31.82),m(10.4),hM(1.0),m(0.35)));
+    railing(F,[[m(1.4),T,-dn*m(12.6)],[m(1.4),T,-dn*m(36.4)],[m(11.6),T,-dn*m(36.4)]],hM(1.05));
+    // the stairs: from the deck's corner down along the river, landing half way, to the promenade; the river wall
+    // beside them with a handrail, an iron railing where the canton's model has no wall towards the passage
+    for(const [side,top_,l1,l2,foot] of [[1,12.4,16.8,18.5,23.3],[-1,12.4,16.5,18.2,22.6]]){const s=side*dn,V=v=>s*m(v);
+      const lower=flight(F,V(foot),P,V(l2),mid,m(-1.3),m(1.2),P-0.05),upper=flight(F,V(l1),mid,V(top_),T,m(-1.3),m(1.2),P-0.05);
+      B.add(boxGeo,stone,M4(F,m(-0.05),P-0.05,(V(l1)+V(l2))/2,m(2.5),mid-P+0.05,Math.abs(V(l2)-V(l1))));
+      for(const [va,vb,y] of [...lower,[V(l2),V(l1),mid],...upper])
+        B.add(boxGeo,stone,M4(F,m(-1.48),berm,(va+vb)/2,m(0.35),y+hM(1.0)-berm,Math.abs(vb-va)+0.002));
+      B.add(boxGeo,stone,M4(F,m(-1.48),berm,V(foot+0.5),m(0.35),P+hM(1.0)-berm,m(1)));
+      railing(F,[[m(-1.48),P+hM(1.0),V(foot)],[m(-1.48),mid+hM(1.0),V(l2)],[m(-1.48),mid+hM(1.0),V(l1)],[m(-1.48),T+hM(1.0),V(top_)]],hM(0.12));
+      const zl=v=>P+(mid-P)*(v-foot)/(l2-foot),zu=v=>mid+(T-mid)*(v-l1)/(top_-l1);
+      if(side>0){railing(F,[[m(1.15),zu(14.8),V(14.8)],[m(1.15),mid,V(l1)],[m(1.15),mid,V(18.3)]],hM(1.0));
+        railing(F,[[m(1.15),zl(19.3),V(19.3)],[m(1.15),P,V(foot)]],hM(1.0));}
+      else{railing(F,[[m(1.15),zl(21.1),V(21.1)],[m(1.15),P,V(foot)]],hM(1.0));railing(F,[[m(1.15),mid,V(18.5)],[m(1.15),mid,V(16.7)]],hM(1.0));}
+      // the swimmers' steps outside the stair's wall, down towards the bridge into the Rhine (REF 054; upstream at the
+      // register's place, laid out the same), from a landing at the promenade's level beside the stair's foot
+      const la=foot+1.2,lb=foot+3.2;
+      B.addGroups(boxGeo,[stone,stone,paving,stone,stone,stone],M4(F,m(-2.8),RIVER_Y-0.2,V((la+lb)/2),m(3.0),P-RIVER_Y+0.2,m(2)));
+      flight(F,V(la-8),RIVER_Y-hM(0.5),V(la),P,m(-4.3),m(-1.65),RIVER_Y-0.3);
+      HEADS.skip.push({...(({x,z})=>({x,z}))(P3(F,m(-2),0,V(16))),r:m(9)});
+    }
+    // Helvetia's pier at the downstream terrace's river corner, its inland side sweeping down to the parapet
+    const hv=dn*m(31.35);
+    B.add(boxGeo,stone,M4(F,m(-0.03),berm,hv,m(2.35),T+hM(1.45)-berm,m(1.3)));
+    for(let k=0;k<6;k++){const a0=k/6*Math.PI/2,a1=(k+1)/6*Math.PI/2,ua=m(1.15+1.25*Math.sin(a0)),ub=m(1.15+1.25*Math.sin(a1));
+      B.add(boxGeo,stone,M4(F,(ua+ub)/2,berm,hv,ub-ua,T+hM(1.0+0.45*Math.cos(a1))-berm,m(1.3)));}
+    const hp=P3(F,m(0),0,hv);HEADS.helvetia={x:hp.x,z:hp.z,y:T+hM(1.45)};
+    {const q=P3(F,m(-2),0,dn*m(33.5));HEADS.skip.push({x:q.x,z:q.z,r:m(5)});}   // the register's flights by the pier
+    // the glazed daylight slot along the downstream deck edge (REF 006)
+    B.add(boxGeo,slotGlass,M4(F,m(7.4),T-0.004,dn*(W/2+m(0.45)),m(10.6),0.012,m(0.6)));
+  }
+
+  const wb=BASEL.bridges.find(b=>/Wettstein/.test(b.name));
+  if(wb&&wb.ends){
+    const [cx,cz,L,Wb,ang]=wb.axis,ne=Math.cos(ang)+Math.sin(ang)>0?1:-1,eg=ne>0?Math.max(wb.ends[0],-L/2+0.25):Math.min(wb.ends[1],L/2-0.25);
+    const gx=cx+Math.cos(ang)*eg,gz=cz-Math.sin(ang)*eg,F=frameOf(gx,gz,ang),dn=downSign(gx,gz,ang),inl=-ne;   // inland along u
+    const yP=(BANK_KINDS.path.ph-RIVER_TOP)*VS,vA=(Wb+0.3)/2;   // the lower path's level; the abutment block's half width
+    // the stair down the abutment's downstream face from the street to the platform (REF 031, 034), a landing at the
+    // top reaching back to the street, a wall on its land side and a railing on its river side
+    const u0=inl*m(2.6),u1=inl*m(4.6),vt=dn*(vA+0.05),vf=dn*(vA+0.05+1.6);
+    const line=flight(F,vf,yP,vt,0,Math.min(u0,u1),Math.max(u0,u1),RIVER_Y-0.1);
+    B.addGroups(boxGeo,[stone,stone,paving,stone,stone,stone],M4(F,inl*m(5.7),RIVER_Y-0.1,vt+dn*0.15,m(6.2),-(RIVER_Y-0.1),0.3));
+    for(const [va,vb,y] of line)B.add(boxGeo,stone,M4(F,inl*m(4.8),RIVER_Y-0.1,(va+vb)/2,m(0.4),y+hM(0.9)-RIVER_Y+0.1,Math.abs(vb-va)+0.002));
+    railing(F,[[inl*m(2.7),yP,vf],[inl*m(2.7),0,vt]],hM(1.0));
+    {const q=P3(F,inl*m(3.6),0,vf);HEADS.skip.push({x:q.x,z:q.z,r:m(12)});}   // the register's stair here is this one
+    // the platform at its foot, its rounded end out over the water, its edge sloping down to it
+    const vc=vf+dn*m(4),uc=inl*m(1.5),yp=yP+hM(0.2);
+    B.addGroups(boxGeo,[stone,stone,paving,stone,stone,stone],M4(F,(uc+inl*m(5))/2,RIVER_Y-0.2,vc,m(3.5),yp-RIVER_Y+0.2,m(9)));
+    B.addGroups(cyl16,[stone,paving,stone],M4(F,uc,RIVER_Y-0.2,vc,m(4.5),yp-RIVER_Y+0.2,m(4.5)));
+    B.put(cyl16,stone,M4(F,uc,RIVER_Y-0.25,vc,m(5.4),yp-hM(0.9)-RIVER_Y+0.25,m(5.4)));
+    // the chain on concrete posts along the narrow path at the wall's foot, from beyond the platform for 90 m (REF 030)
+    let best=null,bd=1e9;for(const sh of R.shores)for(let i=0;i<sh.P.length;i++){const d=(sh.P[i][0]-gx)**2+(sh.P[i][1]-gz)**2;if(d<bd){bd=d;best={sh,i};}}
+    if(best){const {sh,i}=best,s0=sh.S[i],posts=[];
+      for(let j=i;j<sh.P.length&&sh.S[j]-s0<m(110);j++){if(sh.S[j]-s0<m(20))continue;
+        if(posts.length&&sh.S[j]-posts[posts.length-1].s<m(3))continue;
+        const p=sh.p[j],N=sh.N[j],y=(p.ph-RIVER_TOP)*VS,d=Math.max(0.3,p.pw-0.3)/US;
+        posts.push({s:sh.S[j],v:new V3(sh.P[j][0]+N[0]*d,y,sh.P[j][1]+N[1]*d)});}
+      for(const q of posts)B.put(boxGeo,BR.concrete,M4(null,q.v.x,q.v.y,q.v.z,m(0.25),hM(0.95),m(0.25)));
+      for(let k=0;k+1<posts.length;k++){const a=posts[k].v.clone().add(new V3(0,hM(0.8),0)),b=posts[k+1].v.clone().add(new V3(0,hM(0.8),0));
+        for(let j=0;j<4;j++){const sag=t=>hM(0.25)*4*t*(1-t),pa=a.clone().lerp(b,j/4),pb=a.clone().lerp(b,(j+1)/4);
+          pa.y-=sag(j/4);pb.y-=sag((j+1)/4);bar(pa,pb,m(0.035),iron);}}}
+  }
+}
+{const B=Batch();for(const br of BASEL.bridges)buildBridge(br,B,'today');bridgeheads(B);B.build(TODAY);}
 if(BASEL.landmarks.elisabethen)elisabethenkirche(BASEL.landmarks.elisabethen,TODAY);
 if(BASEL.iconic.sbb)sbbStation(BASEL.iconic.sbb,TODAY);
 plantTrees(BASEL.trees,BASEL.treeInfo,TODAY,RIVERS.today,(x,z)=>{   // none in the Tinguely fountain's pool
@@ -2924,6 +3071,7 @@ if(BASEL.access&&RIVERS.today){
       B.put(boxGeo,steel,M4(null,x+dx*len/2+ox,(y0+y1)/2+0.26,z+dz*len/2+oz,hl,0.025,0.025,0,ry,tilt));}};
   for(let k=0;k+2<A.length;k+=3){
     const x=A[k],z=A[k+1],kind=A[k+2];let best=null,bd=64;
+    if(HEADS.skip.some(s=>(x-s.x)**2+(z-s.z)**2<s.r*s.r))continue;   // a bridgehead's own stair (bridgeheads())
     for(const sh of R.shores)for(let i=1;i+1<sh.P.length;i++){const d=(sh.P[i][0]-x)**2+(sh.P[i][1]-z)**2;if(d<bd){bd=d;best={sh,i};}}
     if(!best)continue;
     const {sh,i}=best,P=sh.P[i],N=sh.N[i],p=sh.p[i],a=sh.P[i-1],b=sh.P[i+1],tl=Math.hypot(b[0]-a[0],b[1]-a[1])||1,T=[(b[0]-a[0])/tl,(b[1]-a[1])/tl];
@@ -3072,7 +3220,7 @@ const FOUNTAINS={turn:[],jets:[],arm:null,t:0};
   }
 
   // the statues, each in its own frame in metres: x across it, y up, z the way it faces
-  const statue=(x,z,face)=>{const g=new THREE.Group();g.position.set(x,Math.max(0,groundAt(x,z,R)),z);g.rotation.y=face;
+  const statue=(x,z,face)=>{const g=new THREE.Group();g.position.set(x,Math.max(0,groundAt(x,z,R),HEADS.top(x,z)??0),z);g.rotation.y=face;
     g.scale.set(1/US,VS,1/US);TODAY.add(g);return g;};
   const box=(g,mat,x,y,z,sx,sy,sz,rx=0,ry=0,rz=0)=>{const m=new THREE.Mesh(boxGeo,mat);m.position.set(x,y,z);m.scale.set(sx,sy,sz);
     m.rotation.set(rx,ry,rz);g.add(m);return m;};
@@ -3103,7 +3251,8 @@ const FOUNTAINS={turn:[],jets:[],arm:null,t:0};
       box(arm,steel,3.55,-0.55,0,0.45,1.5,0.4);
       FOUNTAINS.arm=arm;collidersToday.push({x,z,w:mm(3),d:mm(3),h:hM(13.5)});
     }else if(id==='helvetia'){   // on the terrace's parapet over the Rhine, her things put down beside her
-      const g=statue(x,z,riverSide(x,z));
+      const H=HEADS.helvetia,g=H?statue(H.x,H.z,riverSide(H.x,H.z)):statue(x,z,riverSide(x,z));
+      if(H)g.position.y=H.y-1.1*VS;   // on the pier at the terrace's corner (bridgeheads()), her plinth inside it
       box(g,lime,0,0,0,1.0,1.1,0.8);
       box(g,bronze,0,1.1,0.18,0.5,0.24,0.62);box(g,bronze,0,0.55,0.5,0.42,0.6,0.2);
       drum(g,bronze,0,1.32,0,0.25,0.17,0.62);ball(g,bronze,0,2.08,0.02,0.12,0.14);

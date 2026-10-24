@@ -65,7 +65,13 @@ high cable takes the push along the hull and the rest carries the boat over; the
 and the reaction-ferry article stored in the research library): bow upstream, turned about 35° towards the bank
 they are making for, straightening as they land; their floors sit above the waterline. They land at landing stages on floats with railed gangways and hang from masts on the
 promenades, waiting while a ship comes by; the canton's stairs and ladders lead down to the water
-where its register puts them, and past the edge of the map the river runs on along its real course into the haze:
+where its register puts them. Two bridgeheads are built after the reference world's pass on them (the bridge-bank
+photos and the canton's bridge model): where the Mittlere Brücke lands in Kleinbasel, the lower promenade runs under
+its land arch and under a terrace either side of it at the deck's level, ceiled in blue-green glass between concrete
+beams, with a stair down from each corner of the deck at the river's edge, swimmers' steps into the Rhine beside them,
+and Helvetia on the pier at the downstream terrace's corner; at the Wettsteinbrücke's Grossbasel end a stair runs
+down beside the abutment to a round platform at the water, and the narrow path at the foot of the wall under the
+Pfalz has a chain on concrete posts. Past the edge of the map the river runs on along its real course into the haze:
 upstream round the bend at the Birsfelden power station (through its weir, OpenStreetMap's main stream) towards Augst
 and Rheinfelden, downstream north along the Upper Rhine (past the Märkt weir down the Old Rhine, not the Grand Canal
 d'Alsace), in 1615 as today. Each shore keeps the distance from the other at which it leaves the map, while the river's
