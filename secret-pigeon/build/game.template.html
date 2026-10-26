@@ -966,7 +966,7 @@ function buildCity3D(bytes,count,fac){
         raster(X[a],Y[a],Z[a],X[c],Y[c],Z[c],X[d],Y[d],Z[d]);
         const ux=X[c]-X[a],uy=Y[c]-Y[a],uz=Z[c]-Z[a],vx=X[d]-X[a],vy=Y[d]-Y[a],vz=Z[d]-Z[a];
         const nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx,steep=Math.abs(ny)<0.94*Math.hypot(nx,ny,nz);
-        put(steep?st.pitched:st.flat,[[X[a],Y[a],Z[a]],[X[c],Y[c],Z[c]],[X[d],Y[d],Z[d]]],[[X[a]/1.6,Z[a]/1.6],[X[c]/1.6,Z[c]/1.6],[X[d]/1.6,Z[d]/1.6]]);
+        put(steep?(st.crown&&Math.min(Y[a],Y[c],Y[d])-zb>st.crownAbove?st.crown:st.pitched):st.flat,[[X[a],Y[a],Z[a]],[X[c],Y[c],Z[c]],[X[d],Y[d],Z[d]]],[[X[a]/1.6,Z[a]/1.6],[X[c]/1.6,Z[c]/1.6],[X[d]/1.6,Z[d]/1.6]]);
       });
       for(let e=0;e<walls.length;e+=2){
         const a=walls[e],c=walls[e+1],L=Math.hypot(X[c]-X[a],Z[c]-Z[a])/st.u;
@@ -1463,7 +1463,7 @@ function facadeFront(walls,bearing){   // a building's outermost walls facing a 
 function letziWalk(walls,parent){
   if(!walls.length)return;
   const B=Batch(),timber=stdMat({color:0x5a3d2a,roughness:.85}),plaster=stdMat({color:0xe7e2d6,roughness:.9,side:THREE.DoubleSide}),
-    tiles=stdMat({color:0x8a4b37,roughness:.8,side:THREE.DoubleSide}),US=BASEL.S;
+    tiles=stdMat({color:0x684032,roughness:.8,side:THREE.DoubleSide}),US=BASEL.S;   // weathered (the 2026 obliques)
   let cx=0,cz=0;for(const w of walls){cx+=w.ax+w.cx;cz+=w.az+w.cz;}cx/=2*walls.length;cz/=2*walls.length;
   for(const w of walls){const dx=w.cx-w.ax,dz=w.cz-w.az,L=Math.hypot(dx,dz);if(L<0.3||w.span*US<20)continue;   // not a tower on it
     const tx=dx/L,tz=dz/L;let nx=tz,nz=-tx;if(((w.ax+w.cx)/2-cx)*nx+((w.az+w.cz)/2-cz)*nz<0){nx=-nx;nz=-nz;}
@@ -1972,7 +1972,7 @@ const FACADE_STYLES=(()=>{
     kunstmuseum:{wall:kunst,pitched:roofGrey,flat:roofGrey,u:3.2,v:6.0},
     kunstneubau:{wall:brick,pitched:roofDark,flat:roofDark,u:3.0,v:7.6},
     sbb:{wall:sbb,pitched:copperFlat,flat:roofGrey,u:3.0,v:4.6},
-    badbf:{wall:badbf,pitched:copperFlat,flat:roofGrey,u:3.0,v:4.6},
+    badbf:{wall:badbf,pitched:tileRoof('#80493f'),crown:copperFlat,crownAbove:25*VS,flat:roofGrey,u:3.0,v:4.6},   // tiles; the clock tower's crown copper (2026 oblique)
     tinguely:{wall:tinguely,pitched:roofGrey,flat:roofGrey,u:2.0,v:1.6},
     moh:{wall:moh,pitched:roofGrey,flat:roofDark,u:3.6,v:6.94},
     uni:{wall:uniWall,pitched:roofDark,flat:roofDark,u:2.4,v:4.48},
@@ -2351,12 +2351,14 @@ function spalentor(lm,parent,B0){   // a steep glazed roof between two round cre
     for(let i=0;i<8;i++){x.fillStyle=glow?'#ffcf7a':'#241c17';x.fillRect(i*32+7,10,18,30);if(!glow){x.fillStyle='#8a6a4c';x.fillRect(i*32,0,5,64);x.fillRect(0,44,256,5);}}},256,64,2,1);
   B.addGroups(boxC,[gallery,gallery,timberM,timberM,gallery,gallery],M4(M,0,h-hM(3.6),0,w*1.08,hM(3.6),d*1.08));
   B.add(pyramidGeo,glazedTiles(['#2f6b4f','#d8b13a','#6b3a26'],5,5),M4(M,0,h+0.28,0,w*1.06,tip-h-0.28,d*1.06));
+  B.add(pyramidGeo,tileRoof('#765644'),M4(M,0,h+0.28,0,w*1.3,(tip-h-0.28)*0.3,d*1.3));   // its skirt of plain brown tiles
   B.add(cone4,goldMat,M4(M,0,tip-0.05,0,0.08,0.5,0.08));
   const roundM=floodlit(glowMat((x,glow)=>{wallBg(x,256,256,glow,plaster);if(!glow){x.fillStyle='#b9a17e';x.fillRect(0,40,256,10);x.fillRect(0,232,256,8);}
     for(const [X,Y] of [[40,100],[170,100],[105,170],[230,60]])lancetWin(x,X,Y,12,36,glow,'#a65649');},256,256,2,1));   // slits in red sandstone frames
   for(const s of [-1,1]){const cx=s*(w/2+0.05),cz=d/2-0.15,rr=0.62;
     B.add(cyl16,roundM,M4(M,cx,0,cz,rr,hM(29),rr));LMK.ringMerlons(B,M,greyStoneM,cx,cz,rr*0.92,hM(29),0.36,10);
-    B.add(cyl16,greyStoneM,M4(M,cx,hM(29)-0.05,cz,rr*0.9,0.06,rr*0.9));}
+    B.add(cyl16,greyStoneM,M4(M,cx,hM(29)-0.05,cz,rr*0.9,0.06,rr*0.9));
+    B.add(cone6,copperFlat,M4(M,cx,hM(29),cz,rr*0.78,hM(1.3),rr*0.78));}   // a low copper cap inside the merlons (2026 oblique)
   for(const s of [-1,1]){B.add(boxC,redSandM,M4(M,s*(w/2-0.25),hM(4.5),d/2+0.8,0.3,hM(9),1.3));
     LMK.merlons(B,M,redSandM,s*(w/2-0.25),d/2+0.2,s*(w/2-0.25),d/2+1.4,hM(9),0.3,0.4);}
   // the barbican: its ashlar front with the pointed gate, and the six tall carved merlons with pointed caps
@@ -2527,7 +2529,7 @@ const CHURCHES={
   peters:{name:'Peterskirche',plaster:'#f1ede4',frame:'#b5826a',eave:11,ridge:24,wid:20,tower:{w:5.5,shaft:24,top:'lantern'},dormers:3},
   leonhard:{name:'Leonhardskirche',plaster:'#ece7dd',frame:'#b9a58a',eave:15,ridge:30,wid:26,tower:{w:7,shaft:31,top:'saddle',tip:0xb24a30},porch:true},
   theodor:{name:'Theodorskirche',plaster:'#e6dccb',frame:'#b3906c',eave:12,ridge:25,wid:20,tower:{w:6.5,shaft:24,top:'saddle',tip:'copper'}},
-  clara:{name:'Clarakirche',plaster:'#e3cfc5',frame:'#a8584a',eave:11,ridge:24,wid:18,turret:'glazed',clock:true},
+  clara:{name:'Clarakirche',plaster:'#e3cfc5',frame:'#a8584a',eave:11,ridge:24,wid:18,turret:'glazed',clock:true,annex:{r:2.6,eave:7.9,roof:2.8}},
   prediger:{name:'Predigerkirche',plaster:'#efe9df',frame:'#b5654f',eave:12,ridge:27,wid:18,turret:'open'},
   stalbankirche:{name:'St. Alban-Kirche',plaster:'#b97f72',frame:'#a7a196',eave:12,ridge:26,wid:16,tower:{w:6,shaft:28,top:'saddle'}},
   kartaeuser:{name:'Kartäuserkirche',plaster:'#e9e2d4',frame:'#b0957a',eave:10,ridge:20,wid:16,turret:'dark'},
@@ -2586,11 +2588,24 @@ function church(lm,P,parent,B0){
   if(P.porch){   // a porch on the north side's western half (the Leonhardskirche's, facing about 345 degrees)
     const s=Math.cos(ang)>0?-1:1,x0=bxc-choirEnd*bL*0.25,z0=s*(hw+0.3),ph=hM(4.5);   // local +z is world (sin, cos) of ang
     B.add(boxC,plasterM,M4(M,x0,ph/2,z0,0.72,ph,0.6));B.add(prismGeo,roofBrown,M4(M,x0,ph,z0,0.84,hM(2.4),0.68));}
+  if(P.annex){   // the octagonal stair tower at the south-west corner under a slate tent roof with copper hip rolls (the
+    // Clarakirche's, after the canton's 2026 oblique from the south in the Blender reference world)
+    const A=P.annex,s=Math.cos(ang)>0?1:-1,r=A.r/BASEL.S,ax=bx0+choirEnd*r*0.9,az=s*(hw+r*0.45),eh=hM(A.eave),rh=hM(A.roof);
+    const cone8=new THREE.ConeGeometry(1,1,8);cone8.translate(0,0.5,0);
+    B.add(cyl8,plasterM,M4(M,ax,0,az,r,eh,r,0,Math.PI/8,0));
+    B.add(cyl8,pinM,M4(M,ax,eh*0.43,az,r*1.04,hM(0.2),r*1.04,0,Math.PI/8,0));               // the string course
+    B.add(cone8,stdMat({color:0x3c4146,roughness:.6,flatShading:true}),M4(M,ax,eh-0.02,az,r*1.12,rh,r*1.12,0,Math.PI/8,0));
+    B.add(cyl8,copperFlat,M4(M,ax,eh-hM(0.25),az,r*1.13,hM(0.25),r*1.13,0,Math.PI/8,0));    // the copper eave
+    B.add(cone6,copperFlat,M4(M,ax,eh+rh-0.05,az,0.05,hM(0.6),0.05));
+  }
   if(P.turret){   // the ridge turret
-    const tm=P.turret==='glazed'?stdMat({color:0x9fb6c2,roughness:.15,metalness:.35,flatShading:true}):P.turret==='copper'?copperFlat:P.turret==='open'?alphaMat(64,128,(x)=>{x.fillRect(0,0,8,128);x.fillRect(56,0,8,128);for(let y=0;y<128;y+=32){x.fillRect(0,y,64,5);x.lineWidth=4;x.beginPath();x.arc(32,y+18,10,0,Math.PI*2);x.stroke();}},0xa9574a)
+    const tm=P.turret==='glazed'?glazedTiles(['#d6c15c','#3d7a55','#22302a'],4,4):P.turret==='copper'?copperFlat:P.turret==='open'?alphaMat(64,128,(x)=>{x.fillRect(0,0,8,128);x.fillRect(56,0,8,128);for(let y=0;y<128;y+=32){x.fillRect(0,y,64,5);x.lineWidth=4;x.beginPath();x.arc(32,y+18,10,0,Math.PI*2);x.stroke();}},0xa9574a)
       :stdMat({color:0x3d4247,flatShading:true});
     const tx=Math.max(-bL/2,Math.min(bL/2,px-bxc))+bxc,base=ridge-0.25;
-    B.add(cyl8,P.turret==='open'?redSandM:timberM,M4(M,tx,base,0,0.22,0.9,0.22,0,Math.PI/8,0));
+    if(P.turret==='glazed'){   // the Clarakirche's: oxblood boards where it leaves the ridge, a green copper bell stage
+      B.add(cyl8,stdMat({color:0x68241f,roughness:.8,flatShading:true}),M4(M,tx,base,0,0.22,0.45,0.22,0,Math.PI/8,0));
+      B.add(cyl8,copperFlat,M4(M,tx,base+0.45,0,0.2,0.45,0.2,0,Math.PI/8,0));}
+    else B.add(cyl8,P.turret==='open'?redSandM:timberM,M4(M,tx,base,0,0.22,0.9,0.22,0,Math.PI/8,0));
     if(P.turret==='open'){tm.map.repeat.set(8,1);LMK.spire(B,M,tm,redSandM,tx,base+0.9,0,0.22,Math.max(0.6,peakH-base-0.9));}
     else LMK.spire(B,M,tm,goldMat,tx,base+0.9,0,0.22,Math.max(0.6,peakH-base-0.9),8,false);
   }
