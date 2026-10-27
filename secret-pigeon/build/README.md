@@ -131,6 +131,21 @@ above the Münster and from high over the Messe, the drawn skyline is within 0.1
 through the low ground for 6 km, as far as the water shows through the fog, and the hills stay whole: upstream the
 river bends round the foot of the Grenzacher Horn as the real one does.
 
+The sky has four settings on the title screen. **Basel now** (the default) puts the sun where it stands over Basel at
+that moment, with dawn and dusk between day and night, and shows the weather MeteoSwiss measured in the last ten
+minutes at Basel-Binningen (BAS, 2.2 km from the Mittlere Brücke), with St. Chrischona (STC) where Binningen lacks a
+value. The browser reads the two stations' open data files from data.geo.admin.ch (about 25 kB) when this sky is chosen,
+then at most once every ten minutes while the page is visible, as often as MeteoSwiss updates them, without cookies or
+a referrer; MeteoSwiss's terms forbid high-frequency downloads of the same content. From the files: cloud cover (by day
+the global radiation against a clear sky's and the sunshine minutes, by night the incoming longwave radiation against
+a clear sky's), rain, sleet or snow and how hard, wet streets after rain, snow lying, the wind (it drives the clouds,
+slants the rain and snow and roughens the Rhine) and fog or haze (humidity, dew-point spread, calm air, and St.
+Chrischona as warm as Binningen for an inversion). Overcast skies get a grey cloud deck; fog closes the view down to
+750 m and hides the hills. If the files can't be read, or their newest values are more than three hours old, the game
+shows the date's typical weather from Binningen's 1991-2020 averages (worked out from MeteoSwiss's daily and monthly
+series and written into the template) and the title screen says which. Day, Night and Like my device are the fixed
+skies the game had before; N still switches between day and night.
+
 "Tour the city" on the title screen has no level and no clock: the pigeon hovers on the spot with its wings beating and
 moves only when steered, with the levels' keys: W / S climb and dive, A / D turn, and Space held flies forward (on touch
 screens the stick, with Flap held). Its "Fly to…" list glides over the rooftops to a landmark of the chosen era and
@@ -145,7 +160,7 @@ version, replace both files and the version in the template's import and in `ass
 from the game's own canvas: the pigeon beside the Münster in tour mode, drawn at twice the size and scaled down.
 
 Credits shown in the game: 3D buildings (swissBUILDINGS3D) and aerial imagery (SWISSIMAGE) © swisstopo; landmarks,
-bridges, the Rhine's banks and course, railways, roads, tram and bus lines and places © OpenStreetMap contributors (ODbL); tram and bus timetable: opentransportdata.swiss; the newer 3D buildings in
+bridges, the Rhine's banks and course, railways, roads, tram and bus lines and places © OpenStreetMap contributors (ODbL); tram and bus timetable: opentransportdata.swiss; the weather on "Basel now": Source: MeteoSwiss (Basel-Binningen and St. Chrischona, open data, CC BY 4.0); the newer 3D buildings in
 places (3D-Stadtmodell), tree register (Baumkataster), the
 stairs and ladders down to the Rhine, and the 1615 plan and wall line: Quelle: Geodaten Kanton Basel-Stadt (CC BY 4.0);
 the fountains' places and names: IWB's fountain inventory, Quelle: IWB / Geodaten Kanton Basel-Stadt; the statues'

@@ -254,10 +254,12 @@ button{font:inherit;color:inherit}
     <div class="era" role="group" aria-label="Sky">
       <span class="eyebrow">Sky</span>
       <div class="era-btns">
+        <button id="sky-live" class="era-btn" aria-pressed="true">Basel now</button>
         <button id="sky-day" class="era-btn" aria-pressed="false">Day</button>
         <button id="sky-night" class="era-btn" aria-pressed="false">Night</button>
-        <button id="sky-auto" class="era-btn" aria-pressed="true">Like my device</button>
+        <button id="sky-auto" class="era-btn" aria-pressed="false">Like my device</button>
       </div>
+      <p id="sky-note" class="muted" style="font-size:13px;margin:6px 0 0" aria-live="polite" hidden></p>
     </div>
     <p id="title-source" class="muted" style="font-size:14px">The city is real: swisstopo’s 3D model of every building, the aerial photo underneath and Basel’s register of public trees. The radio network is made up for the game.</p>
     <p class="legband"><span>RFC 1149 · IP over Avian Carriers · 1 April 1990</span><span id="legband"></span></p>
@@ -279,7 +281,7 @@ button{font:inherit;color:inherit}
       <button id="btn-reset" class="link-btn danger">Reset progress</button>
     </div>
     <!--@SITE_BYLINE@-->
-    <p class="credits mono">3D buildings (swissBUILDINGS3D) and aerial imagery (SWISSIMAGE) © <a href="https://www.swisstopo.admin.ch" target="_blank" rel="noopener">swisstopo</a> · Landmarks, bridges, the Rhine's banks and course, railways, roads, tram and bus lines and places © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL) · Tram and bus timetable: <a href="https://opentransportdata.swiss" target="_blank" rel="noopener">opentransportdata.swiss</a> · The newer 3D buildings in places (3D-Stadtmodell), trees (Baumkataster), the stairs and ladders down to the Rhine, and the 1615 plan and wall line: <a href="https://data.bs.ch" target="_blank" rel="noopener">Quelle: Geodaten Kanton Basel-Stadt</a> (CC BY 4.0) · The fountains' places and names: IWB's fountain inventory, <a href="https://data.bs.ch/explore/dataset/100008/" target="_blank" rel="noopener">Quelle: IWB / Geodaten Kanton Basel-Stadt</a> · The statues' places: the canton's collection of art in public space, <a href="https://data.bs.ch/explore/dataset/100214/" target="_blank" rel="noopener">Quelle: Geodaten Kanton Basel-Stadt</a> (CC BY 4.0), and OpenStreetMap for the Hammering Man · The artworks, shown as simple models after photographs: Jean Tinguely, Fasnachtsbrunnen (1977); Bettina Eichin, Sitzende Helvetia (1980); Carl Nathan Burckhardt, Amazone, Pferd führend (1926); Frédéric Auguste Bartholdi, Strassburger-Denkmal (1873); Lukas Ferdinand Schlöth, St. Jakobs-Denkmal (1872); Jonathan Borofsky, Hammering Man · The river bridges' piers, measured on the canton's bridge 3D model: <a href="https://www.bs.ch/en/node/28694" target="_blank" rel="noopener">Quelle: Geodaten Kanton Basel-Stadt</a> · The hills and mountains on the horizon: produced using <a href="https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM" target="_blank" rel="noopener">Copernicus WorldDEM™-90</a> © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved. The organisations in charge of the Copernicus programme by law or by delegation do not incur any liability for any use of the Copernicus WorldDEM™-90.</p>
+    <p class="credits mono">3D buildings (swissBUILDINGS3D) and aerial imagery (SWISSIMAGE) © <a href="https://www.swisstopo.admin.ch" target="_blank" rel="noopener">swisstopo</a> · Landmarks, bridges, the Rhine's banks and course, railways, roads, tram and bus lines and places © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL) · Tram and bus timetable: <a href="https://opentransportdata.swiss" target="_blank" rel="noopener">opentransportdata.swiss</a> · The weather on “Basel now”: measured at Basel-Binningen and St. Chrischona, Source: <a href="https://www.meteoswiss.admin.ch" target="_blank" rel="noopener">MeteoSwiss</a> (open data, CC BY 4.0; your browser reads it from data.geo.admin.ch, without cookies or referrer, at most every ten minutes) · The newer 3D buildings in places (3D-Stadtmodell), trees (Baumkataster), the stairs and ladders down to the Rhine, and the 1615 plan and wall line: <a href="https://data.bs.ch" target="_blank" rel="noopener">Quelle: Geodaten Kanton Basel-Stadt</a> (CC BY 4.0) · The fountains' places and names: IWB's fountain inventory, <a href="https://data.bs.ch/explore/dataset/100008/" target="_blank" rel="noopener">Quelle: IWB / Geodaten Kanton Basel-Stadt</a> · The statues' places: the canton's collection of art in public space, <a href="https://data.bs.ch/explore/dataset/100214/" target="_blank" rel="noopener">Quelle: Geodaten Kanton Basel-Stadt</a> (CC BY 4.0), and OpenStreetMap for the Hammering Man · The artworks, shown as simple models after photographs: Jean Tinguely, Fasnachtsbrunnen (1977); Bettina Eichin, Sitzende Helvetia (1980); Carl Nathan Burckhardt, Amazone, Pferd führend (1926); Frédéric Auguste Bartholdi, Strassburger-Denkmal (1873); Lukas Ferdinand Schlöth, St. Jakobs-Denkmal (1872); Jonathan Borofsky, Hammering Man · The river bridges' piers, measured on the canton's bridge 3D model: <a href="https://www.bs.ch/en/node/28694" target="_blank" rel="noopener">Quelle: Geodaten Kanton Basel-Stadt</a> · The hills and mountains on the horizon: produced using <a href="https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM" target="_blank" rel="noopener">Copernicus WorldDEM™-90</a> © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved. The organisations in charge of the Copernicus programme by law or by delegation do not incur any liability for any use of the Copernicus WorldDEM™-90.</p>
     <p id="load-msg" class="load-msg" hidden></p>
   </div>
 </main>
@@ -349,7 +351,7 @@ button{font:inherit;color:inherit}
       <button id="btn-nb-close" class="btn">Close</button>
     </div>
     <p id="nb-summary" class="muted"></p>
-    <p class="credits mono">3D buildings (swissBUILDINGS3D) and aerial imagery (SWISSIMAGE) © <a href="https://www.swisstopo.admin.ch" target="_blank" rel="noopener">swisstopo</a> · Landmarks, bridges, the Rhine's banks and course, railways, roads, tram and bus lines and places © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL) · Tram and bus timetable: <a href="https://opentransportdata.swiss" target="_blank" rel="noopener">opentransportdata.swiss</a> · The newer 3D buildings in places (3D-Stadtmodell), trees (Baumkataster), the stairs and ladders down to the Rhine, and the 1615 plan and wall line: <a href="https://data.bs.ch" target="_blank" rel="noopener">Quelle: Geodaten Kanton Basel-Stadt</a> (CC BY 4.0) · The fountains' places and names: IWB's fountain inventory, <a href="https://data.bs.ch/explore/dataset/100008/" target="_blank" rel="noopener">Quelle: IWB / Geodaten Kanton Basel-Stadt</a> · The statues' places: the canton's collection of art in public space, <a href="https://data.bs.ch/explore/dataset/100214/" target="_blank" rel="noopener">Quelle: Geodaten Kanton Basel-Stadt</a> (CC BY 4.0), and OpenStreetMap for the Hammering Man · The artworks, shown as simple models after photographs: Jean Tinguely, Fasnachtsbrunnen (1977); Bettina Eichin, Sitzende Helvetia (1980); Carl Nathan Burckhardt, Amazone, Pferd führend (1926); Frédéric Auguste Bartholdi, Strassburger-Denkmal (1873); Lukas Ferdinand Schlöth, St. Jakobs-Denkmal (1872); Jonathan Borofsky, Hammering Man · The river bridges' piers, measured on the canton's bridge 3D model: <a href="https://www.bs.ch/en/node/28694" target="_blank" rel="noopener">Quelle: Geodaten Kanton Basel-Stadt</a> · The hills and mountains on the horizon: produced using <a href="https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM" target="_blank" rel="noopener">Copernicus WorldDEM™-90</a> © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved. The organisations in charge of the Copernicus programme by law or by delegation do not incur any liability for any use of the Copernicus WorldDEM™-90.</p>
+    <p class="credits mono">3D buildings (swissBUILDINGS3D) and aerial imagery (SWISSIMAGE) © <a href="https://www.swisstopo.admin.ch" target="_blank" rel="noopener">swisstopo</a> · Landmarks, bridges, the Rhine's banks and course, railways, roads, tram and bus lines and places © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL) · Tram and bus timetable: <a href="https://opentransportdata.swiss" target="_blank" rel="noopener">opentransportdata.swiss</a> · The weather on “Basel now”: measured at Basel-Binningen and St. Chrischona, Source: <a href="https://www.meteoswiss.admin.ch" target="_blank" rel="noopener">MeteoSwiss</a> (open data, CC BY 4.0; your browser reads it from data.geo.admin.ch, without cookies or referrer, at most every ten minutes) · The newer 3D buildings in places (3D-Stadtmodell), trees (Baumkataster), the stairs and ladders down to the Rhine, and the 1615 plan and wall line: <a href="https://data.bs.ch" target="_blank" rel="noopener">Quelle: Geodaten Kanton Basel-Stadt</a> (CC BY 4.0) · The fountains' places and names: IWB's fountain inventory, <a href="https://data.bs.ch/explore/dataset/100008/" target="_blank" rel="noopener">Quelle: IWB / Geodaten Kanton Basel-Stadt</a> · The statues' places: the canton's collection of art in public space, <a href="https://data.bs.ch/explore/dataset/100214/" target="_blank" rel="noopener">Quelle: Geodaten Kanton Basel-Stadt</a> (CC BY 4.0), and OpenStreetMap for the Hammering Man · The artworks, shown as simple models after photographs: Jean Tinguely, Fasnachtsbrunnen (1977); Bettina Eichin, Sitzende Helvetia (1980); Carl Nathan Burckhardt, Amazone, Pferd führend (1926); Frédéric Auguste Bartholdi, Strassburger-Denkmal (1873); Lukas Ferdinand Schlöth, St. Jakobs-Denkmal (1872); Jonathan Borofsky, Hammering Man · The river bridges' piers, measured on the canton's bridge 3D model: <a href="https://www.bs.ch/en/node/28694" target="_blank" rel="noopener">Quelle: Geodaten Kanton Basel-Stadt</a> · The hills and mountains on the horizon: produced using <a href="https://dataspace.copernicus.eu/explore-data/data-collections/copernicus-contributing-missions/collections-description/COP-DEM" target="_blank" rel="noopener">Copernicus WorldDEM™-90</a> © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved. The organisations in charge of the Copernicus programme by law or by delegation do not incur any liability for any use of the Copernicus WorldDEM™-90.</p>
     <div id="nb-list"></div>
   </div>
 </section>
@@ -4633,12 +4635,244 @@ function collide(pos,px,pz){
   return hit;
 }
 
-/* day and night follow the page theme */
+/* ---------- Basel now: the sun where it stands over Basel, and the weather MeteoSwiss measured ----------
+   With the sky on "Basel now" (the default) the sun stands where it stands over Basel at this moment, with dawn and
+   dusk between day and night, and the weather is the one MeteoSwiss measured in the last ten minutes at Basel-Binningen
+   (BAS, 2.2 km from the Mittlere Brücke) and St. Chrischona (STC, 7.4 km). The browser reads the two stations' open
+   data files (data.geo.admin.ch, "Source: MeteoSwiss", CC BY 4.0) when the sky is set so, then at most once every ten
+   minutes, as often as they change, while the page is visible; it sends no referrer and no cookies. From them:
+     * cloud cover: by day the global radiation against a clear sky's (Haurwitz; Kasten and Czeplak's 1 - 0.75 n^3.4)
+       and the ten minutes' sunshine, by night the incoming longwave radiation against a clear sky's (Brutsaert's
+       emissivity from the temperature and vapour pressure; Bolz's 1 + 0.22 n^2), blended through twilight;
+     * rain, sleet or snow and how hard: the ten minutes' precipitation (mm), and the temperature for which;
+     * wet streets from the last hour's rain, snow lying from the snow depth;
+     * the wind's speed and direction: it drives the clouds, slants the rain and snow and roughens the Rhine;
+     * fog and haze from the humidity, the dew point's spread and calm air, more of it when St. Chrischona, 177 m
+       higher, is as warm as Binningen (an inversion).
+   If the files can't be read, or their newest values are more than three hours old, the sky shows the date's typical
+   weather, from Binningen's 1991-2020 averages (NORMALS), and the title screen says so. Day, Night and Like my device
+   keep the fixed skies they had. */
+const SKYNOW=(()=>{
+  const LAT=47.5596,LON=7.5886,R=Math.PI/180;
+  // Basel-Binningen 1991-2020 by month, from MeteoSwiss's daily and monthly series: mean daily maximum and minimum
+  // temperature (°C), humidity (%), wind (m/s), its speed-weighted mean direction (degrees, from), share of the
+  // possible sunshine (%)
+  const NORMALS=[[5.1,-0.5,80.6,2.7,177,27.2],[7.1,-0.1,75.5,2.6,204,33.4],[11.9,2.6,69.2,2.5,237,40.5],
+    [16.2,5.5,66.6,2.1,252,44.5],[20.0,9.5,70.5,2.0,256,42.6],[23.8,13.1,69.8,1.9,266,47.4],[25.8,14.9,68.3,2.0,257,52.7],
+    [25.3,14.8,71.5,1.8,235,53.9],[20.7,11.0,76.7,1.8,223,47.5],[15.4,7.6,81.5,1.9,170,36.6],[9.3,3.2,82.7,2.3,163,27.0],
+    [5.7,0.4,82.3,2.7,170,25.1]];
+  const FILE=s=>`https://data.geo.admin.ch/ch.meteoschweiz.ogd-smn/${s}/ogd-smn_${s}_t_now.csv`;
+  const live=()=>(save.sky||'live')==='live';
+  const smooth=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t);};
+  let W=null,lastFetch=0,busy=false,ripple=1,t=0,tick=0;
+  const WIND=new V3();
+
+  function sunAt(ms){   // the sun's elevation and azimuth over Basel (degrees; azimuth clockwise from north)
+    const d=ms/864e5-10957.5,g=(357.529+0.98560028*d)*R,q=280.459+0.98564736*d;
+    const L=(q+1.915*Math.sin(g)+0.020*Math.sin(2*g))*R,e=(23.439-0.00000036*d)*R;
+    const ra=Math.atan2(Math.cos(e)*Math.sin(L),Math.cos(L)),dec=Math.asin(Math.sin(e)*Math.sin(L));
+    const H=((18.697374558+24.06570982441908*d)*15+LON)*R-ra,la=LAT*R;
+    const el=Math.asin(Math.sin(la)*Math.sin(dec)+Math.cos(la)*Math.cos(dec)*Math.cos(H));
+    const az=Math.atan2(-Math.sin(H),Math.tan(dec)*Math.cos(la)-Math.sin(la)*Math.cos(H));
+    return {el:el/R,az:(az/R+360)%360};
+  }
+  const hhmm=ms=>new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Zurich',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(ms);
+  const localHour=ms=>{const [h,m]=hhmm(ms).split(':').map(Number);return h+m/60;};
+
+  async function station(s){   // one station's ten-minute values since midnight UTC, oldest first
+    const ctl=new AbortController(),stop=setTimeout(()=>ctl.abort(),8000);
+    try{
+      const r=await fetch(FILE(s),{cache:'no-cache',credentials:'omit',referrerPolicy:'no-referrer',signal:ctl.signal});
+      if(!r.ok)throw new Error(`${s}: HTTP ${r.status}`);
+      const lines=(await r.text()).trim().split(/\r?\n/),head=lines[0].split(';');
+      return lines.slice(1).map(l=>{const v=l.split(';'),o={};
+        head.forEach((h,i)=>{if(i>1)o[h]=v[i]===''||v[i]===undefined?null:+v[i];});
+        const [d,m,y,H,M]=(v[1]||'').match(/\d+/g).map(Number);o.t=Date.UTC(y,m-1,d,H,M);return o;});   // the times are UTC
+    }finally{clearTimeout(stop);}
+  }
+  function finish(w){
+    w.kind=w.rate>0.05?(w.T<=0.5?'snow':w.T<=2?'sleet':'rain'):null;
+    w.wet=Math.max(w.kind&&w.kind!=='snow'?0.5:0,clamp(w.hour/2,0,1));
+    w.snowCover=w.snow>0.5?clamp(w.snow/8,0.3,1):0;
+    w.haze=clamp((w.rh-70)/30,0,1)*0.6+0.3*w.inv;
+    return w;
+  }
+  function fromStations(bas,stc){
+    const rows=bas.filter(r=>r.tre200s0!=null);if(!rows.length)return null;
+    const o=rows[rows.length-1];if(Date.now()-o.t>3*3600e3)return null;
+    const recent=(set,k)=>{if(!set)return null;for(let i=set.length-1;i>=0;i--)if(set[i][k]!=null&&set[i].t>o.t-1800e3)return set[i][k];return null;};
+    const get=k=>recent(bas,k)??recent(stc,k);
+    const T=o.tre200s0,rh=get('ure200s0'),wind=get('fkl010z0'),dir=get('dkl010z0'),dew=get('tde200s0');
+    const p=bas.filter(r=>r.rre150z0!=null),p1=p.length?p[p.length-1].rre150z0:0,p2=p.length>1?p[p.length-2].rre150z0:0;
+    const rate=Math.max(p1*6,p2*3),hour=p.filter(r=>r.t>o.t-3600e3).reduce((a,r)=>a+r.rre150z0,0);
+    // cloud cover: the radiation by day, the longwave by night, blended from 3 to 10 degrees of sun
+    const s=sunAt(o.t-300e3);let c=null,wd=0;
+    const G=get('gre000z0'),sun10=get('sre000z0');
+    if(G!=null&&s.el>3){
+      const sn=Math.sin(s.el*R),k=G/(1098*sn*Math.exp(-0.057/sn));
+      c=Math.pow(Math.max(0,1-k)/0.75,1/3.4);
+      if(sun10!=null){if(sun10>=8)c=Math.min(c,0.55);else if(sun10===0)c=Math.max(c,0.6);}
+      wd=clamp((s.el-3)/7,0,1);
+    }
+    const Lw=get('oli000z0'),e=get('pva200s0');
+    if(Lw!=null&&e!=null&&wd<1){const Tk=T+273.15,cs=1.24*Math.pow(e/Tk,1/7)*5.67e-8*Tk**4,cn=Math.sqrt(Math.max(0,Lw/cs-1)/0.22);
+      c=c==null?cn:wd*c+(1-wd)*cn;}
+    if(c==null)c=normals(o.t).cloud;
+    c=clamp(c,0,1);if(rate>0.05)c=Math.max(c,0.85);
+    const st=stc&&stc.filter(r=>r.tre200s0!=null&&r.t>o.t-1800e3).pop();
+    const inv=st?clamp((st.tre200s0-T+0.6)/2,0,1):0;
+    const spread=dew!=null?T-dew:5;
+    let fog=rh!=null&&rh>=95&&spread<=1.2&&(wind==null||wind<3)?clamp((rh-94)/4,0,1)*(wind!=null&&wind>1.5?0.6:1):0;
+    if(rh!=null&&rh>90)fog=Math.min(1,fog+0.4*inv);
+    return finish({src:'live',t:o.t,T,rh:rh??75,wind:wind??1.5,dir:dir??240,rate,hour,snow:get('htoauts0')||0,cloud:c,fog,inv});
+  }
+  function normals(ms,why){   // the date's typical weather: between this month's averages and the next's
+    const d=new Date(ms),m=d.getUTCMonth(),f=(d.getUTCDate()-15)/30;
+    const a=NORMALS[m],b=NORMALS[(m+(f<0?11:1))%12],k=Math.abs(f),mix=i=>a[i]+(b[i]-a[i])*k;
+    const tx=mix(0),tn=mix(1),T=(tx+tn)/2+(tx-tn)/2*Math.cos(2*Math.PI*(localHour(ms)-15)/24);
+    return finish({src:'normals',why,t:ms,T,rh:mix(2),wind:mix(3),dir:(k<0.5?a:b)[4],rate:0,hour:0,snow:0,
+      cloud:clamp(1-mix(5)/100*1.05,0.05,0.95),fog:0,inv:0});
+  }
+  const now=()=>W&&W.src==='live'?W:normals(Date.now(),W&&W.why);
+  const COMPASS=['north','north-east','east','south-east','south','south-west','west','north-west'];
+  function words(w){
+    const night=sunAt(w.t).el<-4,c=w.cloud,parts=[`${Math.round(w.T)} °C`];
+    parts.push(w.fog>0.6?'fog':c<0.15?(night?'clear':'sunny'):c<0.4?(night?'mostly clear':'mostly sunny'):c<0.7?'partly cloudy':c<0.9?'mostly cloudy':'overcast');
+    if(w.kind)parts.push((w.rate<1?'light ':w.rate>4?'heavy ':'')+w.kind);else if(w.fog>0.3&&w.fog<=0.6)parts.push('mist');
+    const kmh=Math.round(w.wind*3.6);parts.push(kmh<2?'calm':`wind ${kmh} km/h from the ${COMPASS[Math.round(w.dir/45)%8]}`);
+    if(w.snowCover)parts.push(`${Math.round(w.snow)} cm of snow`);
+    return parts.join(', ');
+  }
+  function note(){
+    const el=$('sky-note');if(!el)return;el.hidden=!live();if(!live())return;
+    if(!W){el.textContent='Reading the latest measurements from MeteoSwiss…';return;}
+    const w=now();
+    el.textContent=w.src==='live'
+      ?`Basel-Binningen at ${hhmm(w.t)}: ${words(w)}. Source: MeteoSwiss.`
+      :`Typical for ${new Date(w.t).toLocaleDateString('en-GB',{day:'numeric',month:'long',timeZone:'Europe/Zurich'})}: ${words(w)}, from Basel-Binningen’s 1991–2020 averages; MeteoSwiss’s ${w.why==='stale'?'latest values are more than three hours old':'data couldn’t be read'}. Source: MeteoSwiss.`;
+  }
+  async function refresh(force){
+    if(busy||!live()||(!force&&Date.now()-lastFetch<9.5*60e3))return;
+    busy=true;lastFetch=Date.now();note();
+    try{const [bas,stc]=await Promise.all([station('bas'),station('stc').catch(()=>null)]);W=fromStations(bas,stc)||normals(Date.now(),'stale');}
+    catch(err){W=normals(Date.now(),'failed');}
+    busy=false;note();applyTheme();
+  }
+  setInterval(()=>{if(document.visibilityState==='visible')refresh(false);},60e3);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refresh(false);});
+
+  // rain (streaks) and snow (flakes) in a box round the camera, moved on the GPU: each drop's place is its seed
+  // carried along by the fall and the wind, wrapped round the camera
+  const wrap=`float r=fract(sin(dot(position,vec3(12.9898,78.233,37.719)))*43758.5453);
+    vec3 p=position*uBox+uVel*(0.75+0.5*r)*uTime;`;
+  const place=`p=mod(p-uCam+0.5*uBox,uBox)-0.5*uBox+uCam;`;
+  const fade=`float dd=length(p-uCam);vA=(1.0-smoothstep(0.3*uBox.x,0.5*uBox.x,dd))*smoothstep(0.6,2.0,dd);`;
+  const frag=`uniform vec3 uColor;uniform float uAlpha;varying float vA;
+    void main(){FLAKE gl_FragColor=vec4(uColor,uAlpha*vA);
+    #include <colorspace_fragment>
+    }`;
+  const drops=(n,box,points)=>{
+    const g=new THREE.BufferGeometry(),k=points?1:2,pos=new Float32Array(n*k*3),end=new Float32Array(n*k);
+    for(let i=0;i<n;i++){const x=Math.random(),y=Math.random(),z=Math.random();for(let j=0;j<k;j++){pos.set([x,y,z],(i*k+j)*3);end[i*k+j]=j;}}
+    g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('aEnd',new THREE.BufferAttribute(end,1));
+    const u={uTime:{value:0},uCam:{value:new V3()},uBox:{value:box},uVel:{value:new V3()},uLen:{value:0.05},uSize:{value:30},
+      uColor:{value:new THREE.Color(0xb4bec8)},uAlpha:{value:0.4}};
+    const mat=new THREE.ShaderMaterial({uniforms:u,transparent:true,depthWrite:false,
+      vertexShader:`uniform float uTime,uLen,uSize;uniform vec3 uCam,uBox,uVel;attribute float aEnd;varying float vA;
+        void main(){${wrap}${points?'p.x+=0.5*sin(uTime*(0.8+r)+r*40.0);p.z+=0.5*cos(uTime*(0.6+r)+r*30.0);':''}${place}
+        ${points?'':'p-=uVel*(0.75+0.5*r)*uLen*aEnd;'}${fade}
+        vec4 mv=viewMatrix*vec4(p,1.0);${points?'gl_PointSize=uSize*(0.6+0.8*r)/max(-mv.z,0.1);':''}gl_Position=projectionMatrix*mv;}`,
+      fragmentShader:frag.replace('FLAKE',points?'vec2 q=gl_PointCoord-0.5;if(dot(q,q)>0.25)discard;':'')});
+    const m=points?new THREE.Points(g,mat):new THREE.LineSegments(g,mat);m.frustumCulled=false;m.visible=false;m.renderOrder=6;scene.add(m);
+    return {m,g,u,n,k};
+  };
+  const RAIN=drops(COARSE?2500:6000,new V3(36,24,36),false),SNOW=drops(COARSE?2000:5000,new V3(30,18,30),true);
+  // an overcast sky's underside, over the clouds' puffs, following the camera
+  const deckMat=new THREE.MeshBasicMaterial({color:0x9aa1a8,transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide});
+  const deck=new THREE.Mesh(new THREE.PlaneGeometry(5000,5000),deckMat);deck.rotation.x=-Math.PI/2;deck.position.y=152;deck.visible=false;scene.add(deck);
+
+  const col=h=>new THREE.Color(h);
+  const K={warm:col(0xe8b48c),greyDay:col(0xaab2b8),greyNight:col(0x1c222c),fogDay:col(0xc9ced2),fogNight:col(0x2a3038),
+    hemiGrey:col(0xcfd3d6),dusk:col(0xffa868),waterNight:col(0x10202a),waterDay:col(0x3e6b62),cloudDay:col(0x9aa1a8),
+    cloudNight:col(0x2a3140)};
+  const pal=k=>[col(PAL.night[k]),col(PAL.day[k])];
+  let P=null;
+  const sky=new THREE.Color(),tmp=new THREE.Color();
+  function reset(){   // back to the fixed skies
+    for(const g of clouds){g.visible=true;g.scale.setScalar(1);}
+    deck.visible=false;RAIN.m.visible=SNOW.m.visible=false;
+    scene.fog.near=260;scene.fog.far=1050;HAZE.len.value=5000;sun.position.set(120,220,90);
+    waterMat.normalScale.setScalar(0.5);photoMat.emissive.setScalar(0);ripple=1;
+  }
+  function apply(){
+    if(!live()){reset();return;}
+    if(!P)P={sky:pal('sky'),hs:pal('hs'),hg:pal('hg'),sun:pal('sun'),photo:pal('photo'),city:pal('city'),tree:pal('tree'),
+      hill:pal('hill'),cloud:pal('cloud')};
+    const s=sunAt(Date.now()),w=now(),c=w.cloud,rain=w.kind?Math.min(1,0.3+w.rate/6):0;
+    const day=smooth(-7,5,s.el),low=s.el>-7?Math.max(0,1-Math.abs(s.el-1)/9):0;   // daylight; the low sun's glow
+    const L=(pair,out)=>out.lerpColors(pair[0],pair[1],day);
+    // the sky: night to day, warm near the horizon at dawn and dusk, grey under cloud, darker in rain
+    L(P.sky,sky).lerp(K.warm,low*0.65*(1-c)).lerp(day>0.5?K.greyDay:K.greyNight,Math.pow(c,1.4)*0.8).multiplyScalar(1-0.18*rain);
+    scene.background.copy(sky);
+    scene.fog.color.copy(sky).lerp(day>0.5?K.fogDay:K.fogNight,w.fog*0.7);
+    const far=Math.max(150,1050*(1-0.5*w.haze)*(1-0.82*w.fog)/(1+(w.kind==='snow'?0.5:0.06)*w.rate));
+    scene.fog.far=far;scene.fog.near=Math.min(260,far*0.3);
+    HAZE.max.value=Math.min(0.98,PAL.night.haze+(PAL.day.haze-PAL.night.haze)*day+0.12*w.haze+0.5*w.fog+0.1*c);
+    HAZE.len.value=5000*Math.max(0.06,1-0.94*w.fog-0.3*w.haze);   // the far hills go first in fog
+    // the light: the sun where it stands, weaker low down and under cloud, and more of the sky's; the moon's light
+    // at night as before
+    L(P.hs,hemi.color).lerp(K.hemiGrey,c*0.5*day);L(P.hg,hemi.groundColor);
+    hemi.intensity=PAL.night.hi+(PAL.day.hi-PAL.night.hi)*day*(1+0.15*c);
+    if(s.el>0){
+      sun.position.set(Math.sin(s.az*R)*Math.cos(s.el*R),Math.max(Math.sin(s.el*R),0.04),-Math.cos(s.az*R)*Math.cos(s.el*R)).multiplyScalar(300);
+      sun.color.copy(P.sun[1]).lerp(K.dusk,low*0.8);
+      sun.intensity=PAL.day.si*Math.min(1,Math.max(0.12,Math.sin(s.el*R))*1.6)*day*(1-0.85*c)*(1-0.5*w.fog);
+    }else{sun.position.set(120,220,90);sun.color.copy(P.sun[0]);sun.intensity=PAL.night.si*(1-day)*(1-0.6*c);}
+    // the ground, the city and the river: darker when wet; snow lying whitens the ground by day
+    L(P.photo,photoMat.color).multiplyScalar(1-0.16*w.wet);photoMat.emissive.setScalar(0.28*w.snowCover*day);
+    L(P.city,bankMat.color).multiplyScalar(1-0.08*w.wet);for(const cc of [cityToday,city1615])if(cc)cc.mat.color.copy(bankMat.color);
+    L(P.tree,treeMat.color);L(P.hill,farMat.color);
+    waterMat.color.lerpColors(K.waterNight,K.waterDay,day).multiplyScalar(1-0.25*c);
+    waterMat.normalScale.setScalar(0.45+Math.min(0.45,w.wind*0.05)+0.15*rain);ripple=1+w.wind/4;
+    // the clouds: a few small ones in a clear sky, all of them and bigger when it's overcast, and a grey deck over them
+    L(P.cloud,cloudMat.color).lerp(day>0.5?K.cloudDay:K.cloudNight,Math.max(c-0.3,0)*0.9+0.2*rain);
+    const n=Math.round(clouds.length*Math.min(1,0.1+c*1.05));
+    clouds.forEach((g,i)=>{g.visible=i<n;g.scale.setScalar(0.8+0.9*c);});
+    deck.visible=c>0.55;deckMat.opacity=Math.min(0.92,(c-0.55)*2.4);deckMat.color.copy(cloudMat.color);
+    // the wind, toward where it blows (game x east, z south), in m/s
+    const to=(w.dir+180)*R;WIND.set(Math.sin(to),0,-Math.cos(to)).multiplyScalar(w.wind);
+    // rain and snow: how many drops for how hard it falls; sleet is half of each
+    const amt=w.kind?Math.min(1,0.12+0.3*Math.log2(1+w.rate)):0,half=w.kind==='sleet'?0.5:1;
+    RAIN.m.visible=w.kind==='rain'||w.kind==='sleet';SNOW.m.visible=w.kind==='snow'||w.kind==='sleet';
+    RAIN.g.setDrawRange(0,Math.round(RAIN.n*amt*half)*2);SNOW.g.setDrawRange(0,Math.round(SNOW.n*amt*half));
+    RAIN.u.uColor.value.copy(day>0.5?K.fogDay:K.fogNight).lerp(K.hemiGrey,0.3);RAIN.u.uAlpha.value=0.18+0.22*day;
+    SNOW.u.uColor.value.setScalar(0.6+0.4*day);SNOW.u.uAlpha.value=0.95;SNOW.u.uSize.value=innerHeight*0.11;
+    RAIN.u.uVel.value.set(WIND.x*0.4,-9,WIND.z*0.4);SNOW.u.uVel.value.set(WIND.x*0.3,-0.9,WIND.z*0.3);
+  }
+  function frame(dt){
+    // the clouds drift with the wind (or eastwards, as before, under the fixed skies)
+    const vx=live()?WIND.x*1.2:2.5,vz=live()?WIND.z*1.2:0;
+    for(const g of clouds){g.position.x+=dt*vx;g.position.z+=dt*vz;
+      if(g.position.x>WORLD.cx+700)g.position.x-=1400;else if(g.position.x<WORLD.cx-700)g.position.x+=1400;
+      if(g.position.z>WORLD.cz+700)g.position.z-=1400;else if(g.position.z<WORLD.cz-700)g.position.z+=1400;}
+    if(!live())return;
+    t=(t+dt)%600;
+    for(const D of [RAIN,SNOW])if(D.m.visible){D.u.uTime.value=t;D.u.uCam.value.copy(camera.position);}
+    deck.position.x=camera.position.x;deck.position.z=camera.position.z;
+    if((tick+=dt)>1){tick=0;if(isNight()!==NIGHT)applyTheme();else apply();}   // the sun moves on; night falls
+  }
+  if(live())refresh(true);
+  return {apply,frame,refresh,note,live,sunAt,normals,night:()=>sunAt(Date.now()).el<-4,get ripple(){return live()?ripple:1;},
+    get weather(){return now();},
+    test(o){W=finish(Object.assign({src:'live',t:Date.now(),T:10,rh:75,wind:2,dir:240,rate:0,hour:0,snow:0,cloud:0.3,fog:0,inv:0},o));note();applyTheme();}};
+})();
+
+/* day and night follow the page theme (or, on "Basel now", the sun) */
 const PAL={
   day:{sky:0xbcd8ea,hs:0xe4f2ff,hg:0x8b8070,hi:1.7,sun:0xfff1da,si:2.3,city:0xffffff,photo:0xffffff,cloud:0xffffff,tree:0xffffff,hill:0xffffff,haze:0.85,deck:0xf4f7fb},
   night:{sky:0x121a2c,hs:0x6f86b8,hg:0x151a24,hi:1.0,sun:0xa8bbff,si:1.0,city:0x8a94ad,photo:0x55607c,cloud:0x3a4660,tree:0x9197ba,hill:0x55607c,haze:0.4,deck:0xb8c3d4},
 };
-function isNight(){if(save.sky==='night')return true;if(save.sky==='day')return false;const t=document.documentElement.getAttribute('data-theme');if(t==='dark')return true;if(t==='light')return false;return matchMedia('(prefers-color-scheme: dark)').matches;}
+function isNight(){if((save.sky||'live')==='live')return SKYNOW.night();if(save.sky==='night')return true;if(save.sky==='day')return false;const t=document.documentElement.getAttribute('data-theme');if(t==='dark')return true;if(t==='light')return false;return matchMedia('(prefers-color-scheme: dark)').matches;}
 let NIGHT=false;
 function applyTheme(){
   NIGHT=isNight();const p=NIGHT?PAL.night:PAL.day;
@@ -4651,6 +4885,7 @@ function applyTheme(){
   for(const w of [winToday,win1615])if(w)w.visible=NIGHT;
   for(const m of nightGlow)m.emissiveIntensity=NIGHT?0.9:0;
   for(const g of dayOnly)g.visible=!NIGHT;
+  SKYNOW.apply();
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',applyTheme);
 new MutationObserver(applyTheme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
@@ -5265,7 +5500,7 @@ function loop(){
   else if(G.mode==='brief'||G.mode==='done'){hover(dt);animateItems(dt);}
   else if(G.mode!=='paused')circle(dt);
   if(G.mode!=='paused'){updateBird(dt);updateCamera(dt);}
-  for(const c of clouds){c.position.x+=dt*2.5;if(c.position.x>WORLD.cx+700)c.position.x=WORLD.cx-700;}
+  SKYNOW.frame(dt);
   animateWorld(dt);
   updateFeathers(dt);
   for(const l of landmarkLabels)l.visible=(!l.userData.era||l.userData.era===era)&&camera.position.distanceTo(l.position)<560;
@@ -5274,8 +5509,9 @@ function loop(){
   renderer.render(scene,camera);
 }
 
+let ripples=0;   // the Rhine's ripples run faster in wind
 function animateWorld(dt){
-  waterNormal.offset.x=(G.clock*0.006)%1;waterNormal.offset.y=(G.clock*-0.0045)%1;
+  ripples+=dt*SKYNOW.ripple;waterNormal.offset.x=(ripples*0.006)%1;waterNormal.offset.y=(ripples*-0.0045)%1;
   runTrains(dt);runBoats(dt);runFerries(dt);if(era==='today')runFountains(dt);
 }
 
@@ -5527,7 +5763,8 @@ function renderTitle(){
   $('btn-mute').textContent=`Sound: ${save.muted?'off':'on'}`;
   if(COARSE)$('controls').innerHTML='<dt>Left stick</dt><dd>steer, climb and dive</dd><dt>Flap</dt><dd>a burst of speed</dd>';
   for(const [id,e] of [['era-today','today'],['era-1615','1615']])$(id).setAttribute('aria-pressed',String(era===e));
-  for(const v of ['day','night','auto'])$('sky-'+v).setAttribute('aria-pressed',String((save.sky||'auto')===v));
+  for(const v of ['live','day','night','auto'])$('sky-'+v).setAttribute('aria-pressed',String((save.sky||'live')===v));
+  SKYNOW.note();
   $('title-lede').textContent=era==='1615'
     ?'Same mission, 410 years earlier. Agent Coo flies over Basel in 1615, inside its city walls, and smuggles the radio gateways onto the St. Alban-Tor and the Münster.'
     :'You are Agent Coo, a carrier pigeon with a radio. Fly over Basel, collect parts and put together a working LoRaWAN network, one level at a time.';
@@ -5535,7 +5772,7 @@ function renderTitle(){
     ?'Every house is traced from the canton’s reconstruction of the 1615 city plan. Heights are estimates, and the radio network is made up.'
     :'The city is real: swisstopo’s 3D model of every building, the aerial photo underneath and Basel’s register of public trees. The radio network is made up for the game.';
 }
-function chooseSky(v){save.sky=v;persist();applyTheme();renderTitle();}
+function chooseSky(v){save.sky=v;persist();applyTheme();renderTitle();if(v==='live')SKYNOW.refresh(false);}
 function chooseEra(e){
   Sound.init();if(e===era)return;
   const msg=$('load-msg');if(e==='1615'&&!city1615){msg.hidden=false;msg.textContent='Travelling to 1615…';}
@@ -5649,12 +5886,12 @@ $('btn-reset').addEventListener('click',()=>{
 
 /* ---------- boot ---------- */
 if(DEBUG)window.__sp={G,P,LEVELS,startLevel,beginPlay,completeLevel,startQuiz,sendL4,getSave:()=>save,V3,renderer,scene,camera,topAt,collide,setEra,chooseEra,splatHit,
-  get city(){return city},get era(){return era},get G1(){return G1},get SENSORS4(){return SENSORS4},get splatTargets(){return splatToday},feathers,ferries,trains,bird,keys,tourGo,tourSpots,RIVERS,groundAt,floorAt,riverBoats,bridgeDecks:BRIDGE_DECKS,animateWorld,horizon:HORIZON,HAZE,
+  get city(){return city},get era(){return era},get G1(){return G1},get SENSORS4(){return SENSORS4},get splatTargets(){return splatToday},feathers,ferries,trains,bird,keys,tourGo,tourSpots,RIVERS,groundAt,floorAt,riverBoats,bridgeDecks:BRIDGE_DECKS,animateWorld,horizon:HORIZON,HAZE,weather:SKYNOW,
   step:(dt=1/60)=>{G.clock+=dt;if(G.mode==="play"){updateTweens(dt);updatePlay(dt);}else if(G.mode==="tour"){updateTweens(dt);tourFly(dt);}animateWorld(dt);updateFeathers(dt);updateBird(dt);updateCamera(dt);renderer.render(scene,camera);}};
 setMuted(save.muted);
 setEra(save.era==='1615'?'1615':'today');applyTheme();
 $('era-today').addEventListener('click',()=>chooseEra('today'));$('era-1615').addEventListener('click',()=>chooseEra('1615'));
-for(const v of ['day','night','auto'])$('sky-'+v).addEventListener('click',()=>chooseSky(v));
+for(const v of ['live','day','night','auto'])$('sky-'+v).addEventListener('click',()=>chooseSky(v));
 renderTitle();
 $('btn-start').disabled=false;
 window.__spReady=true;$('load-msg').hidden=true;
