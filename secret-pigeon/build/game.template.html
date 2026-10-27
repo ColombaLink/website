@@ -1491,6 +1491,19 @@ function letziWalk(walls,parent){
     B.add(r,tiles,M);}
   B.build(parent);
 }
+/* the round tower on the St. Alban wall, about 75 m south of the Letziturm: a ring of merlons on its top, 1.2 m high
+   and 0.5 m thick, each about 0.9 m wide with a crenel between, as the canton's 2026 obliques show it standing over
+   the wall (the Blender reference world, 27 October 2026). The tower is the small outline of the wall's style there */
+function letziRound(walls,parent){
+  const near=walls.filter(w=>w.span*BASEL.S<14&&Math.hypot((w.ax+w.cx)/2-215.4,(w.az+w.cz)/2-127.2)<2.2);
+  if(near.length<5)return;
+  let cx=0,cz=0;for(const w of near){cx+=w.ax;cz+=w.az;}cx/=near.length;cz/=near.length;
+  const r=near.reduce((a,w)=>a+Math.hypot(w.ax-cx,w.az-cz),0)/near.length,top=Math.max(...near.map(w=>Math.max(w.ya,w.yc)));
+  const B=Batch(),plaster=stdMat({color:0xe7e2d6,roughness:.9}),n=Math.max(8,Math.round(2*Math.PI*r*BASEL.S/1.6));
+  for(let k=0;k<n;k++){const a=2*Math.PI*(k+0.28)/n,rr=r-0.25/BASEL.S;
+    B.add(boxC,plaster,M4(null,cx+rr*Math.cos(a),top+hM(0.6),cz+rr*Math.sin(a),0.9/BASEL.S,hM(1.2),0.5/BASEL.S,0,Math.PI/2-a,0));}
+  B.build(parent);
+}
 function laelleHouse(walls,det,parent){
   if(!walls.length||!det)return;
   const F=facadeFront(walls,det.facing);if(!F)return;
@@ -2527,8 +2540,12 @@ function muenster(M0,K,parent,B0){
 /* the medieval parish and convent churches, from their real outlines, heights and photos */
 const CHURCHES={
   barfuesser:{name:'Barfüsserkirche',plaster:'#ece6da',frame:'#b98a6b',eave:15,ridge:36,wid:24,turret:'copper'},
-  martins:{name:'Martinskirche',plaster:'#e8dfcf',frame:'#b09070',eave:13,ridge:26,wid:20,tower:{w:7,shaft:36,top:'gables'}},
-  peters:{name:'Peterskirche',plaster:'#f1ede4',frame:'#b5826a',eave:11,ridge:24,wid:20,tower:{w:5.5,shaft:24,top:'lantern'},dormers:3},
+  martins:{name:'Martinskirche',plaster:'#e8dfcf',frame:'#b09070',eave:13,ridge:26,wid:20,
+    tower:{w:7,shaft:36,top:'gables',stone:['#968072','#867266','#a48e7e','#7a685e']}},   // grey-brown sandstone ashlar
+  // the Peterskirche: round red-framed oculi under the eaves and a tower of variegated pinkish-beige ashlar (the
+  // canton's 2026 oblique of its north side and a ground view, as the Blender reference world, 27 October 2026)
+  peters:{name:'Peterskirche',plaster:'#f1ede4',frame:'#b5826a',eave:11,ridge:24,wid:20,oculi:true,
+    tower:{w:5.5,shaft:24,top:'lantern',stone:['#ac8e7e','#987a6c','#bca290','#866a5e']},dormers:3},
   leonhard:{name:'Leonhardskirche',plaster:'#ece7dd',frame:'#b9a58a',eave:15,ridge:30,wid:26,tower:{w:7,shaft:31,top:'saddle',tip:0xb24a30},porch:true},
   theodor:{name:'Theodorskirche',plaster:'#e6dccb',frame:'#b3906c',eave:12,ridge:25,wid:20,tower:{w:6.5,shaft:24,top:'saddle',tip:'copper'}},
   clara:{name:'Clarakirche',plaster:'#e3cfc5',frame:'#a8584a',eave:11,ridge:24,wid:18,turret:'glazed',clock:true,annex:{r:2.6,eave:7.9,roof:2.8}},
@@ -2544,7 +2561,9 @@ function church(lm,P,parent,B0){
   const peakH=hM(pk[2]);
   const cr=Math.min(hw*0.9,L*0.2),cx=choirEnd*(L/2-cr),bx0=-choirEnd*L/2,bL=Math.abs(cx-bx0),bxc=(cx+bx0)/2;
   const bays=Math.max(2,Math.round(bL/1.25));
-  const winM=glowMat((x,glow)=>{wallBg(x,128,384,glow,P.plaster);lancetWin(x,40,80,48,230,glow,P.frame);},128,384,bays,1);
+  const winM=glowMat((x,glow)=>{wallBg(x,128,384,glow,P.plaster);lancetWin(x,40,80,48,230,glow,P.frame);
+    if(P.oculi){for(const [r,c] of [[18,glow?'#000':P.frame],[12,glow?'#ffcf7a':'#29313e']]){x.fillStyle=c;x.beginPath();x.arc(64,40,r,0,7);x.fill();}}},
+    128,384,bays,1);
   const choirM=glowMat((x,glow)=>{wallBg(x,128,384,glow,P.plaster);lancetWin(x,38,60,52,270,glow,P.frame);},128,384,5,1);
   const frontM=glowMat((x,glow)=>{wallBg(x,256,256,glow,P.plaster);x.fillStyle=glow?'#000':P.frame;lancet(x,100,150,56,106);
     x.fillStyle=glow?'#000':'#5b3e30';lancet(x,108,160,40,96);lancetWin(x,112,40,32,80,glow,P.frame);},256,256);
@@ -2562,7 +2581,10 @@ function church(lm,P,parent,B0){
   for(let k=1;k<5;k++){const a=th0+k*Math.PI/4;B.put(boxGeo,pinM,M4(M,cx+cr*1.03*Math.sin(a),0,cr*1.03*Math.cos(a),0.18,eave*0.9,0.18));}
   if(P.tower){   // the tower, where the 3D model has its peak
     const T=P.tower,w=T.w/BASEL.S,sh=hM(T.shaft);
-    const towM=glowMat((x,glow)=>{wallBg(x,128,512,glow,P.plaster);if(!glow)quoins(x,128,512,P.frame,16);
+    const towM=glowMat((x,glow)=>{
+      if(T.stone&&!glow){x.fillStyle='#5e4e46';x.fillRect(0,0,128,512);   // ashlar: blocks of several shades on dark joints
+        for(let y=0,k=0;y<512;y+=14,k++)for(let X=k%2?-20:0;X<128;X+=40){x.fillStyle=T.stone[Math.floor(rng()*T.stone.length)];x.fillRect(X+1,y+1,38,12);}}
+      else{wallBg(x,128,512,glow,P.plaster);if(!glow)quoins(x,128,512,P.frame,16);}
       for(const yy of [60,170])lancetWin(x,52,yy,24,60,glow,P.frame);x.fillStyle=glow?'#000':'#3a3330';for(const X of [36,74])lancet(x,X,300,18,90);},128,512);
     B.addGroups(boxC,[towM,towM,roofBrown,roofBrown,towM,towM],M4(M,px,sh/2,pz,w,sh,w));
     LMK.clock(B,M,clockFace('#2b5f9e'),px,sh*0.82,pz+w/2+0.02,0.22,0);
@@ -2864,6 +2886,7 @@ const cityToday=buildCity3D(await gunzip(BASEL.lod2.gz),BASEL.lod2.count,
   {bytes:await gunzip(BASEL.facades.gz),count:BASEL.facades.count,styles:BASEL.facades.styles});TODAY.add(cityToday.mesh,cityToday.extras);
 if(BASEL.details)laelleHouse(FACADE_WALLS.laelle,BASEL.details.laelle,TODAY);
 letziWalk(FACADE_WALLS.letzimauer,TODAY);
+letziRound(FACADE_WALLS.letzimauer,TODAY);
 /* the bridgeheads, after the Basel reference world's pass on them (its bridgeheads.py: the bridge-bank photos and the
    canton's bridge model and ground). Where the Mittlere Brücke lands in Kleinbasel (Nussbaumer Trüssel's promenade of
    2004) the lower promenade runs under the bridge's land arch and under a terrace on either side of it, level with

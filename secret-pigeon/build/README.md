@@ -105,7 +105,9 @@ where OpenStreetMap has it and the painted one on the corner above. After the ca
 the reference world reads them) the Badischer Bahnhof has red-brown tiled roofs with copper only on its clock tower's
 crown, the Clarakirche its octagonal stair tower under a slate tent roof and a ridge turret with an oxblood base and a
 copper bell stage, the Spalentor a skirt of brown tiles under its glazed roof and copper caps inside its round towers'
-merlons, and the St. Alban wall-walk weathered tiles. It lays every railway and tram track in the map, runs a DB ICE and an SBB EuroCity towards Germany and a TGV
+merlons, and the St. Alban wall-walk weathered tiles; and after the later obliques of 26 October, the Peterskirche
+round red-framed oculi under its eaves and a tower of variegated pinkish-beige ashlar, the Martinskirche a tower of
+grey-brown ashlar (both towers had been white render with quoins), and the St. Alban wall's round tower its merlons. It lays every railway and tram track in the map, runs a DB ICE and an SBB EuroCity towards Germany and a TGV
 Lyria towards France, and runs Basel's twelve tram lines to their real weekday timetable, three times faster than life and from the
 time it is in Basel, every trip stopping at each of its stations. A tram waits behind one ahead of it on its track, and
 where two tram tracks cross, join, or run closer than two trams can pass (lines 10 and 17 run both ways on one track
