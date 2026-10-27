@@ -4647,8 +4647,10 @@ function collide(pos,px,pz){
      * rain, sleet or snow and how hard: the ten minutes' precipitation (mm), and the temperature for which;
      * wet streets from the last hour's rain, snow lying from the snow depth;
      * the wind's speed and direction: it drives the clouds, slants the rain and snow and roughens the Rhine;
-     * fog and haze from the humidity, the dew point's spread and calm air, more of it when St. Chrischona, 177 m
-       higher, is as warm as Binningen (an inversion).
+     * fog and haze from the humidity, the dew point's spread and calm air;
+     * low stratus (Hochnebel) by day: St. Chrischona, 177 m higher, publishes only its radiation and sunshine, so the
+       sign is the sun shining up there in the last hour while Binningen, under a closed sky, has had none. It thickens
+       the haze and hides the far hills in the cloud.
    If the files can't be read, or their newest values are more than three hours old, the sky shows the date's typical
    weather, from Binningen's 1991-2020 averages (NORMALS), and the title screen says so. Day, Night and Like my device
    keep the fixed skies they had. */
@@ -4694,7 +4696,7 @@ const SKYNOW=(()=>{
     w.kind=w.rate>0.05?(w.T<=0.5?'snow':w.T<=2?'sleet':'rain'):null;
     w.wet=Math.max(w.kind&&w.kind!=='snow'?0.5:0,clamp(w.hour/2,0,1));
     w.snowCover=w.snow>0.5?clamp(w.snow/8,0.3,1):0;
-    w.haze=clamp((w.rh-70)/30,0,1)*0.6+0.3*w.inv;
+    w.haze=clamp((w.rh-70)/30,0,1)*0.6+0.3*w.stratus;
     return w;
   }
   function fromStations(bas,stc){
@@ -4719,25 +4721,27 @@ const SKYNOW=(()=>{
       c=c==null?cn:wd*c+(1-wd)*cn;}
     if(c==null)c=normals(o.t).cloud;
     c=clamp(c,0,1);if(rate>0.05)c=Math.max(c,0.85);
-    const st=stc&&stc.filter(r=>r.tre200s0!=null&&r.t>o.t-1800e3).pop();
-    const inv=st?clamp((st.tre200s0-T+0.6)/2,0,1):0;
+    // low stratus: sunshine on St. Chrischona in the last hour (from 3 minutes, fully from 18) while Binningen,
+    // overcast and dry, had none
+    const sunHour=set=>set?set.filter(r=>r.sre000z0!=null&&r.t>o.t-3600e3).reduce((a,r)=>a+r.sre000z0,0):null;
+    const up=sunHour(stc),down=sunHour(bas);
+    const stratus=s.el>3&&up!=null&&down!=null&&down<=1&&c>=0.85&&!rate?clamp((up-3)/15,0,1):0;
     const spread=dew!=null?T-dew:5;
-    let fog=rh!=null&&rh>=95&&spread<=1.2&&(wind==null||wind<3)?clamp((rh-94)/4,0,1)*(wind!=null&&wind>1.5?0.6:1):0;
-    if(rh!=null&&rh>90)fog=Math.min(1,fog+0.4*inv);
-    return finish({src:'live',t:o.t,T,rh:rh??75,wind:wind??1.5,dir:dir??240,rate,hour,snow:get('htoauts0')||0,cloud:c,fog,inv});
+    const fog=rh!=null&&rh>=95&&spread<=1.2&&(wind==null||wind<3)?clamp((rh-94)/4,0,1)*(wind!=null&&wind>1.5?0.6:1):0;
+    return finish({src:'live',t:o.t,T,rh:rh??75,wind:wind??1.5,dir:dir??240,rate,hour,snow:get('htoauts0')||0,cloud:c,fog,stratus});
   }
   function normals(ms,why){   // the date's typical weather: between this month's averages and the next's
     const d=new Date(ms),m=d.getUTCMonth(),f=(d.getUTCDate()-15)/30;
     const a=NORMALS[m],b=NORMALS[(m+(f<0?11:1))%12],k=Math.abs(f),mix=i=>a[i]+(b[i]-a[i])*k;
     const tx=mix(0),tn=mix(1),T=(tx+tn)/2+(tx-tn)/2*Math.cos(2*Math.PI*(localHour(ms)-15)/24);
     return finish({src:'normals',why,t:ms,T,rh:mix(2),wind:mix(3),dir:(k<0.5?a:b)[4],rate:0,hour:0,snow:0,
-      cloud:clamp(1-mix(5)/100*1.05,0.05,0.95),fog:0,inv:0});
+      cloud:clamp(1-mix(5)/100*1.05,0.05,0.95),fog:0,stratus:0});
   }
   const now=()=>W&&W.src==='live'?W:normals(Date.now(),W&&W.why);
   const COMPASS=['north','north-east','east','south-east','south','south-west','west','north-west'];
   function words(w){
     const night=sunAt(w.t).el<-4,c=w.cloud,parts=[`${Math.round(w.T)} °C`];
-    parts.push(w.fog>0.6?'fog':c<0.15?(night?'clear':'sunny'):c<0.4?(night?'mostly clear':'mostly sunny'):c<0.7?'partly cloudy':c<0.9?'mostly cloudy':'overcast');
+    parts.push(w.fog>0.6?'fog':w.stratus>0.5?'low stratus (sun on St. Chrischona)':c<0.15?(night?'clear':'sunny'):c<0.4?(night?'mostly clear':'mostly sunny'):c<0.7?'partly cloudy':c<0.9?'mostly cloudy':'overcast');
     if(w.kind)parts.push((w.rate<1?'light ':w.rate>4?'heavy ':'')+w.kind);else if(w.fog>0.3&&w.fog<=0.6)parts.push('mist');
     const kmh=Math.round(w.wind*3.6);parts.push(kmh<2?'calm':`wind ${kmh} km/h from the ${COMPASS[Math.round(w.dir/45)%8]}`);
     if(w.snowCover)parts.push(`${Math.round(w.snow)} cm of snow`);
@@ -4818,7 +4822,8 @@ const SKYNOW=(()=>{
     const far=Math.max(150,1050*(1-0.5*w.haze)*(1-0.82*w.fog)/(1+(w.kind==='snow'?0.5:0.06)*w.rate));
     scene.fog.far=far;scene.fog.near=Math.min(260,far*0.3);
     HAZE.max.value=Math.min(0.98,PAL.night.haze+(PAL.day.haze-PAL.night.haze)*day+0.12*w.haze+0.5*w.fog+0.1*c);
-    HAZE.len.value=5000*Math.max(0.06,1-0.94*w.fog-0.3*w.haze);   // the far hills go first in fog
+    HAZE.len.value=5000*Math.max(0.06,1-0.94*w.fog-0.3*w.haze-0.5*w.stratus);   // the far hills go first in fog,
+    // and under low stratus into the cloud
     // the light: the sun where it stands, weaker low down and under cloud, and more of the sky's; the moon's light
     // at night as before
     L(P.hs,hemi.color).lerp(K.hemiGrey,c*0.5*day);L(P.hg,hemi.groundColor);
@@ -4864,7 +4869,7 @@ const SKYNOW=(()=>{
   if(live())refresh(true);
   return {apply,frame,refresh,note,live,sunAt,normals,night:()=>sunAt(Date.now()).el<-4,get ripple(){return live()?ripple:1;},
     get weather(){return now();},
-    test(o){W=finish(Object.assign({src:'live',t:Date.now(),T:10,rh:75,wind:2,dir:240,rate:0,hour:0,snow:0,cloud:0.3,fog:0,inv:0},o));note();applyTheme();}};
+    test(o){W=finish(Object.assign({src:'live',t:Date.now(),T:10,rh:75,wind:2,dir:240,rate:0,hour:0,snow:0,cloud:0.3,fog:0,stratus:0},o));note();applyTheme();}};
 })();
 
 /* day and night follow the page theme (or, on "Basel now", the sun) */

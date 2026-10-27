@@ -139,9 +139,10 @@ then at most once every ten minutes while the page is visible, as often as Meteo
 a referrer; MeteoSwiss's terms forbid high-frequency downloads of the same content. From the files: cloud cover (by day
 the global radiation against a clear sky's and the sunshine minutes, by night the incoming longwave radiation against
 a clear sky's), rain, sleet or snow and how hard, wet streets after rain, snow lying, the wind (it drives the clouds,
-slants the rain and snow and roughens the Rhine) and fog or haze (humidity, dew-point spread, calm air, and St.
-Chrischona as warm as Binningen for an inversion). Overcast skies get a grey cloud deck; fog closes the view down to
-750 m and hides the hills. If the files can't be read, or their newest values are more than three hours old, the game
+slants the rain and snow and roughens the Rhine), fog or haze (humidity, dew-point spread, calm air) and, by day, low
+stratus (Hochnebel): St. Chrischona, 177 m higher, publishes only its radiation and sunshine, so the sign is sun up
+there in the last hour while Binningen, under a closed sky, has had none; it thickens the haze and hides the far hills
+in the cloud. Overcast skies get a grey cloud deck; fog closes the view down to 750 m and hides the hills. If the files can't be read, or their newest values are more than three hours old, the game
 shows the date's typical weather from Binningen's 1991-2020 averages (worked out from MeteoSwiss's daily and monthly
 series and written into the template) and the title screen says which. Day, Night and Like my device are the fixed
 skies the game had before; N still switches between day and night.
