@@ -51,7 +51,7 @@ LANDMARKS = {"muenster": ("way", 137472252), "rathaus": ("relation", 7634307), "
              "kreuzgang": ("relation", 7744965), "barfuesser": ("way", 137472263), "martins": ("way", 137472347),
              "peters": ("way", 270939309), "leonhard": ("way", 137472332), "theodor": ("way", 317500703),
              "clara": ("way", 315883214), "prediger": ("way", 262233179), "stalbankirche": ("way", 147744346),
-             "kartaeuser": ("way", 317492467)}
+             "kartaeuser": ("way", 317492467), "markthalle": ("way", 117484097)}
 HAND_MODELLED = set(LANDMARKS) - {"rathaus"}
 LANDMARK_TOWERS = {"elisabethen": ("way", 407463501)}      # the Elisabethenkirche's tower, as an OSM building part
 # buildings that keep swisstopo's shape but get painted facades in the game; the list order is the style number
@@ -1670,7 +1670,7 @@ def main(raw, work, out_js):
         r = simplify_ring(r, 0.25)
         return [[round(x / S, 2), round(-y / S, 2)] for x, y in r]
 
-    iconic = {"roche1": [], "roche2": None, "messe": None}
+    iconic = {"roche1": [], "roche2": None, "messe": None, "markthalle": None}
     skip_rings = [lm_rings[k] for k in HAND_MODELLED if k in lm_rings]
     bau1 = next((o for o in outlines if o["type"] == "way" and o["id"] == 680531949), None)   # Roche Tower, Bau 1
     if bau1:
@@ -1679,7 +1679,7 @@ def main(raw, work, out_js):
             if inside(centroid(prt["outer"][0]), bau1["outer"][0]):
                 b, top, *_ = building_heights(prt["tags"], abs(area2(prt["outer"][0])))
                 iconic["roche1"].append({"ring": game_ring(prt["outer"][0]), "base": round(b, 1), "top": round(top, 1)})
-    for key, typ, oid in (("roche2", "way", 317511699), ("messe", "way", 315916699)):
+    for key, typ, oid in (("roche2", "way", 317511699), ("messe", "way", 315916699), ("markthalle", "way", 117484097)):
         o = next((o for o in outlines if o["type"] == typ and o["id"] == oid), None)
         if o:
             outer = max(o["outer"], key=lambda r: abs(area2(r)))
@@ -1856,6 +1856,9 @@ def main(raw, work, out_js):
             g = ground_at(*c)
             if g is None:
                 g = b["wall_min"] if b["wall_min"] is not None else min(p[2] for p in pts) - 3.0
+        if style is not None and FACADE_STYLES[style] == "sbb" and g < 278.0:
+            g = 278.0       # Basel SBB: swisstopo gives the station's ground as 274.2 m, but the street on the
+            #                 Centralbahnplatz is at 278.0 (the canton's LoD2 wall feet at the towers, 30 October 2026)
         top_rel = max(p[2] for p in pts) - g
         if style is None and kind == 2:
             style = FACADE_STYLES.index("sacral")

@@ -37,7 +37,9 @@ with georeferencing (LV95) for areas of up to 5 km² covering the map, and put t
 | `site-parts.html` | What only the colomba.link copy gets: its description, canonical address, Open Graph and Twitter previews (`og.jpg`), structured data and the links back to the site. |
 
 The game itself (`game.template.html`) models the landmarks by hand on top of these measurements: the Münster and its
-cloister, the Rathaus (its old front building, north wing and tower told apart by the roof heights behind the front;
+cloister (its two west towers at the stages the canton's 3D model measures, with slender openwork spires,
+cross-flowers and galleries, and buttresses round the apse, after the canton's 2026 oblique aerials and Basel
+Tourism's drone flight over the Münster, as the Blender reference model has them), the Rathaus (its old front building, north wing and tower told apart by the roof heights behind the front;
 on the tower's corners four turrets on stepped corbels with eight-sided window stages and glazed spires, the railing
 round the roof and the gilded bell cage, after the photos, as the Blender reference model of the city has them),
 the three city gates (the Spalentor in its pink and purple ashlar, with the wooden gallery under the roof and the
@@ -56,7 +58,7 @@ Pfalz's and the Rheinsprung's tall walls over a narrow path, the quay at the Sch
 St. Alban- and St. Johanns-Rheinweg along the water under a railed wall; in 1615 town walls stand in the water on
 both sides. The bridges stand on the water with their decks as high over it as before, their piers and abutments
 where Basel-Stadt's bridge 3D model has them (`build_city.py`'s `BRIDGE_PIERS`, measured on the canton's model and
-checked against the engineers' span figures): the Mittlere Brücke's six granite arches on five round-nosed piers, the
+checked against the engineers' span figures): the Mittlere Brücke's six granite arches on five piers (pointed upstream, round downstream), the
 middle one with the Käppelijoch (after the canton's model, the 1962 elevation and photos), the old SBB bridge's
 lattice girders under its tracks and the new one's haunched concrete box. The ferries are built after photos of
 them (Leu, Vogel Gryff, Wild Maa and Ueli, each in its colours where a photo was gathered), cross as the reaction
@@ -107,7 +109,54 @@ crown, the Clarakirche its octagonal stair tower under a slate tent roof and a r
 copper bell stage, the Spalentor a skirt of brown tiles under its glazed roof and copper caps inside its round towers'
 merlons, and the St. Alban wall-walk weathered tiles; and after the later obliques of 26 October, the Peterskirche
 round red-framed oculi under its eaves and a tower of variegated pinkish-beige ashlar, the Martinskirche a tower of
-grey-brown ashlar (both towers had been white render with quoins), and the St. Alban wall's round tower its merlons. It lays every railway and tram track in the map, runs a DB ICE and an SBB EuroCity towards Germany and a TGV
+grey-brown ashlar (both towers had been white render with quoins), and the St. Alban wall's round tower its merlons.
+After the old-town films checked on 29 October (the St. Alban wall at oxCEAE2u5iU 215-233.4 s, the Spalentor at
+XmLGl4lqJ6s 447.5-466 s, with the 2026 obliques and the ground photos of 31 May 2023), the St. Alban wall's southern
+half-round tower is a round plastered shaft with a ring of merlons in place of the canton's flat-topped block, the
+covered wall-walk down to the Äusserer Letziturm has its dark timber gallery on struts along its south side, and the
+Äusserer Letziturm is white render under brown tiles with a lantern, a bell cap and a copper finial on its roof; today's
+Spalentor round towers are light grey render with a 4 m zone of coursed red sandstone and pale stones under the
+parapet, and their merlons are rendered rectangles about 2 m high with open embrasures and thin copings (the copper caps
+stay inside, seen through the embrasures in the film; 1615 keeps its towers as they were).
+After the review of 29 October (obliques, films and ground photos), today's St. Alban-Tor has no battlements, its
+roof's eaves overhang the walls, the oriel sits in the middle of the field face and the clock is painted straight on the
+wall (dark numerals and hands, no dial) on the town face and both sides; the St. Johanns-Tor shows its rubble band only to
+the field and is white render with quoins elsewhere; the Spalentor's finial is a slender copper spike with a gilded ball
+and a thin rod, with a sandstone string course round its towers about 14 m up; the Martinskirche's clock is a gilded dial
+in its tower's west gable; the Theodorskirche's dressings are red sandstone; the Elisabethenkirche is grey-yellow
+sandstone under a more olive copper roof; the Rathaus tower's corner turrets stand in from the corners, slimmer, under
+taller spires with a green rod and gilded ball; the Mittlere Brücke's piers have pointed cutwaters upstream, its lamp
+posts are light grey, about 10 m tall with a crown of four lanterns, and the Käppelijoch has its own red, ochre and green
+lozenge tiles on cream lines under a green copper bulb and spike; the Wettsteinbrücke has pale blue-grey arches on
+slate-blue posts (since the Wettsteinbrücke audit of 29 October: four flat ribs at 8.0 and 2.7 m either side of the
+axis, springing on bearing shoes from pale, round-ended ashlar piers whose copings stand 6.8 m over the water, their
+tops 2.8 m under the road at mid-span, under a 0.7 m slab and steel girders; the deck keeps the game's 27 m width and so
+runs about 4.5 m past the girders and 5.5 m past the outer ribs, where the real 24 m deck runs about 4 m past them; the
+levels are the real ones scaled by their share of the 17.7 m from the water to the road), white parapet lamps about
+4.5 m tall in opposite pairs every 16 m and tall pale masts with cross arms on its axis every 22 m; Les Trois Rois's
+lettering is about 18 m over the quay; Basel SBB's hall vault is brown metal
+and its wings' roofs tiled (the towers' domes stay copper); and Roche Tower Bau 2 rises sheer at its south end while its
+north end steps back 2.9 m every 11.75 m from 62.1 m, with low strips at both ends. After the landmark review's
+second round (29 October), the Münster's west front stands at the levels a matched film camera measures: the main
+gallery's coping at 24.8 m across the front and both towers, the crocketed gable with a three-light window above it to
+31.5 m, the four-light west window's apex at about 19.8 m with a rose in its head, two lancet stages on both towers
+(24.5-29.4 m and 31-36 m), a louvred lancet under the gallery on the Georgsturm and a sundial on the Martinsturm, and a
+slender crocketed turret on the Georgsturm's north corner to about 13.6 m over its shaft in place of that corner's
+tabernacle; the Spalentor's roof is a near-black aubergine field with staggered green lozenges round white flowers
+with yellow centres, about 8 across each face and 13 rows up it; and the Rathaus's roofs have small red-brown lozenge
+tiles dotted white round red centres with green chevrons, its turret spires red fish-scale tiles with a green row and
+white four-tile flowers. The Markthalle (1929) is hand-modelled for the present day only: `build_city.py` drops the
+3D model's building inside its OpenStreetMap outline (way 117484097) and exports that outline, and the game raises the
+low wings on it to the 284.9 m roofs, the two five-storey blocks that frame the recessed entrance on the Steinentorberg
+to about 293.2 m (their outlines traced on the canton's 3D model, building 14235; a red-brick shop storey under four
+rendered ones, MARKT|HALLE on the top storey under the cornice, wrapping the corners beside the entrance (after E1)), the entrance front (brick shop storey with five doors, a three-part band
+window above, a pale-mint cornice), and the octagonal cloister vault the canton's model measures (corners at bearings
+76.7 + 45k degrees, corner radius and height 28.9 m / 287.45, 25.4 / 292.97, 17.5 / 300.24, 7.0 / 305.2 m), in four
+rings of flat-shaded red-brown tiled facets (#c78a73) on pale-mint ribs about 1 m wide that flare to 1.7 m at the foot,
+over a pale-mint gutter and upstand (287-289 m), with "MARKTHALLE" in dark bronze letters about 1.4 m high on the
+south facet and the glazed lantern (curb, railing, glazed band to 308.6 m, glazed pyramid to 312.6 m, small finial)
+lit at night. After the audit of 30 October 2026 (the 2026 obliques, two south-looking obliques of Basel SBB's front taken for it, the drone films and ground photos, as the reference world reads them), today's Elisabethenkirche has a square shaft to 35 m under an octagonal belfry (35-47 m, 5.8 m across, a two-light opening on each face, wimpergs to 49.5 m, corner pinnacles to about 52 m and four gargoyles on the diagonals) and an openwork spire whose ribs meet at 67.5 m under a finial at 71.7 m, three dials 1.9 m across at 31.8 m (east, south and north) and a nave of six bays a side with its eaves at 21 m and its ridge at 33 m; today's Rathaus tower has its own hipped roof of fish-scale tiles with a bell stage in its front face (tiled cheeks, a dark opening with the two bells, gilt screens and posts), red cornices with blue bands and its west face drawn, the north wing a two-storey box oriel and an aedicule gable over windows in groups of three, four and five, and the main front its photo layout with 17 merlons carrying the thirteen old cantons' shields and a black dial 1.7 m across in a narrow gilt tabernacle; Basel SBB stands on the street at 278.0 m (`build_city.py` sets the ground of its facade records to the street, where swisstopo's 274.24 m had raised the station 3.76 m), its arch glazed under a copper hood, portals, signs and dials on the towers' fronts, square copper domes on the towers' 7.8 m tops with finials and flags (Swiss east, Basel west), a canopy at two levels, the centre block's seven bays under a balustrade with statues and two red-brown strips along the hall's vault; and the churches' tops follow the photos: the Theodorskirche's tower is ashlar under a saddle between two gables with a slim copper turret in mid-ridge, the Predigerkirche's openwork turret stands 4.6 m off the ridge on a white plastered shaft, the Peterskirche's tower is a saddle between ashlar gables under a dark lantern, a flared slate spire, a gilt ball and an iron cross, the Martinskirche's a stone saddle with a copper lantern, a gilt ball and a weathercock, the Clarakirche's glazed spire is chevron-tiled on its lower part under a copper needle, ball and vane, the Leonhardskirche has a red lantern with a flared spire, and the blue clocks are gone from the Peters-, Theodors- and Leonhardskirche. The 1615 scene keeps the gates, churches and Münster as they were (their changed parts are
+built twice, once for each era). It lays every railway and tram track in the map, runs a DB ICE and an SBB EuroCity towards Germany and a TGV
 Lyria towards France, and runs Basel's twelve tram lines to their real weekday timetable, three times faster than life and from the
 time it is in Basel, every trip stopping at each of its stations. A tram waits behind one ahead of it on its track, and
 where two tram tracks cross, join, or run closer than two trams can pass (lines 10 and 17 run both ways on one track
