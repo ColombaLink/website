@@ -908,7 +908,155 @@ const FACADE_WALLS={laelle:[],letzimauer:[]};   // the walls of these facade sty
 const LOD2_EDITS=[{id:'letziSouth',x:218.4,z:140.98,skip:true},{id:'letziOuter',x:217.44,z:110.86,wc:[226,222,212],rc:[118,74,56]}],LOD2_KEPT={};
 function lod2Edit(X,Z){let x=0,z=0;for(let i=0;i<X.length;i++){x+=X[i];z+=Z[i];}x/=X.length;z/=X.length;
   return LOD2_EDITS.find(e=>Math.hypot(e.x-x,e.z-z)<0.5);}
-function buildCity3D(bytes,count,fac){
+/* old-town facades by type (BASEL.oldtown, from the reference library's resolved facades via oldtown.py, 30 October
+   2026): one material for every old-town wall. Each wall carries its house's type, ground floor, storey and ground-floor
+   heights, window bay, wall, shutter and surround colours. The shader draws the fronts to the Blender reference world's
+   numbers and rules (build_world.py: typed_facade, FACADE_WIN): window axes a bay apart, centred on the run of collinear
+   walls (none closer than 0.9 m to its end, 1.25 m for A3 and H1); rows hang from the eave line (the shared row rule,
+   version 3, of both renderers: the house's drawn storey height st_draw from oldtown.py, each wall's storeys down from
+   its own eave less m_top, their count the one that leaves the ground floor nearest gf_m but at least min(gf_m, 2.6),
+   on an arcade ground floor at least min(gf_m, max(2.6, gf_m - 1.0)); no windows where the wall is lower than m_top +
+   gf_m); shopfronts, arcades, garage doors, doors, ground-floor windows, the plinth, stone shop piers and H1's
+   rustication sized for a ground floor of min(gf_h, max(gf_m, 2 m)) (the Blender world's gf_open is min(gf_h, gf_m):
+   the shader keeps a 2 m floor under the openings that Blender does not, which differs only where gf_m is under 2 m),
+   plain wall above it, a string course at gf_h on every type with windows (at least 0.12 m); each
+   window's half-width at most its room (the distance to the run end less 0.12 m, and half a bay) less its surround and
+   0.1 m; shutters as wide as what is left less 0.06 m, dropped under 0.2 m; A2's paired lights only where the bay is over
+   2.7 m and the room over 1.2 m; no keystone or hood into the cornice; doors at most 0.55 m or the room less 0.05 m a
+   side. Surrounds, shutters, keystones, hoods, cornices, string courses, quoins, timber, ashlar, ribbons, curtain walls
+   (dark glass, the wall colour's hue on 0.12 m frames every half bay and 0.9 m spandrels), panels, shopfronts, arcades
+   (arches on A1-A4, H1 and H2; square piers under a lintel on M1-M4; shop windows behind them), garage doors, doors and plinths are drawn by the shader
+   itself, edges box-filtered over the pixel's footprint; a run too short for one window axis stays a plain wall. Where a
+   pixel covers more than 0.45 m the front is the wall colour darkened by its windows' share. At night about a quarter of
+   the panes (a window, a ribbon pane, a curtain-wall bay) glow in the amber of the street-window sprites. */
+const OT_M4_STEP=1;   // M4's large openings on every axis (1) or every second axis (2), as the reference library's "m4" decision (every axis, from the photos, 30 October 2026)
+const OLDTOWN_MAT=(()=>{
+  const m=new THREE.MeshStandardMaterial({roughness:.9,flatShading:true,emissive:0xffffff,emissiveIntensity:0});
+  m.onBeforeCompile=sh=>{
+    sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nattribute vec4 oA,oB,oC,oW,oS,oR;\nvarying vec4 vOA,vOB,vOC,vOW,vOS,vOR;')
+      .replace('#include <begin_vertex>','#include <begin_vertex>\nvOA=oA;vOB=oB;vOC=oC;vOW=oW;vOS=oS;vOR=oR;');
+    sh.fragmentShader=sh.fragmentShader.replace('#include <common>',`#include <common>
+varying vec4 vOA,vOB,vOC,vOW,vOS,vOR;
+float otHash(vec3 p){p=fract(p*vec3(.1031,.1030,.0973));p+=dot(p,p.yxz+33.33);return fract((p.x+p.y)*p.z);}
+float otBand(float x,float a,float b,float w){return clamp((min(x+.5*w,b)-max(x-.5*w,a))/w,0.,1.);}
+const vec3 OT_WIN[10]=vec3[10](vec3(1.,1.55,.9),vec3(.85,1.25,.9),vec3(1.15,2.1,.8),vec3(.8,1.1,.9),vec3(1.1,2.,.8),
+  vec3(1.1,1.9,.85),vec3(1.5,1.45,.95),vec3(0.,1.5,.9),vec3(0.,0.,.15),vec3(2.4,2.2,.5));
+const vec3 OT_TRIM[10]=vec3[10](vec3(.14,0.,0.),vec3(.2,0.,0.),vec3(.18,.5,.2),vec3(.16,0.,0.),vec3(.15,.6,.15),
+  vec3(.12,.4,.18),vec3(0.),vec3(0.),vec3(0.),vec3(0.));`)
+      .replace('#include <map_fragment>',`float otLit=0.;
+{
+  float u=vOA.x,h=vOA.y,L=vOA.z,seed=vOA.w,fh=max(fwidth(h),1e-4),fu=max(fwidth(u),1e-4),px=max(fh,fu);
+  int typ=int(vOB.x+.5),gf=int(vOB.y+.5);float st=max(vOB.z,2.),gfh=vOB.w;
+  float bay=clamp(vOC.x,1.5,7.),topI=vOC.y,Hr=vOC.z,gfo=min(gfh,max(vOC.w,2.));   // ground-floor openings: for gfo
+  vec3 wall=vOW.rgb,surC=mix(wall*.9,vOR.rgb,vOR.a),col=wall;
+  if(typ>0){
+    vec3 wn=OT_WIN[typ-1],tr=OT_TRIM[typ-1];float sw=tr.x,cor=tr.y,strc=tr.z;
+    float mg=(typ==3||typ==5)?1.25:.9,n=(L<2.*mg||Hr<0.)?0.:floor((L-2.*mg)/bay)+1.;
+    bool up=h>=gfh,rowOk=up&&h<Hr;float k=floor((h-gfh)/st),dv=h-gfh-k*st;
+    float ws=wn.z,wh=min(wn.y,st-ws-.35);
+    if(px>.45){
+      // far: the wall with its windows' share of the front averaged, the cornice and the eave shade
+      float cov=0.,span=n*bay*.5;
+      if(n>0.&&abs(u-L*.5)<span){
+        if(rowOk)cov=typ==9?.62:typ==8?.9*min(1.5,st-1.25)/st:typ==10?${.5/OT_M4_STEP}*min(2.4,bay-.3)*min(2.2,st-ws-.35)/(bay*st):
+          min(wn.x,bay-2.*sw-.4)*max(wh,0.)/(bay*st);
+        else if(h<gfo)cov=gf==1?.55:gf==2?.4:gf==0?.12:0.;}
+      if(typ==9&&up){float lw=dot(wall,vec3(.2126,.7152,.0722));col=wall*clamp(lw,.25,.6)/max(lw,.01);}
+      if(gf==1&&!up&&n>0.)col=mix(col,vec3(.03),.3*otBand(h,gfo-.8,gfo-.25,fh));
+      col=mix(col,vec3(.03,.035,.04),cov);
+      if(cor>.01)col=mix(col,surC,otBand(h,topI-cor,topI,fh));
+      otLit=cov*((gf==1||gf==2)&&!up?.7:.26);
+    } else {
+    bool fine=px<.1;   // finer details (louvres, bars, keystones, hoods, sills, ashlar and panel joints) only where a pixel is under 0.1 m
+    float kf=clamp(floor((u-L*.5)/bay+n*.5),0.,max(n-1.,0.)),cen=L*.5+(kf-(n-1.)*.5)*bay,du=u-cen,dw=abs(du);
+    bool inAx=n>0.&&dw<bay*.5;
+    float room=min(cen,L-cen)-.12,lim=min(bay*.5,room),endd=min(u,L-u);
+    bool plainGf=!up&&gf==0;
+    bool doorAx=plainGf&&inAx&&kf==floor(n*.5)&&L>4.,cell=inAx&&!doorAx&&((rowOk&&typ<=7)||plainGf);
+    float vv=up?dv:h,v0=up?ws:1.1,v1=up?ws+wh:min(2.5,gfo-.3);
+    bool pair=typ==2&&up&&bay>2.7&&room>1.2&&otHash(vec3(seed,kf,5.))>.5;
+    float hw=min(pair?.95:(up?wn.x*.5:.5),lim-(sw+.1)),shw=min(hw,lim-(hw+sw)-.06);
+    float pane=0.,tone=1.;
+    if(typ==5&&fine){if(up){float rw=floor(h/.35),bx=fract(u/1.1+.5*mod(rw,2.))*1.1;
+        tone=1.-.3*max(otBand(fract(h/.35)*.35,-1.,.012,fh),otBand(bx,-1.,.012,fu));}
+      else if(h<gfo)tone=1.-.55*otBand(fract(h/.45)*.45,-1.,.036,fh);}
+    if(typ==10&&fine)tone=1.-.5*max(otBand(fract(h/1.2)*1.2,-1.,.01,fh),otBand(fract(u/1.6)*1.6,-1.,.01,fu));
+    if(gf==1&&h<gfo&&otHash(vec3(seed,3.,2.))>.5)wall=vec3(.5,.48,.44);
+    col=wall*tone;
+    float win=0.,raised=0.,shade=0.,timber=0.;
+    if(cell&&hw>.15&&dw<hw+sw+max(shw,.15)+.02+fu&&vv>v0-max(sw,.06)-.02-fh&&vv<v1+sw+.4+fh){   // only near a window: its surround, shutters, keystone or hood
+      pane=otHash(vec3(seed,kf,up?k:-1.));
+      win=otBand(du,-hw,hw,fu)*otBand(vv,v0,v1,fh);
+      if(typ==5&&up&&k<.5){float dy=vv-(v1-hw);if(dy>0.&&length(vec2(du,dy))>hw)win=0.;}
+      if(sw>.01)raised=otBand(du,-hw-sw,hw+sw,fu)*otBand(vv,v0-sw,v1+sw,fh)-win;
+      if(typ==2&&up&&fine){float bw=pair?.1:.04,bar=max(otBand(du,-bw,bw,fu),otBand(vv,ws+wh*.6-.04,ws+wh*.6+.04,fh))*win;raised+=bar;win-=bar;}
+      float fl=up?gfh+k*st:0.;
+      if(typ==3&&up&&fine&&fl+v1+.3<=topI-cor)raised+=otBand(du,-.15,.15,fu)*otBand(vv,v1,v1+.3,fh);
+      if(typ==5&&up&&fine&&fl+v1+sw+.17<=topI-cor)raised+=otBand(du,-hw-sw-.15,hw+sw+.15,fu)*otBand(vv,v1+sw+.05,v1+sw+.17,fh);
+      if(vOS.a>.5&&shw>.2){float s=otBand(dw,hw+sw,hw+sw+shw,fu)*otBand(vv,v0,v1,fh);
+        float lv=fh<.03?step(fract(vv/.06),.35):.35;col=mix(col,vOS.rgb*(1.-.45*lv),s);}
+      if(typ==7&&up&&fine)col=mix(col,vec3(.55,.55,.53),otBand(du,-hw-.05,hw+.05,fu)*otBand(vv,v0-.06,v0,fh));}
+    if(cor>.01){raised+=otBand(h,topI-cor,topI,fh);shade=otBand(h,topI-cor-.06,topI-cor,fh);}
+    else if(typ==1||typ==2||typ==4)shade=otBand(h,topI-.3,topI,fh);
+    // a string course marking the first floor at gf_h on every type with windows (the type's height, at least 0.12 m)
+    if(h<topI-cor)raised+=max(Hr>=0.?otBand(h,gfh-max(strc,.12),gfh,fh):0.,typ==5&&strc>.01&&rowOk&&k>.5?otBand(dv,-1.,strc,fh):0.);
+    if(typ==3&&h<topI)raised+=otBand(endd,-1.,fract(h/.6)<.5?.5:.3,fu);
+    col=mix(col,surC,clamp(raised,0.,1.));col*=1.-.45*shade;
+    if(typ==4&&up&&h<topI){float p=(dw-(hw+.16))/max(bay*.5-hw-.16,.1),q=(dv-.16)/max(ws-.32,.1);
+      timber=max(max(otBand(endd,-1.,.16,fu),inAx?otBand(dw,hw,hw+.16,fu):0.),
+        max(max(otBand(dv,ws-.16,ws,fh),otBand(dv,ws+wh,ws+wh+.16,fh)),otBand(dv,-1.,.16,fh)));
+      if(inAx&&rowOk&&p>0.&&q>0.&&q<1.&&abs(p-q)<.2)timber=1.;
+      col=mix(col,vec3(.07,.045,.03),timber*(1.-win));}
+    if(!up&&n>0.){
+      if(gf==1){float sh2=min(bay*.5-.25,room);
+        float op=inAx?otBand(du,-sh2,sh2,fu)*otBand(h,.3,gfo-.9,fh):0.,fr=inAx?otBand(du,-sh2-.08,sh2+.08,fu)*otBand(h,.22,gfo-.82,fh)-op:0.;
+        int fi=int(otHash(vec3(seed,3.,1.))*3.99);
+        col=mix(col,vec3(.03),fr);
+        col=mix(col,fi==0?vec3(.02,.07,.035):fi==1?vec3(.02,.035,.11):fi==2?vec3(.012):vec3(.11,.012,.02),otBand(h,gfo-.8,gfo-.25,fh)*otBand(u,.15,L-.15,fu));
+        win=op;pane=otHash(vec3(seed,kf,0.));}
+      else if(gf==2){float ah=min(bay*.5-.3,room);
+        if(typ>=7){   // modern types: square piers under a lintel
+          float lt=gfo-.6,a=inAx?otBand(du,-ah,ah,fu)*otBand(h,-1.,lt,fh):0.;
+          col=mix(col,mix(col,surC,.5)*.85,otBand(h,lt,lt+.4,fh)*otBand(u,.1,L-.1,fu));
+          col=mix(col,vec3(.025,.022,.02),a);win=a*otBand(du,-ah+.35,ah-.35,fu)*otBand(h,.3,lt-.3,fh);pane=otHash(vec3(seed,kf,0.));}
+        else{float sp=gfo-.4-ah,dz=h-sp;
+          float a=inAx?otBand(du,-ah,ah,fu)*(dz<0.?1.:clamp((ah-length(vec2(du,dz)))/fu+.5,0.,1.)):0.;
+          col=mix(col,vec3(.025,.022,.02),a);win=a*otBand(du,-ah+.35,ah-.35,fu)*otBand(h,.3,sp-.3,fh);pane=otHash(vec3(seed,kf,0.));}}
+      else if(gf==3){float g2=min(L-1.,2.8)*.5;col=mix(col,vec3(.3,.27,.23)*(fract(h/.25)<.12?.4:1.),otBand(u-L*.5,-g2,g2,fu)*otBand(h,-1.,min(2.5,gfo-.3),fh));}
+      else{float dh=min(.55,room-.05),dr=doorAx&&dh>.2?otBand(du,-dh,dh,fu)*otBand(h,-1.,min(2.3,gfo-.3),fh):0.;
+        col=mix(col,vec3(.42,.4,.37),otBand(h,-1.,.5,fh)*(1.-dr)*(1.-win));col=mix(col,vec3(.06,.035,.02),dr);}}
+    else if(!up&&gf==0)col=mix(col,vec3(.42,.4,.37),otBand(h,-1.,.5,fh));
+    if(typ==8&&rowOk&&n>0.){float rw=min(1.5,st-.9-.35);win=otBand(dv,.9,.9+rw,fh)*otBand(u,.3,L-.3,fu)*(1.-otBand(fract(u/1.25)*1.25,-1.,.05,fu));pane=otHash(vec3(seed,floor(u/1.25),k));}
+    if(typ==9&&up){   // curtain wall: dark glass; the photo colour's hue on the frames (0.12 m, every half bay) and the 0.9 m
+      // spandrels, their brightness held to 0.25-0.6 (linear) so that neither a dark nor a light colour reads as one panel
+      float lw=dot(wall,vec3(.2126,.7152,.0722));vec3 fc=wall*clamp(lw,.25,.6)/max(lw,.01);col=fc*tone;
+      if(rowOk&&n>0.){float pitch=bay*.5,ua=(u-(L*.5-n*.5*bay))/pitch,mu=fract(ua)*pitch;
+        float fr=max(max(otBand(mu,-1.,.06,fu),otBand(mu,pitch-.06,pitch+1.,fu)),1.-otBand(u,.2,L-.2,fu));
+        float sp=max(otBand(dv,-1.,.9,fh),otBand(dv,st-.06,st+1.,fh));
+        col=mix(col,col*.78,sp*(1.-fr));win=(1.-fr)*(1.-sp);pane=otHash(vec3(seed,floor(ua),k));}}
+    if(typ==10&&rowOk&&inAx&&mod(kf,${OT_M4_STEP}.)<.5){float oh=min(1.2,lim-.1);win=otBand(du,-oh,oh,fu)*otBand(dv,ws,ws+min(2.2,st-ws-.35),fh);pane=otHash(vec3(seed,kf,k));}
+    win=clamp(win,0.,1.);
+    vec3 gc=typ==9?vec3(.04,.07,.08):(typ==8||typ==10)?vec3(.05,.08,.1):
+      pane<.75?mix(vec3(.015,.018,.022),vec3(.05),pane/.75):mix(vec3(.05),vec3(.2,.17,.13),(pane-.75)*4.);
+    col=mix(col,gc,win);
+    otLit=win*((gf==1||gf==2)&&!up?.8*step(pane,.7):step(pane,.26));   // shop windows, also behind arcades
+    }
+  }
+  col*=mix(.72,1.,clamp(h/max(topI,1.),0.,1.));
+  diffuseColor.rgb*=col;
+}`)
+      .replace('#include <emissivemap_fragment>','totalEmissiveRadiance*=otLit*vec3(1.11,.716,.217);');};   // x 0.9 at night: the sprites' 0xffd27a
+  m.customProgramCacheKey=()=>'oldtown-facades-4';
+  nightGlow.push(m);return m;
+})();
+/* the old-town houses' steep roof faces (10 degrees or more): one tile texture times each house's roof colour (vertex
+   colour, from its classified LoD2 roof faces), world-xz UVs as the facades' pitched roofs; flat faces stay in the city
+   mesh. OT_ROOF_GAIN lifts the texture's mean (0.83 in linear light) back to 1, so the roof keeps its colour on average. */
+const OT_ROOF_GAIN=1.2,OLDROOF_MAT=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.8,flatShading:true,
+  map:texRepeat(canvasTexture(64,64,(x,w,h)=>{x.fillStyle='#fff';x.fillRect(0,0,w,h);x.fillStyle='rgba(0,0,0,.3)';
+    for(let y=0;y<h;y+=8){x.fillRect(0,y,w,2);for(let i=(y/8)%2*8;i<w;i+=16)x.fillRect(i,y,1,8);}}),6,6)});
+OLDROOF_MAT.color.setScalar(OT_ROOF_GAIN);
+function buildCity3D(bytes,count,fac,old){
   const CELL=0.4;
   let cap=1<<19,pos=new Float32Array(cap*3),col=new Uint8Array(cap*3),nv=0,icap=1<<20,idx=new Uint32Array(icap),ni=0;
   function V(x,y,z,c,k){
@@ -934,7 +1082,19 @@ function buildCity3D(bytes,count,fac){
     mark(ax,ay,az);mark(bx,by,bz);mark(cx,cy,cz);
   }
   const windows=[];
+  // the old-town houses (old: BASEL.oldtown) left the pack; where one of them stood, the random numbers its walls
+  // used for window sprites are drawn and dropped, so every other building (and Basel in 1615) is drawn as before
+  const oldRecs=[],burns=[];
+  if(old&&old.count){const M=old.meta;let q=0;
+    decodePack(old.bytes,old.count,r=>{const src=M[q++];let at=0,sh=1,b;do{b=M[q++];at+=(b&127)*sh;sh*=128;}while(b&128);
+      const nf=M[q++];r.fronts=[];for(let f=0;f<nf;f++,q+=19)r.fronts.push(M.subarray(q,q+19));   // 19-byte fronts (oldtown.meta_bytes)
+      r.edge=null;if(nf>1){r.edge=M.subarray(q,q+r.walls.length/2);q+=r.walls.length/2;}
+      oldRecs.push(r);if(src===0&&(r.kind===0||r.kind===1))burns.push({at,r});});}
+  let bi=0,bq=0;
+  const burnTo=i=>{while(bq<burns.length&&burns[bq].at<=i){const {r}=burns[bq++],X=r.X,Y=r.Y,Z=r.Z,W=r.walls;
+    for(let e=0;e<W.length;e+=2){const a=W[e],c=W[e+1];if(rng()<0.35&&Math.hypot(X[c]-X[a],Z[c]-Z[a])>1.6&&Math.min(Y[a],Y[c])-r.zb>2.6){rng();rng();}}}};
   decodePack(bytes,count,({kind,rc,wc,zb,X,Y,Z,loops,walls})=>{
+    burnTo(bi++);
     if(kind===8){const ed=lod2Edit(X,Z);if(ed){LOD2_KEPT[ed.id]={X,Y,Z,zb};   // a tower redrawn after the evidence
       if(ed.skip){let ym=0;for(let i=0;i<Y.length;i++)ym+=Y[i]/Y.length;   // collide at the new tower's merlon tops
         roofTriangles(X,Z,loops,(a,c,d)=>raster(X[a],ym,Z[a],X[c],ym,Z[c],X[d],ym,Z[d]));return;}rc=ed.rc;wc=ed.wc;}}
@@ -958,6 +1118,63 @@ function buildCity3D(bytes,count,fac){
       }
     }
   });
+  burnTo(Infinity);
+  // old-town houses: flat roof faces into the city mesh, steep ones into one mesh of OLDROOF_MAT, walls into one mesh of
+  // OLDTOWN_MAT with each wall's front
+  let oldMesh=null,oldRoof=null;
+  if(oldRecs.length){
+    let nw=0;for(const r of oldRecs)nw+=r.walls.length/2;
+    const P=new Float32Array(nw*12),A=new Float32Array(nw*16),B=new Float32Array(nw*16),C=new Float32Array(nw*16),
+      Wc=new Uint8Array(nw*16),Sc=new Uint8Array(nw*16),Rc=new Uint8Array(nw*16),I=new Uint32Array(nw*6);let w=0;
+    const rP=[],rC=[],rU=[],STEEP=Math.cos(10*Math.PI/180),S=BASEL.S;
+    for(const r of oldRecs){
+      const {X,Y,Z,loops,walls,zb,rc}=r,first=nv,lc=[SRGB2LIN[rc[0]],SRGB2LIN[rc[1]],SRGB2LIN[rc[2]]];
+      for(let i=0;i<X.length;i++)V(X[i],Y[i],Z[i],rc,1);
+      roofTriangles(X,Z,loops,(a,c,d)=>{raster(X[a],Y[a],Z[a],X[c],Y[c],Z[c],X[d],Y[d],Z[d]);
+        const ux=(X[c]-X[a])*S,uy=(Y[c]-Y[a])/VS,uz=(Z[c]-Z[a])*S,vx=(X[d]-X[a])*S,vy=(Y[d]-Y[a])/VS,vz=(Z[d]-Z[a])*S;   // in metres
+        const nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;
+        if(Math.abs(ny)<=STEEP*Math.hypot(nx,ny,nz))for(const i of [a,c,d]){rP.push(X[i],Y[i],Z[i]);rC.push(...lc);rU.push(X[i]/1.6,Z[i]/1.6);}
+        else T(first+a,first+c,first+d);});
+      // walls that carry on in a straight line (a front split where its roof planes change) form one run, and so do
+      // facets under 3 m that turn less than 30 degrees from the wall before them with their eaves within 0.5 m (a bent
+      // or rounded front, as the reference world's runs): the axes are laid out, and the corners found, along the run
+      const nW=walls.length/2,len=new Float32Array(nW),run=new Int32Array(nW),off=new Float32Array(nW),runL=[];
+      const eave=k=>Math.min(Y[walls[2*k]],Y[walls[2*k+1]])/VS;
+      for(let k=0;k<nW;k++){const a=walls[2*k],c=walls[2*k+1];len[k]=Math.hypot(X[c]-X[a],Z[c]-Z[a])*BASEL.S;
+        const p=k-1,joined=k>0&&walls[2*p+1]===a&&(r.edge?r.edge[p]===r.edge[k]:true)&&len[p]>0&&len[k]>0,
+          cs=joined?((X[walls[2*p+1]]-X[walls[2*p]])*(X[c]-X[a])+(Z[walls[2*p+1]]-Z[walls[2*p]])*(Z[c]-Z[a]))*BASEL.S*BASEL.S/(len[p]*len[k]):0,
+          same=joined&&(cs>0.99||((len[p]<3||len[k]<3)&&cs>0.866&&Math.abs(eave(p)-eave(k))<=0.5));
+        if(same){run[k]=run[p];off[k]=runL[run[k]];runL[run[k]]+=len[k];}else{run[k]=runL.length;off[k]=0;runL.push(len[k]);}}
+      for(let e=0,k=0;e<walls.length;e+=2,k++,w++){
+        const a=walls[e],c=walls[e+1],F=r.fronts[r.edge?r.edge[k]:0],Lm=runL[run[k]],u0=off[k],u1=off[k]+len[k];
+        const ta=(Y[a]-zb)/VS,tc=(Y[c]-zb)/VS,seed=(Math.abs(X[0]*7.13+Z[0]*3.71+run[k]*1.7)%97)/97;   // one seed a run
+        // the row rule, version 3 (oldtown.rows_of, the same in the Blender world): H = the wall's own eave line (its
+        // lower top) less m_top, over the house's base zb (the game has one base per house); storeys of st_draw hang
+        // from it, their count the one that leaves the ground floor nearest gf_m but not under min(gf_m, 2.6) (on an
+        // arcade ground floor, F[1] 2, not under min(gf_m, max(2.6, gf_m - 1)): the arches need the height)
+        const st=(F[2]|F[3]<<8)/1000,gfm=(F[4]|F[5]<<8)/1000,Hw=Math.min(ta,tc)-F[18]/100,no=Hw<gfm-1e-6,   // ties: 1e-6 m
+          gMin=F[1]===2?Math.min(gfm,Math.max(2.6,gfm-1)):Math.min(gfm,2.6);
+        let nUp=no?0:Math.floor((Hw-gfm)/st+0.5+1e-6);while(nUp>0&&Hw-nUp*st<gMin-1e-6)nUp--;
+        const gfw=no?gfm:Hw-nUp*st,Hr=no?-1:Hw;
+        const vx=[[X[a],zb,Z[a],u0,0,ta],[X[c],zb,Z[c],u1,0,tc],[X[c],Y[c],Z[c],u1,tc,tc],[X[a],Y[a],Z[a],u0,ta,ta]];
+        for(let j=0;j<4;j++){const v=vx[j],o=(w*4+j)*4;P.set(v.slice(0,3),(w*4+j)*3);
+          A[o]=v[3];A[o+1]=v[4];A[o+2]=Lm;A[o+3]=seed;
+          B[o]=F[0];B[o+1]=F[1];B[o+2]=st;B[o+3]=gfw;
+          C[o]=F[6]/10;C[o+1]=v[5];C[o+2]=Hr;C[o+3]=gfm;
+          for(let ch=0;ch<3;ch++){Wc[o+ch]=SRGB2LIN[F[7+ch]];Sc[o+ch]=SRGB2LIN[F[10+ch]];Rc[o+ch]=SRGB2LIN[F[14+ch]];}
+          Wc[o+3]=255;Sc[o+3]=F[13]?255:0;Rc[o+3]=F[17]?255:0;}
+        const b0=w*4;I.set([b0,b0+1,b0+2,b0,b0+2,b0+3],w*6);
+      }
+    }
+    const og=new THREE.BufferGeometry();
+    og.setAttribute('position',new THREE.BufferAttribute(P,3));
+    for(const [nm,arr,norm] of [['oA',A],['oB',B],['oC',C],['oW',Wc,1],['oS',Sc,1],['oR',Rc,1]])og.setAttribute(nm,new THREE.BufferAttribute(arr,4,!!norm));
+    og.setIndex(new THREE.BufferAttribute(I,1));og.computeBoundingSphere();
+    oldMesh=new THREE.Mesh(og,OLDTOWN_MAT);oldMesh.renderOrder=1;   // drawn after the roofs: hidden walls cost no shading
+    if(rP.length){const rg=new THREE.BufferGeometry();rg.setAttribute('position',new THREE.BufferAttribute(new Float32Array(rP),3));
+      rg.setAttribute('color',new THREE.BufferAttribute(new Uint8Array(rC),3,true));rg.setAttribute('uv',new THREE.BufferAttribute(new Float32Array(rU),2));
+      rg.computeBoundingSphere();oldRoof=new THREE.Mesh(rg,OLDROOF_MAT);}
+  }
   const g=new THREE.BufferGeometry();
   g.setAttribute('position',new THREE.BufferAttribute(pos.slice(0,nv*3),3));
   g.setAttribute('color',new THREE.BufferAttribute(col.slice(0,nv*3),3,true));
@@ -967,6 +1184,8 @@ function buildCity3D(bytes,count,fac){
   const mesh=new THREE.Mesh(g,mat);
   // facade buildings: the same shapes with textured walls (u along each wall, v up it) and roofs
   const extras=new THREE.Group();
+  if(oldMesh)extras.add(oldMesh);
+  if(oldRoof)extras.add(oldRoof);
   if(fac&&fac.count){
     const acc=new Map();
     const put=(m,pts,uvs)=>{let a=acc.get(m);if(!a)acc.set(m,a={pos:[],uv:[]});for(const q of pts)a.pos.push(q[0],q[1],q[2]);for(const t of uvs)a.uv.push(t[0],t[1]);};
@@ -3552,7 +3771,8 @@ const RIVER_PLAN_TODAY=(()=>{   // after the photos mapped to stretches of shore
 const TODAY=ERA_GROUP.today;
 RIVERS.today=buildRiver(GB.banks,RIVER_PLAN_TODAY,TODAY);
 const cityToday=buildCity3D(await gunzip(BASEL.lod2.gz),BASEL.lod2.count,
-  {bytes:await gunzip(BASEL.facades.gz),count:BASEL.facades.count,styles:BASEL.facades.styles});TODAY.add(cityToday.mesh,cityToday.extras);
+  {bytes:await gunzip(BASEL.facades.gz),count:BASEL.facades.count,styles:BASEL.facades.styles},
+  BASEL.oldtown&&{bytes:await gunzip(BASEL.oldtown.gz),count:BASEL.oldtown.count,meta:await gunzip(BASEL.oldtown.meta)});TODAY.add(cityToday.mesh,cityToday.extras);
 if(BASEL.details)laelleHouse(FACADE_WALLS.laelle,BASEL.details.laelle,TODAY);
 letziWalk(FACADE_WALLS.letzimauer,TODAY);
 letziRound(FACADE_WALLS.letzimauer,TODAY);
@@ -5581,7 +5801,7 @@ function applyTheme(){
   scene.background=new THREE.Color(p.sky);scene.fog.color.set(p.sky);
   photoMat.color.set(p.photo);bankMat.color.set(p.city);treeMat.color.set(p.tree);
   waterMat.color.set(NIGHT?0x10202a:0x3e6b62);waterMat.envMap=NIGHT?SKY_NIGHT:SKY_DAY;waterMat.needsUpdate=true;
-  for(const c of [cityToday,city1615])if(c)c.mat.color.set(p.city);
+  for(const c of [cityToday,city1615])if(c)c.mat.color.set(p.city);OLDTOWN_MAT.color.set(p.city);OLDROOF_MAT.color.set(p.city).multiplyScalar(OT_ROOF_GAIN);
   hemi.color.set(p.hs);hemi.groundColor.set(p.hg);hemi.intensity=p.hi;sun.color.set(p.sun);sun.intensity=p.si;
   cloudMat.color.set(p.cloud);cloudDeckMat.color.set(p.deck);farMat.color.set(p.hill);HAZE.max.value=p.haze;
   for(const w of [winToday,win1615])if(w)w.visible=NIGHT;

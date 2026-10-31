@@ -32,6 +32,7 @@ from collections import Counter
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import horizon  # noqa: E402
 import mapbs  # noqa: E402
+import oldtown  # noqa: E402
 import sb3d  # noqa: E402
 
 S = 5.0             # metres per game unit on the ground
@@ -264,16 +265,7 @@ def star_shaped(r):
     return True
 
 
-def tile_tint(c):
-    """Pitched roofs in Basel are clay tiles: warm the reddish ones, and pull grey or tree-covered ones towards terracotta."""
-    r, g, b = c
-    if g >= r or max(c) - min(c) < 14:
-        r, g, b = r * 0.4 + 156 * 0.6, g * 0.4 + 92 * 0.6, b * 0.4 + 70 * 0.6
-    else:
-        lum = (r + g + b) / 3
-        r, g, b = (lum + (v - lum) * 1.4 for v in (r, g, b))
-        r, g, b = r + 10, g - 2, b - 10
-    return tuple(int(min(255, max(0, v))) for v in (r, g, b))
+tile_tint = oldtown.tile_tint    # pitched roofs: clay tiles (shared with the old-town roofs in oldtown.py)
 
 
 def obb(r):
@@ -1982,8 +1974,12 @@ def main(raw, work, out_js):
 
     # pack: varints, buildings in rows of 100 m cells so neighbours follow each other, then gzip. Facade buildings
     # (their kind byte is the facade style) go in a pack of their own.
-    def pack(rs):
-        rs.sort(key=lambda r: (int(r["c"][1] // 100), int(r["c"][0] // 100), r["c"][0]))
+    def pack_order(r):
+        return (int(r["c"][1] // 100), int(r["c"][0] // 100), r["c"][0])
+
+    def pack(rs, order=True):
+        if order:
+            rs.sort(key=pack_order)
         buf = bytearray()
         fx = fy = 0
         for r in rs:
@@ -2238,8 +2234,25 @@ def main(raw, work, out_js):
     n_verts = sum(len(r["verts"]) for r in recs)
     n_loops = sum(len(r["loops"]) for r in recs)
     n_idx = sum(len(l) for r in recs for l in r["loops"])
-    buf, packed = pack(recs)
-    _, fpacked = pack(frecs)
+    # old-town houses (oldtown.py, from the reference library's facade types exported to oldtown-facades.json) leave
+    # the two packs for a third, BASEL.oldtown: the same records, plus each one's facade fronts in a meta pack (its
+    # source, the number of lod2 records before it, so the game can keep its random numbers, and per wall its front)
+    recs.sort(key=pack_order)
+    frecs.sort(key=pack_order)
+    keep_l, keep_f, olds, ometa = recs, frecs, [], bytearray()
+    otab = os.path.join(os.path.dirname(os.path.abspath(__file__)), "oldtown-facades.json")
+    if os.path.exists(otab):
+        # the matching runs on vertices rounded to 0.1 m, as the packs store them (oldtown.split): the patcher of a
+        # built basel-data.js moves the same houses. A moved house's roof colour comes from its classified roof faces.
+        keep_l, keep_f, opairs, ometa, _, ostats = oldtown.split(recs, frecs, FACADE_STYLES, oldtown.load(otab),
+                                                                (geo.e0, geo.n0))
+        olds = [dict(r, roof=roof) if roof else r for r, roof in opairs]
+        print("old-town facades:", len(olds), "buildings", json.dumps(ostats), flush=True)
+    else:
+        print("no oldtown-facades.json beside build_city.py: old-town facades as before", flush=True)
+    buf, packed = pack(keep_l)
+    _, fpacked = pack(keep_f)
+    _, opacked = pack(olds, order=False)
 
     # ---------- landmarks, places, trees, bridges, ferries ----------
     landmarks = {}
@@ -2469,8 +2482,11 @@ def main(raw, work, out_js):
         "ground": {"x0": W / S, "x1": E / S, "z0": -N / S, "z1": -Sth / S, "avg": [round(c) for c in avg],
                    "src": "data:image/avif;base64," + ground_b64, "fallback": "data:image/jpeg;base64," + small_b64,
                    "banks": shores, "course": course},
-        "lod2": {"count": len(recs), "gz": base64.b64encode(packed).decode()},
-        "facades": {"count": len(frecs), "gz": base64.b64encode(fpacked).decode(), "styles": FACADE_STYLES},
+        "lod2": {"count": len(keep_l), "gz": base64.b64encode(packed).decode()},
+        "facades": {"count": len(keep_f), "gz": base64.b64encode(fpacked).decode(), "styles": FACADE_STYLES},
+        **({"oldtown": {"count": len(olds), "gz": base64.b64encode(opacked).decode(),
+                        "meta": base64.b64encode(gzip.compress(bytes(ometa), 9, mtime=0)).decode(),
+                        "types": ["plain"] + oldtown.TYPES, "ground": oldtown.GROUND}} if olds else {}),
         "trees": b64(trees), "treeInfo": b64(tree_info),
         "towers": towers, "landmarks": landmarks, "iconic": dict(iconic, sbb=sbb_front, uni=uni), "places": places, "bridges": bridges, "ferries": ferries,
         "rail": rail, "tracks": rail_lines(raw, geo), "awnings": awnings, "market": market,
@@ -2481,7 +2497,7 @@ def main(raw, work, out_js):
     with open(out_js, "w") as f:
         f.write(js)
     print(json.dumps({"buildings": len(recs), "roof_vertices": n_verts, "roof_polygons": n_loops, "loop_indices": n_idx,
-                      "walls": [n_walls, n_edges], "facade_buildings": len(frecs),
+                      "walls": [n_walls, n_edges], "facade_buildings": len(keep_f), "oldtown_buildings": len(olds),
                       "packed_kB": [len(buf) // 1000, len(packed) // 1000],
                       "trees": {"register": n_register, "osm": len(tree_info) - n_register}, "stats": stats,
                       "bridges": [[b["name"], b["structure"], b["axis"][2] * S, b["water"]] for b in bridges],

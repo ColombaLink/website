@@ -24,6 +24,35 @@ swissBUILDINGS3D in places. The canton's Geodaten-Shop (shop.geo.bs.ch) sends it
 with georeferencing (LV95) for areas of up to 5 km² covering the map, and put the GeodatenBS_*.zip archives it sends
 (or the OBJ files in them) in `<raw-dir>/mapbs`. Without them the build keeps swissBUILDINGS3D everywhere and says so.
 
+The old-town facade pack: `build_city.py` moves the houses of the old town (Grossbasel's inner town and Kleinbasel's
+core) out of the two building packs into a third, `oldtown`, the same records plus each house's front: its facade type
+(A1-A4, H1, H2, M1-M4; churches, stone and utility buildings stay as they were), ground floor (plain, shopfront,
+arcade, garage), storey, ground-floor and bay sizes, and its wall, shutter and surround colours. Each moved house's
+roof takes the colour of its classified roof faces (clay through `tile_tint`, other roof classes their own tints); the
+game draws its faces of 10 degrees or steeper with one tile texture times that colour, and its flatter faces in plain
+colour. The game draws the walls with one shader to the same window sizes and rules as the Blender reference world.
+Window rows hang from the eave line, as in the Blender world (the shared row rule, version 3): `oldtown.py` exports
+each house's drawn storey height `st_draw` (the height that fills the house's front from its ground floor to m_top
+under its eave with its storey count, always 2.6-4.5 m; where the front's room A over gf_m falls between one and two
+storeys, 4.5-5.2 m, it is clamped: 2.6 m for two upper storeys where the house has three or more storeys and the
+ground floor this leaves, gf_m - (5.2 m - A), is not under the house's own floor (below), else 4.5 m for one), and the
+game lays each wall's storeys down from its own eave less m_top (0.5 m, 0.6 m for H1). Their count is the one that
+leaves the ground floor nearest the house's ground-floor height gf_m but not under its floor, min(gf_m, 2.6 m) (on
+the nine houses with an arcade ground floor min(gf_m, max(2.6 m, gf_m - 1.0 m)), since the arches need the height);
+halves round up and ties are settled to 1e-6 m, the same in Python, the game and Blender. A wall lower than
+m_top + gf_m gets no windows. Shopfronts, arcades, garage doors, doors, ground-floor windows and the plinth are sized
+for a ground floor of min(gf_h, max(gf_m, 2.0 m)) in the game's shader and of min(gf_h, gf_m) in Blender: the game
+keeps a 2 m floor under the openings that Blender does not, so the two differ only where gf_m is under 2 m, and they
+agree on the current data, where no typed house has gf_m under 2.6 m (the lowest is 2.8 m). Any ground floor above
+the openings is plain wall, with a string course at the first floor. The input is `oldtown-facades.json`, kept in the
+repository beside `build_city.py` because the library is outside Git (without it the build leaves the old town as
+before), written
+by `oldtown.py export` from the Basel reference library (`data/basel-reference`, kept outside Git): the resolved facade
+types (`facades/resolved.json`, `records.json`, `areas-lv95.json`), the reference world's `cache/facade-types.json`
+(wall colours, shared with Blender) and `cache/roof-classes.json`. To rebuild it, run
+`python3 -I -B secret-pigeon/build/oldtown.py export data/basel-reference/facades data/basel-reference/reference-world/cache/facade-types.json data/basel-reference/reference-world/cache/roof-classes.json secret-pigeon/build/oldtown-facades.json`,
+then `build_city.py` and `assemble.py` as above.
+
 | File | Does |
 |---|---|
 | `fetch_data.py` | Downloads the swisstopo aerial photo at 1 m per pixel (WMS), swissBUILDINGS3D 3.0 (CityGML), Basel's tree register and its register of the stairs and ladders down to the rivers, IWB's fountain inventory and the canton's public art collection (data.bs.ch) and the OpenStreetMap landmarks, bridges, ferries, railway tracks, tram tracks and lines, bus lines and the roads around them, shopping streets and place names (Swiss Overpass mirror), the Rhine's centreline for 22 km round the city (the ways of its OpenStreetMap waterway relation that are its main stream; one small query to the main Overpass instance, since the Swiss mirror's data stops at the border), Switzerland's public transport timetable (GTFS, opentransportdata.swiss), and the Copernicus DEM GLO-90 (a 3 arc-second surface model, heights over the EGM2008 geoid) within 75 km of the Mittlere Brücke: nine 1-degree tiles from the AWS open data registry, no sign-in. |
