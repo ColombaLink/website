@@ -90,12 +90,16 @@ where Basel-Stadt's bridge 3D model has them (`build_city.py`'s `BRIDGE_PIERS`, 
 checked against the engineers' span figures): the Mittlere Brücke's six granite arches on five piers (pointed upstream, round downstream), the
 middle one with the Käppelijoch (after the canton's model, the 1962 elevation and photos), the old SBB bridge's
 lattice girders under its tracks and the new one's haunched concrete box. The ferries are built after photos of
-them (Leu, Vogel Gryff, Wild Maa and Ueli, each in its colours where a photo was gathered), cross as the reaction
+them, as the vehicle spec's model decisions give them and the reference world draws them (Leu 13.0 × 3.7 m, green
+band of white panels and a barrel roof with solar panels; Vogel Gryff 14.7 × 4.1 m, slanted blue blocks on white,
+framed and round windows under a flat roof; Wild Maa red-and-white stripes and a glazed cabin whose roof runs on over
+the deck; Ueli black-and-white stripes, a stepped roof and its name board; the last two's sizes are estimates), each a
+long flat hull whose bow narrows and sweeps up, its cabin windows lit at night, and they cross as the reaction
 ferries they are (the current presses on the hull the rudder sets at an angle to it, the tether to the trolley on the
 high cable takes the push along the hull and the rest carries the boat over; the Basel ferry friends' *Fähri-Zytig*
 and the reaction-ferry article stored in the research library): bow upstream, turned about 35° towards the bank
 they are making for, straightening as they land; their floors sit above the waterline. They land at landing stages on floats with railed gangways and hang from masts on the
-promenades, waiting while a ship comes by; the canton's stairs and ladders lead down to the water
+promenades, waiting while a ship, the Merian or a cargo ship, comes by; the canton's stairs and ladders lead down to the water
 where its register puts them. Two bridgeheads are built after the reference world's pass on them (the bridge-bank
 photos and the canton's bridge model): where the Mittlere Brücke lands in Kleinbasel, the lower promenade runs under
 its land arch and under a terrace either side of it at the deck's level, ceiled in blue-green glass between concrete
@@ -106,11 +110,31 @@ Pfalz has a chain on concrete posts. Past the edge of the map the river runs on 
 upstream round the bend at the Birsfelden power station (through its weir, OpenStreetMap's main stream) towards Augst
 and Rheinfelden, downstream north along the Upper Rhine (past the Märkt weir down the Old Rhine, not the Grand Canal
 d'Alsace), in 1615 as today. Each shore keeps the distance from the other at which it leaves the map, while the river's
-middle eases over onto the centreline in the first 750 m. BPG's MS Rhystärn lies
-at the Schifflände landing stage below the Mittlere Brücke, MS Christoph Merian (in her patchwork of colours) at the
-next one down, leaving now and then for a trip up the Rhine towards Birsfelden, a white Viking longship at the hotel
-ships' landing stage in St. Johann; no boat stands in a bridge: moored ones are kept 8 m clear of every deck and pier
-head, and the Merian passes each bridge square to it, straight through its widest opening that her decks fit under, and the Rhine baths of St. Johann and the Breite stand on their stilts (after the
+middle eases over onto the centreline in the first 750 m. BPG's MS Rhystärn (69.9 × 11.4 m: a raked bow, navy
+under white, the salon glazed nearly floor to ceiling, the panorama deck with its glazed lounge and wheelhouse forward
+and a sun roof on posts aft) lies at the Schifflände landing stage below the Mittlere Brücke, MS Christoph Merian
+(65.5 × 10.5 m, in the patchwork of colours she has worn since 2023, solid low on her walls and coloured and clear panes
+above) at the next one down, leaving now and then for a trip up the Rhine towards Birsfelden, a white Viking longship
+(135 m: its hull's window row, two decks of tall cabin windows, the round lounge at the bow, umbrellas and an awning on
+the sun deck) at the hotel ships' landing stage in St. Johann; the hulls rise at the bow and rake forward, as the
+reference world's, their windows light at night and their navigation lights burn (white masthead and stern light, red
+to port, green to starboard). Rhine cargo ships pass through the city, four to eight a day by the spec's cargo traffic
+rule, picked from the date with the same FNV-1a hash as the trams' variants: motor cargo ships (86-110 m, hatch covers,
+the accommodation aft and the skipper's car on the deck behind it), two-tier container ships with their boxes'
+colours picked the same way, and now and then a pusher with one barge; upbound laden at 8-10 km/h, downbound at 15-18
+on the timetable clock, one at a time, each down the middle of the river and through each bridge's widest opening it
+fits, its wheelhouse lowered on its column and its masts laid down from 200 m before the first bridge to 200 m after
+the last (the spec's stretch is the Wettsteinbrücke to the Johanniterbrücke; the game's Schwarzwald railway bridge and
+Dreirosenbrücke are drawn lower than the real ones, so it lowers there too), raised in between and beyond; lowered,
+the pusher's laid-down mast and its masthead light stay under its 4.05 m deck-house roof. It waits off the map while the
+Merian is out, and short of a ferry's crossing while that ferry is out. The Merian stays at her landing while a cargo
+ship is about, and the ferries hold back for her only once she is about to leave. After a jump of the clock (a tab
+brought back from the background, or the timetable wrapping round) the passage under way is placed where it would be,
+the Merian sent back to her landing first and any ferry out at a crossing the ship is near or heading for back to its
+landing.
+Every boat is one mesh in one shared material. No boat stands in a bridge: moored ones are kept 8 m clear of every deck and pier
+head, and the Merian passes each bridge square to it, straight through its widest opening that her decks fit under
+(her wheelhouse lowered into its block), and the Rhine baths of St. Johann and the Breite stand on their stilts (after the
 operators' figures and photos). In the tour the pigeon can dive into the river's bed and fly along the water. In
 1615 it marks the university's first home instead, the
 college on the Rheinsprung, used from 1460 until the Kollegienhaus opened. Basel's public fountains stand where IWB's
@@ -186,14 +210,50 @@ over a pale-mint gutter and upstand (287-289 m), with "MARKTHALLE" in dark bronz
 south facet and the glazed lantern (curb, railing, glazed band to 308.6 m, glazed pyramid to 312.6 m, small finial)
 lit at night. After the audit of 30 October 2026 (the 2026 obliques, two south-looking obliques of Basel SBB's front taken for it, the drone films and ground photos, as the reference world reads them), today's Elisabethenkirche has a square shaft to 35 m under an octagonal belfry (35-47 m, 5.8 m across, a two-light opening on each face, wimpergs to 49.5 m, corner pinnacles to about 52 m and four gargoyles on the diagonals) and an openwork spire whose ribs meet at 67.5 m under a finial at 71.7 m, three dials 1.9 m across at 31.8 m (east, south and north) and a nave of six bays a side with its eaves at 21 m and its ridge at 33 m; today's Rathaus tower has its own hipped roof of fish-scale tiles with a bell stage in its front face (tiled cheeks, a dark opening with the two bells, gilt screens and posts), red cornices with blue bands and its west face drawn, the north wing a two-storey box oriel and an aedicule gable over windows in groups of three, four and five, and the main front its photo layout with 17 merlons carrying the thirteen old cantons' shields and a black dial 1.7 m across in a narrow gilt tabernacle; Basel SBB stands on the street at 278.0 m (`build_city.py` sets the ground of its facade records to the street, where swisstopo's 274.24 m had raised the station 3.76 m), its arch glazed under a copper hood, portals, signs and dials on the towers' fronts, square copper domes on the towers' 7.8 m tops with finials and flags (Swiss east, Basel west), a canopy at two levels, the centre block's seven bays under a balustrade with statues and two red-brown strips along the hall's vault; and the churches' tops follow the photos: the Theodorskirche's tower is ashlar under a saddle between two gables with a slim copper turret in mid-ridge, the Predigerkirche's openwork turret stands 4.6 m off the ridge on a white plastered shaft, the Peterskirche's tower is a saddle between ashlar gables under a dark lantern, a flared slate spire, a gilt ball and an iron cross, the Martinskirche's a stone saddle with a copper lantern, a gilt ball and a weathercock, the Clarakirche's glazed spire is chevron-tiled on its lower part under a copper needle, ball and vane, the Leonhardskirche has a red lantern with a flared spire, and the blue clocks are gone from the Peters-, Theodors- and Leonhardskirche. The 1615 scene keeps the gates, churches and Münster as they were (their changed parts are
 built twice, once for each era). It lays every railway and tram track in the map, runs a DB ICE and an SBB EuroCity towards Germany and a TGV
-Lyria towards France, and runs Basel's twelve tram lines to their real weekday timetable, three times faster than life and from the
-time it is in Basel, every trip stopping at each of its stations. A tram waits behind one ahead of it on its track, and
-where two tram tracks cross, join, or run closer than two trams can pass (lines 10 and 17 run both ways on one track
+Lyria towards France (each its real formation at its real length, from the same table as the reference world's
+`blender/roadrail_shapes.py`: the ICE is, run by run, a 13-car ICE 4 (374 m), a 7-car ICE 4 (201 m) or an 8-car ICE 3
+(201 m) by the spec's shares 35/25/40, picked by the run's key `ICE|<direction>|<departure>` hashed as the trams' and
+changed only off the map; the EuroCity is SBB's eleven-part Giruno (202 m, Jacobs bogies, red doors, a dark
+window band and a red nose cap over a broad white bumper); the TGV a Lyria Euroduplex, two power cars and eight double-deck trailers (200 m; the end trailers red, the six middle ones grey with a red line). Each car has its nose,
+windows with pillars, doors, livery bands, gangway, bogies with side frames and a raised single-arm pantograph where the
+train has one; white head lamps lead, red tail lamps trail and the windows light up at night. Each train stands at Basel
+SBB and the Badischer Bahnhof with its middle at the station and sinks out of sight into the tunnels), and runs Basel's twelve tram lines to their real weekday timetable, three times faster than life and from the
+time it is in Basel, every trip stopping at each of its stations. Each trip is run by one of the real variants, at its
+real length and after the photos and sheets in the reference library's `vehicles/vehicle-specs-2026-10-31.json`: BVB's
+long Flexity (7 modules, 42.9 m), short Flexity (5 modules, 31.6 m), Combino (42.9 m) and Cornichon with its trailer,
+and BLT's TINA (45.5 m), Tango (44.89 m, a cab at each end) and Schindler Be 4/8 + Be 4/6 pair (line 17). Each variant
+has its cabs, its doors on the right (both sides on the Tango), its window band and livery bands (BLT's red stripe
+right under the windows), a band in the body colour from the window heads to the roof edge, its roof equipment and a
+single-arm pantograph raised to 5.8 m (over the cab module on the Combino and the Tango, as in the photos). The Flexity,
+Combino, TINA and Tango carry fairings in the body colour along both roof edges and a cap in the body colour over each
+cab, with the grey roof between them; each cab front follows its photos (the Flexity's white sill line under the
+windscreen, the TINA's yellow nose with its black lamp strip, the Schindler's display above a single windscreen, the
+Cornichon's route box). The far trams take the same colours, fairings and cab fronts. Module lengths, bogies, doors,
+pantographs, band heights and the upper body are one table with the reference world's `blender/tram_models.py`; where
+neither the spec nor a photo gives them they are estimates. The destination display shows the line's colour, and windows, headlamps,
+tail lamps and displays light up at night. The variant follows the spec's share for the line, picked by the trip's key
+`<line>|<direction>|<first departure>` hashed with 32-bit FNV-1a, mod 100 (the reference world uses the same rule). Each
+variant has as many trams as the timetable ever has out at once. Near the camera a tram is drawn in full, one
+draw call for each variant. Further than 250 m away it is drawn as a simpler one without its roof equipment, and all of these together take one
+draw call. A tram waits behind one ahead of it on its track, and
+where two tram tracks cross, join, or run closer than two trams can pass (allowing on each bend for how far the
+longest car its line runs cuts in) (lines 10 and 17 run both ways on one track
 over a crossing), one tram goes through at a time, or several on the same route. A tram starting its trip at a
 terminus in the map stands on the track behind the stop, and one running late still reaches its terminus before it goes.
-The 15 bus lines that come into the map run to the same timetable: BVB's green battery buses (Mercedes eCitaro G
-articulated buses, and HESS lighTram 25 double-articulated ones on line 50 to the airport, after the photos and
-specification sheets BVB publishes), BLT's and AAGL's yellow ones and SWEG's white ones. Every bus stands at each stop
+The 15 bus lines that come into the map run to the same timetable. Each trip runs one of seven variants, picked by the
+trams' rule from the shares the vehicle specification gives for its line (line EV8, which it does not cover, takes the
+Blender world's estimate): BVB's green battery buses, the 12.14 m Mercedes eCitaro, the 18.13 m eCitaro G and the
+24.37 m HESS lighTram 25 (mostly on line 50 to the airport, some on 30 and 36); BLT's yellow eCitaro and Citaro G on
+line 37; AAGL's yellow Citaro G and SWEG's white solo bus. Their sections, axles, doors and liveries come from one
+table shared with the Blender reference world, drawn after the photos and the specification sheets BVB publishes:
+rounded roof edges, a black glazing band with pillars over BVB's thin white line or BLT's red stripe, glazed doors on
+the right (white-framed on BVB's), round wheels with hubs in their arches, light grey bellows, battery fairings and a
+folded charging pantograph on the battery buses, the eCitaro's black mask in its white (BVB) or yellow (BLT) frame, the
+lighTram's upright front with its black header and a white line up both sides of its black mask over a green lower
+front, the Citaro's black-framed windscreen, and an amber destination display
+that lights up at night with the head and tail lamps. Near the camera a bus is drawn in full; further than 250 m away as
+a plain body in its colours, with a dark band at the wheels' height, its lit windscreen, display and headlamps at the
+front and its rear window and tail lamps at the back, in four draws (by which ends a section has). Every bus stands at each stop
 of its trip (a late one briefly) and moves only where its body and the road just ahead of it are clear of every other
 bus and tram; the trams keep clear of the buses the same way. Where a bus route crosses another or a tram track, joins
 one, or would meet a vehicle coming the other way on a bend or a narrow street, the game makes a zone (found when it
