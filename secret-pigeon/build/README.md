@@ -85,11 +85,38 @@ each stretch of them: Kleinbasel's sloped stone Rheinweg with a lower path at th
 the Leu ferry past the Kaserne to the Johanniterbrücke, grassy slopes at Solitude and below the Dreirosenbrücke, the
 Pfalz's and the Rheinsprung's tall walls over a narrow path, the quay at the Schifflände and Les Trois Rois, and the
 St. Alban- and St. Johanns-Rheinweg along the water under a railed wall; in 1615 town walls stand in the water on
-both sides. The bridges stand on the water with their decks as high over it as before, their piers and abutments
+both sides. The bridges stand on the water, their piers and abutments
 where Basel-Stadt's bridge 3D model has them (`build_city.py`'s `BRIDGE_PIERS`, measured on the canton's model and
 checked against the engineers' span figures): the Mittlere Brücke's six granite arches on five piers (pointed upstream, round downstream), the
 middle one with the Käppelijoch (after the canton's model, the 1962 elevation and photos), the old SBB bridge's
-lattice girders under its tracks and the new one's haunched concrete box. The ferries are built after photos of
+lattice girders under its tracks and the new one's haunched concrete box. Since 1 November 2026 today's
+Dreirosenbrücke, Schwarzwaldbrücke and the two railway bridges 40 m upstream of it stand at their real heights over the
+water: the canton city model's deck tops less 245.6 m, taken as the usual level of the Rhine that the game's flat water
+stands for (an estimate, ±0.4 m, between the gauge's mean of about 245.8 m and the lower level at the Dreirosenbrücke),
+in real metres like every other height. The Dreirosenbrücke's upper deck is 16.95 m over the water at mid main span and
+15.5 / 16.0 m at the Grossbasel / Kleinbasel water edges (the measured vertical curve between), its underside 7.90 m
+lower (DIC's section to the lower deck's underside; fib-CH's 8.25 m is the truss's depth measured another way), the
+motorway level inside the truss between the abutments only. The Schwarzwaldbrücke follows the canton's profile (14.9 m
+at most, 14.1 / 14.4 m at the Grossbasel / Kleinbasel water edges) on a girder 3.6 m deep at mid-span and 5.4 m over the piers (estimates). The
+railway bridges carry the tracks 14.6 m over the water (260.2 m, as the embankments), the 2013 box's underside drawn to
+Schnetzer Puskas' longitudinal section (read against the drawing's own levels: 253.35 m under the piers, a haunch
+rising to 255.7 m 13 m out, then a gentle curve to 257.2 m at mid-span, i.e. 7.75 / 10.1 / 11.6 m over the water; the
+box is 7.3 / 3.4 m deep under its top, which the drawing puts at 260.6 m, 0.4 m over the game's track level), the old
+bridge its 4.5 m lattice girders. Each deck
+holds its profile across the water and its bank up to the bank's top, so the abutments stand on the banks and the lower
+promenades pass under the Dreirosenbrücke's ends with 6.7-7.1 m of headroom; only on land do the approaches come down
+to the game's street, along their axes, on columns where they stand 3.5 m or more over it and solid below, every tram,
+bus and train following them: the Dreirosenbrücke 155 m (Grossbasel) and 171 m (Kleinbasel, ending before line 1 turns
+off) past the bank tops at 6 % at most; the Schwarzwaldbrücke 142 m in Grossbasel at 6 %, 62-63 m wide there to carry bus 42's road, which runs
+down beside the motorway between it and the railway's approach, but only 81 m in Kleinbasel, where bus 42 turns off
+and bus 31 crosses 207-252 m out, at up to 13.1 % (13.4 % over a metre on the buses; the real Kleinbasel street lies
+10-11 m over the water, the game's 6.5 m); the railway one approach each side for both bridges, 4.7 % in Grossbasel (ending before
+tram 3 and bus 80 cross), and in Kleinbasel kept 6.0 m over the street, 4.5 m clear, where buses 31 and 38 pass under
+it, then down at 3 % to 500 m out, in place of the railway's small bridge over that street. Under the Dreirosenbrücke's
+Kleinbasel end the harbour tracks, laid at the street's height, have 1.3-1.5 m under the truss (the real ones lie on
+the lower quay, about 5.5 m under it). The Mittlere Brücke keeps the game's 9.3 m (its real crown is about 8.8 m over the same
+water); the Johanniter- and Wettsteinbrücke keep the same 9.3 m, as their Grossbasel ends meet high ground (St. Johann, the Münster hill) that the
+game's flat city does not have. Bridges are not colliders, so the pigeon may now fly under the raised decks. The ferries are built after photos of
 them, as the vehicle spec's model decisions give them and the reference world draws them (Leu 13.0 × 3.7 m, green
 band of white panels and a barrel roof with solar panels; Vogel Gryff 14.7 × 4.1 m, slanted blue blocks on white,
 framed and round windows under a flat roof; Wild Maa red-and-white stripes and a glazed cabin whose roof runs on over
@@ -123,10 +150,15 @@ rule, picked from the date with the same FNV-1a hash as the trams' variants: mot
 the accommodation aft and the skipper's car on the deck behind it), two-tier container ships with their boxes'
 colours picked the same way, and now and then a pusher with one barge; upbound laden at 8-10 km/h, downbound at 15-18
 on the timetable clock, one at a time, each down the middle of the river and through each bridge's widest opening it
-fits, its wheelhouse lowered on its column and its masts laid down from 200 m before the first bridge to 200 m after
-the last (the spec's stretch is the Wettsteinbrücke to the Johanniterbrücke; the game's Schwarzwald railway bridge and
-Dreirosenbrücke are drawn lower than the real ones, so it lowers there too), raised in between and beyond; lowered,
-the pusher's laid-down mast and its masthead light stay under its 4.05 m deck-house roof. It waits off the map while the
+fits, its wheelhouse lowered on its column and its masts laid down from 200 m before to 200 m after each bridge whose
+opening its raised profile (9.4 m) does not clear and over the spec's stretch from the Wettsteinbrücke to the
+Johanniterbrücke, raised in between and beyond. With the real heights it no longer lowers at the railway bridges
+and the Schwarzwaldbrücke (where the route passes, 17 m off the 2013 box's mid-span, its raised profile clears the box's
+measured underside by 1.57 m, the old bridge by 0.59 m and the Schwarzwaldbrücke by 1.79 m), only from 1767 to 4270 m
+of its 4808 m route: at the Dreirosenbrücke (its underside is 9.05 m over the water, 0.47 m short) and over the spec's
+stretch; lowered,
+the pusher's laid-down mast and its masthead light stay under its 4.05 m deck-house roof (built for the Dreirosenbrücke's
+old 4.18 m underside; the smallest clearance there is now 5.0 m, so that cap no longer binds). It waits off the map while the
 Merian is out, and short of a ferry's crossing while that ferry is out. The Merian stays at her landing while a cargo
 ship is about, and the ferries hold back for her only once she is about to leave. After a jump of the clock (a tab
 brought back from the background, or the timetable wrapping round) the passage under way is placed where it would be,
@@ -134,7 +166,8 @@ the Merian sent back to her landing first and any ferry out at a crossing the sh
 landing.
 Every boat is one mesh in one shared material. No boat stands in a bridge: moored ones are kept 8 m clear of every deck and pier
 head, and the Merian passes each bridge square to it, straight through its widest opening that her decks fit under
-(her wheelhouse lowered into its block), and the Rhine baths of St. Johann and the Breite stand on their stilts (after the
+(her wheelhouse would go down into its block only where her raised profile does not clear; at the real heights it
+stays up on her whole trip, as the 2023 photos show it), and the Rhine baths of St. Johann and the Breite stand on their stilts (after the
 operators' figures and photos). In the tour the pigeon can dive into the river's bed and fly along the water. In
 1615 it marks the university's first home instead, the
 college on the Rheinsprung, used from 1460 until the Kollegienhaus opened. Basel's public fountains stand where IWB's
@@ -231,7 +264,7 @@ windscreen, the TINA's yellow nose with its black lamp strip, the Schindler's di
 Cornichon's route box). The far trams take the same colours, fairings and cab fronts. Module lengths, bogies, doors,
 pantographs, band heights and the upper body are one table with the reference world's `blender/tram_models.py`; where
 neither the spec nor a photo gives them they are estimates. The destination display shows the line's colour, and windows, headlamps,
-tail lamps and displays light up at night. The variant follows the spec's share for the line, picked by the trip's key
+tail lamps and displays light up at night. For play, a 0.6 m stripe in the line's colour runs along the middle of each tram's roof, between the fairings and over the roof equipment and the pantograph's base, on the near and the far trams and faintly lit at night, so that a pigeon can read the line from above; it is a game-only cue (the real trams have none, and the reference world leaves it out). The variant follows the spec's share for the line, picked by the trip's key
 `<line>|<direction>|<first departure>` hashed with 32-bit FNV-1a, mod 100 (the reference world uses the same rule). Each
 variant has as many trams as the timetable ever has out at once. Near the camera a tram is drawn in full, one
 draw call for each variant. Further than 250 m away it is drawn as a simpler one without its roof equipment, and all of these together take one

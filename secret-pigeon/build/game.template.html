@@ -1506,6 +1506,96 @@ const archAt=(s0,s1,ys,yc)=>{const span=s1-s0,rise=Math.max(0.05,yc-ys),R=(span*
 // four ribs at 8.0 and 2.7 m either side of the axis, so the deck runs about 4 m out past the outer ones (the 1938 widening)
 const WB=(()=>{const f=(DECK_Y-RIVER_Y)/17.7;return {pierTop:6.8*f,cope:0.4*f,spring:7.4*f,d0:1.5*f,d1:1.1*f,crown:2.8*f,
   slab:0.7*f,girder:2.6*f,girderHalf:9/BASEL.S,ribs:[-8,-2.7,2.7,8].map(v=>v/BASEL.S)};})();
+// today's raised bridges (1 Nov 2026): the Dreirosenbrücke, the Schwarzwaldbrücke and the two railway bridges 40 m
+// upstream of it stand at their real heights over the water. Their deck tops are the canton's city model's (Bru_413688,
+// Bru_26009; for the railway bridges the solids' flat 260.2 m, which matches the embankments at 260.0-260.6 m) less
+// 245.6 m, taken as the usual level of the Rhine that the game's flat water stands for (an estimate, +-0.4 m, between the
+// gauge's mean of about 245.8 m and the lower level at the Dreirosenbrücke). Real metres times VS like every other height,
+// nothing shrunk. h(r): metres over the water, r metres from the Grossbasel water edge towards Kleinbasel, the real water
+// being w m wide, mapped onto the game's water; past the water edges r runs on in real metres. Each deck holds that
+// profile across the water and its bank up to the bank's top (so the abutments stand on the banks and the promenades pass
+// under the ends), and only on land comes down to the street, along its axis. Per side: real, the real approach from the
+// water edge (m); g, the steepest grade wanted (real metres); cap, metres from the bridge's middle where a route crosses
+// or turns off, so the ramp ends there; hold [from, to, m], a stretch kept that high over the street for the road under
+// it; foot, where that approach meets the street. The Mittlere, Johanniter and Wettstein bridges keep DECK_Y: their
+// Grossbasel ends meet high ground (St. Johann, the Münster hill) that the game's flat city does not have.
+const RAISE=(()=>{
+  // Bru_26009's deck top every 10 m from 10 m behind the Kleinbasel water edge (the north bank) to 30 m past the
+  // Grossbasel one, less 245.6, over SWW m of water; h(r) reads it from the far end, as r runs from Grossbasel
+  const SWW=180,SW=[14.18,14.34,14.58,14.76,14.85,14.85,14.88,14.92,14.96,14.96,14.9,14.84,14.76,14.61,14.47,14.33,14.27,14.23,14.17,14.05,13.96,13.87,13.77];
+  return {
+    // 262.55 m at mid main span, 261.1 / 261.6 m at the water edges, a vertical curve between (measured every 10 m)
+    doubleDeck:{w:210,h:r=>16.95-(r<115?1.45/115**2:0.95/95**2)*(r-115)**2,gb:{real:145,g:0.06},kb:{real:300,g:0.06,cap:300}},   // tram 1 turns off at 303 m
+    girderCols:{w:SWW,h:r=>{const f=clamp((SWW+10-r)/10,0,SW.length-1.001),i=Math.floor(f);return Math.min(14.9,SW[i]+(SW[i+1]-SW[i])*(f-i));},
+      gb:{real:150,g:0.06,cap:250},kb:{real:150,g:0.06,cap:203},   // bus 80 crosses at 259 m; bus 42 turns off from 207 m, bus 31 crosses at 227 m
+      // on land 25 m wide on the railway's side in Kleinbasel (its yard tracks pass beside the ramp), as before on the other;
+      // in Grossbasel 30.6 m, and 31.7 m from 152 m out, to carry bus 42's road (its route runs 25-30 m off the axis, between
+      // the motorway and the railway's approach, and joins the bridge at the bank's top), clear of the railway's approach
+      lat:{gb:[[0,-30.6,31.4],[152,-31.7,31.4]],kb:[[0,-25,31.4]]}},
+    // the railway approaches, one each side for both bridges: from 7 m off the 2013 box's axis to 27 m, past the old
+    // bridge's, as the tracks curve away under the old one's line on both banks; in Kleinbasel past 270 m from 2 m
+    rail:{w:177,h:()=>14.6,gb:{real:150,g:0.025,cap:285},kb:{hold:[222,270,6.0],foot:500},   // tram 3 and bus 80 cross at 297 m; buses 31 and 38 at 226-262 m
+      lat:{gb:[[0,-7,27]],kb:[[0,-7,27],[270,2,27]]}}};
+})();
+// a ramp falling from r0 m over the street (a0 per metre at its top) in stages [length m, down to m, or null to stay level]:
+// each stage's grade eases in and out over 30 m and is steady between
+// (the approaches end 0.006 u over the street: the trams, buses and trains there run at 0.02-0.03)
+const rampOf=(r0,a0,stages)=>{const P=[];let h=r0,a=a0,d0=0;
+  for(const [len,to] of stages){if(to===null){P.push({d0,len,h,flat:true});d0+=len;a=0;continue;}
+    const c=Math.min(30,len/3),g=Math.max(0,(h-to-a*c/2)/(len-c));P.push({d0,len,h,g,c,a});d0+=len;h=to;a=0;}
+  const f=d=>{for(const s of P){if(d>s.d0+s.len)continue;if(s.flat)return s.h;const t=Math.max(0,d-s.d0),{len,c,g,a}=s;
+    const I=t<=c?a*t+(g-a)*t*t/(2*c):t<=len-c?c*(a+g)/2+g*(t-c):c*(a+g)/2+g*(len-2*c)+g*(t-len+c)-g*(t-len+c)**2/(2*c);return s.h-I;}return h;};
+  f.len=d0;f.gmax=Math.max(0,...P.map(s=>s.flat?0:Math.max(s.g,s.a)));return f;};
+const PROF=new Map(),RAMPS=[];   // the profiles (the railway bridges share the 2013 box's) and the approaches' plans, for the trees
+function raisedProfile(ref,S){
+  if(PROF.has(ref))return PROF.get(ref);
+  const [cx,cz,,,ang]=ref.axis,ca=Math.cos(ang),sa=Math.sin(ang),ne=ca+sa>0?1:-1,R=RIVERS.today,US=BASEL.S;
+  const gq=q=>groundAt(cx+ca*q*ne,cz-sa*q*ne,R);   // q: units from the middle towards Kleinbasel
+  const scan=s=>{let w=null;for(let q=0;q*s<80;q+=s*0.02){const y=gq(q);if(w===null&&y>RIVER_Y+1e-4)w=q;if(w!==null&&y>=-1e-4)return [w,q];}return [w,w];};
+  const [wG,bG]=scan(-1),[wK,bK]=scan(1);   // the water's edges and the banks' tops
+  const r=q=>q<wG?-(wG-q)*US:q>wK?S.w+(q-wK)*US:S.w*(q-wG)/(wK-wG),toe=0.006/VS;
+  const side=(qb,qw,dir,o)=>{const r0=S.h(r(qb))-RIVER_TOP,a0=(S.h(r(qb))-S.h(r(qb+dir*0.2)))/(0.2*US),from=Math.abs(qb)*US;
+    if(o.hold){const [h0,h1,over]=o.hold;return rampOf(r0,a0,[[h0-from,over],[h1-h0,null],[o.foot-h1,toe]]);}
+    let len=Math.max(o.real-Math.abs(qb-qw)*US,(r0-toe-a0*15)/o.g+30);if(o.cap)len=Math.min(len,o.cap-from);
+    return rampOf(r0,a0,[[len,toe]]);};
+  const rG=side(bG,wG,-1,S.gb),rK=side(bK,wK,1,S.kb);
+  const yq=q=>q<bG?rG((bG-q)*US)*VS:q>bK?rK((q-bK)*US)*VS:RIVER_Y+S.h(r(q))*VS;
+  const P={ref,cx,cz,ang,ne,wG,bG,wK,bK,rG,rK,uG:(bG-rG.len/US)*ne,uK:(bK+rK.len/US)*ne,
+    u:(x,z)=>(x-cx)*ca-(z-cz)*sa,y:u=>yq(u*ne)};
+  PROF.set(ref,P);return P;
+}
+const RAIL_REF=()=>BASEL.bridges.find(b=>b.water&&!b.name&&bridgeStyle(b)==='railBox');
+const inRailApp=(x,z)=>{const rb=RAIL_REF();if(!rb)return false;const P=raisedProfile(rb,RAISE.rail),u=P.u(x,z),v=(x-P.cx)*Math.sin(P.ang)+(z-P.cz)*Math.cos(P.ang);
+  return u>Math.min(P.uG,P.uK)&&u<Math.max(P.uG,P.uK)&&v*BASEL.S>-7&&v*BASEL.S<27;};
+// the lines on the ground that cross under an approach, for its columns to stand clear of
+const CROSS_PTS=(()=>{const pts=[];const add=p=>{for(let i=0;i+3<p.length;i+=2){const ax=p[i],az=p[i+1],bx=p[i+2],bz=p[i+3],n=Math.max(1,Math.ceil(Math.hypot(bx-ax,bz-az)/0.4));
+    for(let j=0;j<=n;j++)pts.push([ax+(bx-ax)*j/n,az+(bz-az)*j/n,Math.atan2(-(bz-az),bx-ax)]);}};
+  for(const t of BASEL.trams||[])for(const d of t.dirs)add(d.p);for(const t of BASEL.buses||[])for(const d of t.routes)add(d.p);
+  for(const p of BASEL.tramTracks||[])add(p);for(const p of BASEL.tracks||[])add(p);for(const t of BASEL.rail||[])add(t.p);return pts;})();
+// an approach on land: the deck from u0 to u1 along the frame M's axis (units), centred v0 across it, Wd wide, its top
+// y(u). A slab 1.2 m deep (a railway's 1.5 m; estimates) on columns where it stands 3.5 m or more over the street, a
+// solid ramp between walls below that. Columns keep 8 m clear of every line that crosses under it
+function approach(B,M,ang,u0,u1,v0,Wd,yA,kind){
+  if(u1-u0<0.05)return;
+  const n=Math.max(4,Math.ceil((u1-u0)/0.35)),xs=Array.from({length:n+1},(_,i)=>u0+(u1-u0)*i/n);
+  const Ma=new THREE.Matrix4().multiplyMatrices(M,new THREE.Matrix4().makeTranslation(0,0,v0)),rail=kind==='rail';
+  const dep=(rail?1.5:1.2)*VS,solid=x=>yA(x)<3.5*VS,bot=x=>solid(x)?-0.05:yA(x)-dep;
+  B.addGroups(profileGeo(xs,yA,bot,null,Wd),[BR.concrete,BR.concreteDark],Ma);
+  B.add(strip(xs,x=>yA(x)+0.005,-Wd/2+0.12,Wd/2-0.12,3),rail?BR.concrete:BR.road,Ma);
+  for(const s of [-1,1])B.add(ribbon(xs,yA,x=>yA(x)+(rail?0.15:0.3),s*(Wd/2-0.05),0.6),rail?BR.concreteDark:BR.rail,Ma);
+  if(!rail)for(let x=u0+0.6;x<u1-0.3;x+=6)for(const s of [-1,1]){const y=yA(x),z=v0+s*(Wd/2-0.08);
+    B.put(cyl6,BR.lampPole,M4(M,x,y,z,0.05,1.6,0.05));B.put(sphere8,BR.lampHead,M4(M,x,y+1.6,z,0.12,0.12,0.12));}
+  const um=(u0+u1)/2,c=new V3(um,0,v0).applyMatrix4(M),ca=Math.cos(ang),sa=Math.sin(ang);
+  const near=[];for(const [x,z,hd] of CROSS_PTS){if(Math.abs(Math.sin(hd-ang))<=0.45)continue;const dx=x-c.x,dz=z-c.z;
+    if(Math.abs(dx*ca-dz*sa)<=(u1-u0)/2+2&&Math.abs(dx*sa+dz*ca)<=Wd/2+2)near.push([x,z]);}
+  const nc=Math.max(2,Math.round(Wd/2.4));
+  for(let x=u0+1;x<u1-0.5;x+=4){if(solid(x))continue;
+    for(let j=0;j<nc;j++){const v=v0-Wd*0.4+j*Wd*0.8/(nc-1),p=new V3(x,0,v).applyMatrix4(M);
+      if(near.some(([X,Z])=>Math.hypot(X-p.x,Z-p.z)<1.6))continue;
+      B.put(cyl16,BR.concrete,M4(M,x,-0.05,v,0.2,yA(x)-dep+0.05,0.2));}}
+  const deck={cx:c.x,cz:c.z,ang,L:u1-u0,W:Wd,deckY:u=>yA(u+um),piers:[],spans:[],approach:kind};
+  (rail?RAIL_DECKS:BRIDGE_DECKS).push(deck);RAMPS.push(deck);
+}
 function buildBridge(br,B,era){
   const style=era==='1615'?'medieval':bridgeStyle(br),[cx,cz,L]=br.axis,ang=br.axis[4];
   // the Mittlere Brücke is 19 m wide between its parapets (the canton's bridge model; OSM's outline takes in its piers)
@@ -1513,13 +1603,17 @@ function buildBridge(br,B,era){
   const Ms=s=>s>0?Mb:new THREE.Matrix4().multiplyMatrices(Mb,new THREE.Matrix4().makeScale(1,1,-1));   // the -z side, facing out
   const t0=br.water?br.water[0]:0,t1=br.water?br.water[1]:1;
   const rail=era==='today'&&!water?railAt(br):null;     // over the tracks: high enough for a train; carrying them: low
+  if(rail==='on'&&inRailApp(cx,cz))return;   // the railway's bridge over the street at the Kleinbasel end: the approach crosses it now
   // over the Rhine everything stands on the water, below the street, and the deck is as high over it as ever
   const wy=water?RIVER_Y:0,under=x=>Math.min(0,groundAt(cx+Math.cos(ang)*x,cz-Math.sin(ang)*x,RIVERS[era]));
   const H=water?DECK_Y:rail==='over'?1.9:style==='viaduct'?1.6:Math.min(rail==='on'?0.55:1.6,0.3+L*0.035);
+  // today's raised bridges follow their real profile (RAISE); the old railway bridge shares the 2013 box's
+  const rkey=style==='railBox'||style==='railTruss'?'rail':style,RS=era==='today'&&br.water&&RAISE[rkey]?RAISE[rkey]:null;
+  const RP=RS?raisedProfile(rkey==='rail'?RAIL_REF()||br:br,RS):null;
   const arched=style==='stoneArch'||style==='medieval',steep=rail==='over'?0.07:0,railway=style==='railTruss'||style==='railBox';
-  const ra=arched?0.07:railway?0.3:steep||Math.min(0.32,Math.max(water?t0:0.28,0.1)),rb=arched?0.07:railway?0.3:steep||Math.min(0.32,Math.max(water?1-t1:0.28,0.1));
+  const ra=RP?0:arched?0.07:railway?0.3:steep||Math.min(0.32,Math.max(water?t0:0.28,0.1)),rb=RP?0:arched?0.07:railway?0.3:steep||Math.min(0.32,Math.max(water?1-t1:0.28,0.1));
   const sm=(e,v)=>{const t=Math.min(1,Math.max(0,v/e));return t*t*(3-2*t);};
-  const deckY=x=>{const t=(x+L/2)/L;return 0.12+(H-0.12)*sm(ra,t)*sm(rb,1-t);};
+  const deckY=RP?(RP.ref===br?RP.y:x=>RP.y(RP.u(cx+Math.cos(ang)*x,cz-Math.sin(ang)*x))):x=>{const t=(x+L/2)/L;return 0.12+(H-0.12)*sm(ra,t)*sm(rb,1-t);};
   if(railway||rail==='on')RAIL_DECKS.push({cx,cz,ang,L,W,deckY});
   const N=Math.max(8,Math.ceil(L/0.35)),xs=Array.from({length:N+1},(_,i)=>-L/2+L*i/N);
   const xw0=-L/2+t0*L,xw1=-L/2+t1*L,ne=Math.cos(ang)+Math.sin(ang)>0?1:-1;   // which end is the north-east (Kleinbasel) one
@@ -1640,24 +1734,38 @@ function buildBridge(br,B,era){
   const main=piers.length>1?Math.max(...piers.slice(1).map((p,i)=>p-piers[i])):L/3,shrink=k=>(DECK_Y-RIVER_Y)/(k*VS);
   let dMid=water?0.6:0.35,dPier=water?1.5:0.35,reach=0.32;
   if(style==='steelArch'||style==='doubleDeck')dMid=dPier=style==='steelArch'?0.3:0.25;
-  else if(style==='railBox'){dMid=3.4*VS*shrink(14.3);dPier=7.3*VS*shrink(14.3);reach=0.5;}   // 3.4 m at mid-span, 7.3 m over the piers, the track 14.3 m over the Rhine
+  else if(style==='railBox'){dMid=3.4*VS*shrink(14.3);dPier=7.3*VS*shrink(14.3);reach=0.5;   // 3.4 m at mid-span, 7.3 m over the piers, the track 14.3 m over the Rhine
+    if(RP){dMid=4.2*VS;dPier=8.1*VS;}}   // (raised: the soffit below follows the engineer's drawing instead)
+  else if(style==='girderCols'&&RP)dMid=3.6*VS;   // raised: 3.6 m at mid-span (Blender's estimate), haunched to the piers' 5.4 m as before (an estimate)
   else if(style==='railTruss')dMid=dPier=0.15;     // the deck plate: its lattice girders hang below it
-  const depth=x=>{if(style==='steelArch'&&sv&&x>e0-0.9&&x<e1+0.9)return WB.slab;let d=dMid;for(const p of piers)d=Math.max(d,dMid+(dPier-dMid)*Math.max(0,1-((x-p)/(reach*main))**2)**2);return d;};
+  // raised 2013 box: its soffit as Schnetzer Puskas' longitudinal section draws it (bridges/sbb-rheinbruecken/sbb-schnetzer-
+  // D-bild-83-Vorspannung2.jpg, read against the drawing's own levels: the navigation clearance's top 255.22 m, HSW
+  // 247.72 m; 11.7 px a metre both ways), in m over 245.6 by the distance in metres from the nearest pier's axis. The
+  // main and side spans read alike within 0.1 m: 253.35 m under the piers (7.3 m under the box's top at 260.6 m), a
+  // haunch rising to 255.7 m 13 m out, then a gentle curve to 257.2 m at mid-span (3.4 m deep)
+  const BOXS=[[0,7.75],[1.5,7.85],[3,8.37],[5,8.82],[7,9.16],[9,9.47],[11,9.78],[13,10.07],[16,10.3],[20,10.42],[25,10.6],
+    [30,10.72],[35,10.9],[40,11.05],[45,11.17],[50,11.37],[55,11.54],[58.6,11.6]];
+  const boxSof=x=>{let s=1e9;for(const p of piers)s=Math.min(s,Math.abs(x-p)*BASEL.S);let i=0;while(i<BOXS.length-2&&s>BOXS[i+1][0])i++;
+    const [s0,h0]=BOXS[i],[s1,h1]=BOXS[i+1];return RIVER_Y+(h0+(h1-h0)*clamp((s-s0)/(s1-s0),0,1))*VS;};
+  const depth=RP&&style==='railBox'&&piers.length?x=>deckY(x)-boxSof(x):x=>{if(style==='steelArch'&&sv&&x>e0-0.9&&x<e1+0.9)return WB.slab;let d=dMid;for(const p of piers)d=Math.max(d,dMid+(dPier-dMid)*Math.max(0,1-((x-p)/(reach*main))**2)**2);return d;};
   const bot=x=>Math.max(water?under(x):0,deckY(x)-depth(x));
   B.addGroups(profileGeo(xs,deckY,bot,null,W),[BR.concrete,BR.concreteDark],Mb);
   let soffit=bot;
   if(style==='doubleDeck'){
     // the motorway in the truss under the boulevard: 8.25 m deep overall, the boulevard about 15 m over the Rhine
-    const dd=8.25*VS*shrink(15),low=x=>Math.max(wy+0.55,deckY(x)-dd+0.23),lowB=x=>low(x)-0.23;   // in a tunnel on land
-    B.addGroups(profileGeo(xs,low,lowB,null,W),[BR.concrete,BR.concreteDark],Mb);
-    roadOn(BR.road,x=>low(x)+0.005,-W/2+0.6,W/2-0.6);
-    for(const s of [-1,1])B.add(ribbon(xs,low,x=>deckY(x)-0.25,s*(W/2-0.02),1.8),BR.truss,Mb);
-    B.add(ribbon(xs,low,x=>Math.max(low(x),deckY(x)-0.3),up*(W/2-0.45),2),BR.glass,Mb);
-    B.add(ribbon(xs,low,x=>Math.max(low(x),deckY(x)-0.3),-up*(W/2-0.45),2),BR.concreteDark,Mb);
+    // raised: 7.90 m from the deck to the lower deck's underside (DIC's section; fib-CH's 8.25 m is the truss's depth
+    // measured another way), and the motorway runs in the truss between the abutments only, into its tunnels in both banks
+    const dd=RP?7.9*VS:8.25*VS*shrink(15),low=x=>Math.max(wy+0.55,deckY(x)-dd+0.23),lowB=x=>low(x)-0.23;   // in a tunnel on land
+    const xd=RP?[e0,...xs.filter(x=>x>e0&&x<e1),e1]:xs;
+    B.addGroups(profileGeo(xd,low,lowB,null,W),[BR.concrete,BR.concreteDark],Mb);
+    B.add(strip(xd,x=>low(x)+0.005,-W/2+0.6,W/2-0.6,3),BR.road,Mb);
+    for(const s of [-1,1])B.add(ribbon(xd,low,x=>deckY(x)-0.25,s*(W/2-0.02),1.8),BR.truss,Mb);
+    B.add(ribbon(xd,low,x=>Math.max(low(x),deckY(x)-0.3),up*(W/2-0.45),2),BR.glass,Mb);
+    B.add(ribbon(xd,low,x=>Math.max(low(x),deckY(x)-0.3),-up*(W/2-0.45),2),BR.concreteDark,Mb);
     soffit=lowB;
   }
   if(style==='railTruss'){   // the old SBB bridge (the 1962 elevation): lattice girders about 4.5 m deep under the tracks
-    const dt=4.5*VS*shrink(14.3),lo=x=>Math.max(wy+0.1,deckY(x)-dt);
+    const dt=RP?4.5*VS:4.5*VS*shrink(14.3),lo=x=>Math.max(wy+0.1,deckY(x)-dt);   // raised: the real 4.5 m
     for(const s of [-1,1])B.add(ribbon(xs,lo,x=>deckY(x)-0.05,s*(W/2-0.12),2.4),BR.railTruss,Mb);
     B.add(strip(xs,lo,-W/2+0.1,W/2-0.1,2.4),BR.steel,Mb);
     soffit=lo;
@@ -1720,6 +1828,14 @@ function buildBridge(br,B,era){
   }
   if(water)for(let k=0;k<sup.length-1;k++){const s0=sup[k][1],s1=sup[k+1][0],a=arches&&arches[k];
     if(s1>s0)deck.spans.push([s0,s1,a?x=>Math.min(soffit(x),a[2](x)):soffit]);}
+  if(RP){const rl=rkey==='rail';   // the approaches on land
+    if(RP.ref===br){const US=BASEL.S;
+      for(const [a,b] of [[L/2,Math.max(RP.uG,RP.uK)],[-L/2,Math.min(RP.uG,RP.uK)]]){
+        const lat=RS.lat?RS.lat[b*RP.ne>0?'kb':'gb']:[[0,-W/2*US,W/2*US]];lat.forEach(([from,v0,v1],k)=>{
+        const s=Math.sign(b),f=Math.max(Math.abs(a),from/US),t=Math.min(Math.abs(b),k+1<lat.length?lat[k+1][0]/US:1e9);if(t<=f)return;
+        approach(B,Mb,ang,s>0?f:-t,s>0?t:-f,(v0+v1)/2/US,(v1-v0)/US,deckY,rl?'rail':'road');});}}
+    else{const o=RP.u(cx,cz),h=RP.ref.axis[2]/2;   // the old railway bridge's deck runs on to the 2013 box's ends, where the approaches begin
+      approach(B,Mb,ang,L/2,h-o+0.3,0,W,deckY,'rail');approach(B,Mb,ang,-h-o-0.3,-L/2,0,W,deckY,'rail');}}
 }
 
 /* ---------- the Elisabethenkirche (Ferdinand Stadler, 1857–64), after photos: a neo-Gothic hall church in grey-yellow
@@ -3920,7 +4036,9 @@ function bridgeheads(B){
 if(BASEL.landmarks.elisabethen)elisabethenkirche(BASEL.landmarks.elisabethen,TODAY);
 if(BASEL.iconic.sbb)sbbStation(BASEL.iconic.sbb,TODAY);
 if(BASEL.landmarks.markthalle&&BASEL.iconic.markthalle)markthalle(BASEL.landmarks.markthalle,BASEL.iconic.markthalle,TODAY);
-plantTrees(BASEL.trees,BASEL.treeInfo,TODAY,RIVERS.today,(x,z)=>{   // none in the Tinguely fountain's pool
+plantTrees(BASEL.trees,BASEL.treeInfo,TODAY,RIVERS.today,(x,z)=>{   // none in the Tinguely fountain's pool, nor on or under an approach
+  for(const d of RAMPS){const dx=x-d.cx,dz=z-d.cz,c=Math.cos(d.ang),s=Math.sin(d.ang);
+    if(Math.abs(dx*c-dz*s)<d.L/2+0.4&&Math.abs(dx*s+dz*c)<d.W/2+0.4)return true;}
   const T=BASEL.tinguely;if(!T||!T.length)return false;const dx=x-T[0],dz=z-T[1];
   return Math.abs(dx*T[2]+dz*T[3])<T[4]/2+0.3&&Math.abs(-dx*T[3]+dz*T[2])<T[5]/2+0.3;});
 const winToday=litWindows(cityToday.windows,TODAY,0xffd27a);
@@ -4430,8 +4548,8 @@ function merianBoat(){   // MS Christoph Merian, 65.5 x 10.5 m, in her 2023 patc
   K.box(s0+0.6,s0+0.68,-hw+1.0,hw-1.0,top+1.1,top+1.15,rails);
   K.flag(A+0.8,1.85,2.4);
   const mesh=K.build(),g=new THREE.Group();g.add(mesh);g.name='MS Christoph Merian';
-  // under the bridges her wheelhouse goes down 1.05 m into its block, as the game has always drawn BPG's ships for the
-  // bridges (the photos show it up); her profile, metres over the water by the offset from her middle line
+  // her wheelhouse can go down 1.05 m into its block, which she does only under a bridge her raised profile does not clear
+  // (the photos show it up); her profile, metres over the water by the offset from her middle line
   return {g,mesh,parts:{lift:[[lift0,lift1,top+0.16,1.05]]},need:(o,low)=>Math.abs(o)<=2.65?top+2.35-(low?1.05:0):Math.abs(o)<=hw+0.1?top+1.15:dz+1.2};
 }
 function vikingBoat(){   // a Viking longship, 135 x 11.45 m
@@ -4699,11 +4817,17 @@ if(RIVERS.today&&BASEL.bridges.some(b=>/Mittlere/.test(b.name))){
       ...leg(sB-6,sFar),riv(sFar,0.75),riv(sFar-12,0.5),riv(sFar,0.25),...leg(sFar+12,sM+0.01),
       [(exitDn[0]+riv(sB-Lm*0.55,0.24)[0])/2,(exitDn[1]+riv(sB-Lm*0.55,0.24)[1])/2],riv(sB-Lm*0.55,0.2),riv(sB-u(14),fb+0.05),riv(sB-u(5),fb+0.01),dock];
     const curve=new THREE.CatmullRomCurve3(way.map(p=>new V3(p[0],RIVER_Y,p[1])),false,'centripetal');
+    // her wheelhouse goes down only near the passages whose openings her raised profile does not clear (as the cargo ships' fits())
+    const upOK=p=>p.gr.every(({d})=>{const a=[Math.cos(d.ang),-Math.sin(d.ang)],uu=(p.P[0]-d.cx)*a[0]+(p.P[1]-d.cz)*a[1],sp=d.spans.find(q=>uu>q[0]&&uu<q[1]);
+      if(!sp)return false;for(let o=-Wm/2;o<=Wm/2+1e-6;o+=Wm/8)if(sp[2](uu+o)-RIVER_Y<h(MER.need(o*BASEL.S,false))+0.08)return false;return true;});
+    const lowP=passages.filter(p=>!upOK(p));MER.lowPassages=lowP.length;
+    const inLow=Q=>lowP.some(p=>{const dx=Q[0]-p.P[0],dz=Q[1]-p.P[1],t=dx*p.n[0]+dz*p.n[1];
+      return Math.hypot(dx,dz)<p.t1-p.t0+u(80)&&t>p.t0-u(30)&&t<p.t1+u(30);});
     const len=curve.getLength(),NL=1000,low=new Float32Array(NL),inz=[],Q=new V3(),stp=len/(NL-1);
-    for(let i=0;i<NL;i++){curve.getPointAt(i/(NL-1),Q);inz.push(inZone([Q.x,Q.z]));}
+    for(let i=0;i<NL;i++){curve.getPointAt(i/(NL-1),Q);inz.push(inLow([Q.x,Q.z]));}
     for(let i=0,d=1e9;i<NL;i++){d=inz[i]?0:d+stp;low[i]=d;}
     for(let i=NL-1,d=1e9;i>=0;i--){d=inz[i]?0:d+stp;low[i]=clamp(1-Math.min(low[i],d)/u(100),0,1);}
-    const mb={g:merian,curve,len,t:-40,dwell:50,speed:2.2,L:Lm,W:Wm,v:new V3(),mesh:MER.mesh,parts:MER.parts,low,need:MER.need};
+    const mb={g:merian,curve,len,t:-40,dwell:50,speed:2.2,L:Lm,W:Wm,v:new V3(),mesh:MER.mesh,parts:MER.parts,low,need:MER.need,lowPassages:lowP.length};
     mb.hold=()=>CARGO.busy(CARGO.TT*(len/mb.speed/(1-Math.min(0.2,14/len))+30));   // her trip, in the clock's seconds
     riverBoats.push(mb);
   }else console.warn('the Merian: no way through the bridges');
@@ -4728,7 +4852,7 @@ if(RIVERS.today&&BASEL.bridges.some(b=>/Mittlere/.test(b.name))){
       const curve=new THREE.CatmullRomCurve3(items.flatMap(i=>i.pts).map(p=>new V3(p[0],RIVER_Y,p[1])),false,'centripetal'),len=curve.getLength();
       const NS=2000,xs=new Float32Array(NS*2),Q=new V3();for(let i=0;i<NS;i++){curve.getPointAt(i/(NS-1),Q);xs[i*2]=Q.x;xs[i*2+1]=Q.z;}
       const nearest=(x,z)=>{let bi=0,bd=1e18;for(let i=0;i<NS;i++){const d=(xs[i*2]-x)**2+(xs[i*2+1]-z)**2;if(d<bd){bd=d;bi=i;}}return bi/(NS-1)*len;};
-      // lowered: 200 m either side of every bridge whose opening the raised ship does not clear (all of them in the game),
+      // lowered: 200 m either side of every bridge whose opening the raised ship does not clear (with today's raised bridges, the Dreirosenbrücke and the 2013 railway box),
       // and over the spec's stretch from the Wettsteinbrücke to the Johanniterbrücke; gaps under 300 m closed
       const fits=p=>{const d0=p.gr[0].d;for(const {d} of p.gr){const a=[Math.cos(d.ang),-Math.sin(d.ang)],uu=(p.P[0]-d.cx)*a[0]+(p.P[1]-d.cz)*a[1],sp=d.spans.find(q=>uu>q[0]&&uu<q[1]);
         if(!sp)return false;for(let o=-Wc/2;o<=Wc/2+1e-6;o+=Wc/8)if(sp[2](uu+o)-RIVER_Y<h(cNeed(o,false))+0.03)return false;}return !!d0;};
@@ -5350,7 +5474,18 @@ const runTrains=(()=>{
         for(const sd of [1,-1])G.box(P0-0.7,P0-0.5,y0+0.1,y0+0.32,sd*0.4,sd*0.52,'#b9b4a6');   // (insulators)
         for(const sd of [1,-1])G.bar([P0-0.6,y0+0.3,sd*0.3],[P0+0.85,yk,sd*0.05],0.07,'#3a3d40');
         G.bar([P0+0.85,yk,0],[P0-0.15,top-0.1,0],0.06,'#3a3d40');G.bar([P0-0.6,y0+0.25,0],[P0+0.7,yk-0.15,0],0.03,'#55585b');
-        G.box(P0-0.27,P0-0.03,top-0.12,top,-0.85,0.85,'#2a2b2c');}});
+        G.box(P0-0.27,P0-0.03,top-0.12,top,-0.85,0.85,'#2a2b2c');}
+      // a game-only cue (the real trams have none): a stripe in the line's colour along the middle of the roof, 0.6 m wide,
+      // between the fairings and over the roof boxes and the pantograph's base and on over the cab caps, so a pigeon sees the
+      // line from above; white takes the line's colour and glows faintly at night (6)
+      const iv=[],SZ=0.3,cs=m===0?xb+(S0.Ln-S0.rake)*0.85:xb,ce=m===n-1?xa-(S1.Ln-S1.rake)*0.85:xa;
+      if(md.roof==='hvac'){const e=Math.min(1.9,md.L*0.3);iv.push([Math.max(r0,-e),Math.min(r1,e),t+0.26]);}
+      if(md.roof==='conv')iv.push([m===0?r0:r0+0.6,m===0?r1-0.4:r1,t+0.2]);
+      if(md.roof==='fair')iv.push([xa+0.1,xb-0.1,t+0.24]);
+      if(md.pan!=null){const P0=md.pan,hb=md.roof==='hvac'?Math.min(1.9,md.L*0.3):md.roof?h-0.4:-1,pb=Math.abs(P0)<hb?(md.roof==='conv'?0.2:md.roof==='fair'?0.24:0.26):0;iv.push([P0-0.75,P0+0.75,t+pb+0.1]);}
+      const xs=[...new Set([ce,cs,...iv.flatMap(([a,b])=>[a,b]).filter(x=>x>ce&&x<cs)])].sort((a,b)=>a-b);
+      for(let k=0;k<xs.length-1;k++){const xm=(xs[k]+xs[k+1])/2,y=Math.max(t,...iv.filter(([a,b])=>xm>a&&xm<b).map(v=>v[2]));
+        G.box(xs[k],xs[k+1],y-0.03,y+0.04,-SZ,SZ,'#ffffff',6);}});
     return G.build();}
   function tramFarGeo(){   // the far tram: TMAXM plain modules (their length, nose and colours come with the tram) and a pantograph
     const P=[],N=[],C=[],X=[],a=new V3(),b=new V3(),c=new V3(),n=new V3(),e=new V3();
@@ -5381,7 +5516,7 @@ const runTrains=(()=>{
   const tramMat=(far)=>{const m=new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.5,metalness:0.1,emissive:0xffffff,emissiveIntensity:0});
     if(far)m.defines={TRAM_FAR:''};nightGlow.push(m);
     m.onBeforeCompile=(sh)=>{sh.uniforms.tramTex={value:tramTex};
-      const pre='uniform highp sampler2D tramTex;\nattribute vec3 aux;\nattribute float irow;\nvarying vec3 vGlow;\n#ifdef TRAM_FAR\nvarying float vLy;\nvarying float vPan;\nvarying vec3 vBody;\nvarying vec3 vAcc;\nvarying vec3 vBand;\nvarying vec3 vRoof;\nvarying vec4 vBY;\nvarying float vWall;\nvarying vec4 vFX;\nvarying vec4 vNM;\nvarying float vNose;\nvarying float vLz;\n#endif\n';
+      const pre='uniform highp sampler2D tramTex;\nattribute vec3 aux;\nattribute float irow;\nvarying vec3 vGlow;\n#ifdef TRAM_FAR\nvarying float vLy;\nvarying float vPan;\nvarying vec3 vBody;\nvarying vec3 vAcc;\nvarying vec3 vBand;\nvarying vec3 vRoof;\nvarying vec4 vBY;\nvarying float vWall;\nvarying vec4 vFX;\nvarying vec4 vNM;\nvarying float vNose;\nvarying float vLz;\nvarying vec3 vLine;\n#endif\n';
       sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\n'+pre).replace('#include <color_vertex>',THREE.ShaderChunk.color_vertex+`
         int tRow=int(irow+0.5),tMod=int(aux.x+0.5);
         vec4 tP=texelFetch(tramTex,ivec2(2*tMod,tRow),0),tQ=texelFetch(tramTex,ivec2(2*tMod+1,tRow),0);
@@ -5389,12 +5524,12 @@ const runTrains=(()=>{
         #ifdef TRAM_FAR
           vBody=texelFetch(tramTex,ivec2(17,tRow),0).rgb;vAcc=texelFetch(tramTex,ivec2(18,tRow),0).rgb;vBand=texelFetch(tramTex,ivec2(19,tRow),0).rgb;
           vRoof=texelFetch(tramTex,ivec2(20,tRow),0).rgb;vBY=texelFetch(tramTex,ivec2(21,tRow),0);vWall=texelFetch(tramTex,ivec2(22,tRow),0).x;
-          vLy=position.y/${VS.toFixed(4)};vPan=aux.y>2.5?2.0:aux.y>1.5?1.0:0.0;vGlow=vec3(0.0);
+          vLine=tLine;vLy=position.y/${VS.toFixed(4)};vPan=aux.y>2.5?2.0:aux.y>1.5?1.0:0.0;vGlow=vec3(0.0);
           vFX=texelFetch(tramTex,ivec2(22,tRow),0);vNM=texelFetch(tramTex,ivec2(23,tRow),0);vLz=position.z/${TU.toFixed(4)};
           vNose=((aux.y>0.5&&aux.y<1.5&&abs(tQ.z-1.0)<0.1)||(aux.y<-0.5&&abs(tQ.z-2.0)<0.1))?1.0:0.0;
         #else
           if(all(greaterThan(color,vec3(0.99))))vColor.rgb=tLine;
-          float tk=aux.y;vGlow=tk<0.5?vec3(0.0):tk<1.5?vec3(1.0,0.66,0.32):tk<2.5?vec3(1.8,1.75,1.5):tk<3.5?vec3(1.6,0.06,0.03):tk<4.5?vec3(1.2,0.55,0.12):vColor.rgb*1.3;
+          float tk=aux.y;vGlow=tk<0.5?vec3(0.0):tk<1.5?vec3(1.0,0.66,0.32):tk<2.5?vec3(1.8,1.75,1.5):tk<3.5?vec3(1.6,0.06,0.03):tk<4.5?vec3(1.2,0.55,0.12):tk<5.5?vColor.rgb*1.3:vColor.rgb*0.45;
         #endif
         float tcp=cos(tQ.x),tsp=sin(tQ.x),tcy=cos(tP.w),tsy=sin(tP.w);`).replace('#include <beginnormal_vertex>',`vec3 objectNormal=vec3(normal);
         objectNormal.xy=vec2(objectNormal.x*tcp-objectNormal.y*tsp,objectNormal.x*tsp+objectNormal.y*tcp);
@@ -5415,8 +5550,10 @@ const runTrains=(()=>{
           if(vPan<0.5&&vLy>vWall+0.2&&((vFX.y>0.0&&abs(vLz)>vFX.y)||(vNose>0.5&&vNM.w>0.5)))diffuseColor.rgb=vBody;   // (the fairings, a cab's cap)
           if(vPan<0.5&&vNose>0.5&&vLy>=0.34&&vLy<=vWall+0.2){if(vNM.z>0.5)diffuseColor.rgb=vBody;   // (a cab: its nose, lamp strip and windscreen)
             if(vLy>=vFX.z&&vLy<vFX.w)diffuseColor.rgb=vec3(0.004);if(vLy>=vNM.x&&vLy<vNM.y)diffuseColor.rgb=vec3(0.034,0.058,0.076);}
+          float tStr=(vLy>vWall+0.2&&abs(vLz)<0.3&&vNose<0.5&&(vPan<0.5||(vPan>1.5&&vLy>3.6)))?1.0:0.0;   // (the line's stripe along the roof and over its boxes)
+          if(tStr>0.5)diffuseColor.rgb=vLine;
         #endif`).replace('#include <emissivemap_fragment>',`#ifdef TRAM_FAR
-          totalEmissiveRadiance*=(vPan<0.5&&vLy>vBY.z+0.1&&vLy<vBY.w-0.12)?vec3(0.8,0.53,0.26):vec3(0.0);
+          totalEmissiveRadiance*=tStr>0.5?vLine*0.45:(vPan<0.5&&vLy>vBY.z+0.1&&vLy<vBY.w-0.12)?vec3(0.8,0.53,0.26):vec3(0.0);
         #else
           totalEmissiveRadiance*=vGlow;
         #endif`);};
@@ -7644,7 +7781,7 @@ $('btn-reset').addEventListener('click',()=>{
 
 /* ---------- boot ---------- */
 if(DEBUG)window.__sp={G,P,LEVELS,startLevel,beginPlay,completeLevel,startQuiz,sendL4,getSave:()=>save,V3,renderer,scene,camera,topAt,collide,setEra,chooseEra,splatHit,
-  get city(){return city},get era(){return era},get G1(){return G1},get SENSORS4(){return SENSORS4},get splatTargets(){return splatToday},feathers,ferries,trains,bird,keys,tourGo,tourSpots,RIVERS,groundAt,floorAt,riverBoats,cargo:CARGO,get cargoShips(){return CARGO.ships},mooredShips,riverStep:dt=>{runBoats(dt);runFerries(dt);},bridgeDecks:BRIDGE_DECKS,animateWorld,horizon:HORIZON,HAZE,weather:SKYNOW,
+  get city(){return city},get era(){return era},get G1(){return G1},get SENSORS4(){return SENSORS4},get splatTargets(){return splatToday},feathers,ferries,trains,bird,keys,tourGo,tourSpots,RIVERS,groundAt,floorAt,riverBoats,railDecks:RAIL_DECKS,cargo:CARGO,get cargoShips(){return CARGO.ships},mooredShips,riverStep:dt=>{runBoats(dt);runFerries(dt);},bridgeDecks:BRIDGE_DECKS,animateWorld,horizon:HORIZON,HAZE,weather:SKYNOW,
   step:(dt=1/60)=>{G.clock+=dt;if(G.mode==="play"){updateTweens(dt);updatePlay(dt);}else if(G.mode==="tour"){updateTweens(dt);tourFly(dt);}animateWorld(dt);updateFeathers(dt);updateBird(dt);updateCamera(dt);renderer.render(scene,camera);}};
 setMuted(save.muted);
 setEra(save.era==='1615'?'1615':'today');applyTheme();
