@@ -515,7 +515,7 @@ const Sound={ctx:null,master:null,noise:null,
 
 /* ===================== 3. World ===================== */
 await Promise.race([
-  Promise.all([document.fonts.load('700 40px "Atkinson Hyperlegible"'),document.fonts.load('400 30px "Atkinson Hyperlegible"')]).catch(()=>{}),
+  Promise.all([document.fonts.load('700 40px "Atkinson Hyperlegible"'),document.fonts.load('400 30px "Atkinson Hyperlegible"'),document.fonts.load('500 22px "DM Mono"')]).catch(()=>{}),
   new Promise(r=>setTimeout(r,1800)),
 ]);
 
@@ -3665,9 +3665,38 @@ function church(lm,P,parent,B0,quiet){   // quiet: a second version of a church 
    lies on the land on either side, and beyond the map the river runs on along its real course to the horizon:
    upstream round the bend at the Birsfelden power station towards Augst and Rheinfelden, downstream north along the
    Upper Rhine (OpenStreetMap's centreline of it, GB.course, in both eras). */
+/* Today's levels follow the promenade survey of 1 November 2026 (data/basel-reference: the canton's ground model cut
+   every 30 m along both banks, aligned to the game's shores, with the bank photos for what it cannot show): heights in
+   metres over the game's water (245.6 m a.s.l., an estimate of mean water). Grossbasel: a slope to a level at 3.4 m
+   above the Schwarzwaldbrücke (ground model only, low confidence); no lower path from there to St. Alban, an even slope
+   to the St. Alban-Rheinweg; the Letzi ledge at 1.6 m; the St. Alban-Rheinweg's lower path at 1.5 m under a paved
+   slope; the Pfalz's ledge at 1.1 m (photos); along the Rheinsprung the houses' wall stands in the water; the
+   Schifflände is a quay wall up to the street; Les Trois Rois' lower path 3.8 m over a wall; the St. Johanns-Rheinweg
+   3.5 m over a ledge and a paved slope; St. Johann 4.0 m over a slope; the St. Johann ferry's landing 4.3 m; below the
+   Dreirosenbrücke 3.1 m over a kerb wall and a slope. Kleinbasel has no path at the water: its promenade is the top of
+   the Rheinbord, 4.0 m on the Oberer Rheinweg (seating steps below the Leu ferry), 2.9 m on the Unterer Rheinweg over
+   seating steps, 2.5 m on to the Dreirosenbrücke over a stone slope and 2.5 m below it over a kerb wall; Solitude and
+   the Schaffhauserrheinweg keep their grassy slope. The street stays 6.5 m over the river. */
 const BANK_KINDS={   // pw, ph: the lower path's width and height over the river (m); sw: the bank above it, across (a wall
-                     // is almost 0); st: 1 for steps; rail: a railing along the street; the kerb's, path's and bank's colours
-  quay:{pw:2.5,ph:1.8,sw:0.4,st:0,rail:1,kerb:0x8a877f,path:0x9a968e,bank:0x9b978d},
+                     // is almost 0); st: 1 for steps; rail: a railing along the street; the kerb's, path's and bank's colours;
+                     // tw, th, ts: a toe below the path, from the water's edge (th high there) up to the path, tw across
+                     // (ts 1 for seating steps, else a slope; none by default); pr: a railing along the path's river edge
+  quay:{pw:0,ph:6.5,sw:0.4,st:0,rail:1,kerb:0x8a877f,path:0x9a968e,bank:0x9b978d},
+  breiteUp:{tw:6,th:1.2,ts:0,pw:4,ph:3.4,sw:6,st:0,rail:0,kerb:0x8a8883,toe:0x6d8a4c,path:0xa29b8e,bank:0x6d8a4c},
+  breite:{pw:1,ph:1,sw:12,st:0,rail:1,kerb:0x8a8883,path:0xa29b8e,bank:0x6d8a4c},
+  letzi:{pw:2.5,ph:1.6,sw:0.6,st:0,rail:1,kerb:0x8c8984,path:0xa29e95,bank:0xa39e92},
+  albanweg:{pw:3,ph:1.5,sw:10,st:0,rail:1,kerb:0x8c8984,path:0xa29e95,bank:0x9d988d},
+  rheinsprung:{pw:0.4,ph:0.8,sw:0.4,st:0,rail:0,kerb:0x8a8172,path:0xa39d92,bank:0xa39684},
+  troisrois:{pw:6,ph:3.8,sw:0.6,st:0,rail:1,pr:1,kerb:0x8a877f,path:0x9a968e,bank:0x9b978d},
+  johannsweg:{tw:5,th:0.3,ts:0,pw:8.5,ph:3.5,sw:0.8,st:0,rail:1,pr:1,kerb:0x8c8984,toe:0x9d988d,path:0xa29e95,bank:0xa39e92},
+  johannpark:{tw:8,th:0,ts:0,pw:5,ph:4,sw:4,st:0,rail:0,kerb:0x8a8883,toe:0x6d8a4c,path:0xa29b8e,bank:0x6d8a4c},
+  faehre:{pw:15,ph:4.3,sw:3,st:0,rail:0,pr:1,kerb:0x8a877f,path:0x9a968e,bank:0x6d8a4c},
+  rheinufer:{tw:2,th:2,ts:0,pw:7,ph:3.1,sw:12,st:0,rail:0,pr:1,kerb:0x8a8883,toe:0x8e877a,path:0xa29b8e,bank:0x6d8a4c},
+  oberer:{tw:6.5,th:0.2,ts:0,pw:8,ph:4,sw:3,st:0,rail:0,kerb:0x8a8883,toe:0x8e877a,path:0x9d988d,bank:0x8e877a},
+  obererSteps:{tw:6.5,th:0.2,ts:1,pw:8,ph:4,sw:3,st:0,rail:0,kerb:0x9a978f,toe:0xb7b3a9,path:0xaca89f,bank:0x8e877a},
+  unterer:{tw:5,th:0,ts:1,pw:12,ph:2.9,sw:6,st:0,rail:0,kerb:0x9a978f,toe:0xb7b3a9,path:0xaca89f,bank:0x8e877a},
+  untererNord:{tw:7,th:0,ts:0,pw:12,ph:2.5,sw:8,st:0,rail:0,kerb:0x8a8883,toe:0x8e877a,path:0x9d988d,bank:0x8e877a},
+  klybeck:{tw:1.5,th:1,ts:0,pw:15,ph:2.5,sw:8,st:0,rail:0,kerb:0x8a8883,toe:0x8e877a,path:0x9d988d,bank:0x8e877a},
   pfalz:{pw:2.2,ph:1.1,sw:0.8,st:0,rail:0,kerb:0x8a8172,path:0xa39d92,bank:0xa39684},
   path:{pw:4,ph:1.1,sw:0.6,st:0,rail:1,kerb:0x8c8984,path:0xa29e95,bank:0xa39e92},
   rheinbord:{pw:3.5,ph:1,sw:9,st:0,rail:0,kerb:0x8a8883,path:0x9d988d,bank:0x8e877a},
@@ -3677,18 +3706,25 @@ const BANK_KINDS={   // pw, ph: the lower path's width and height over the river
   terrace:{pw:13.5,ph:3.5,sw:0.5,st:0,rail:0,kerb:0x8a8883,path:0xa7a297,bank:0x9b978d},
   wall1615:{pw:0,ph:1,sw:0.8,st:0,rail:0,kerb:0x857a6b,path:0x857a6b,bank:0x8e8170},
 };
-for(const k of Object.values(BANK_KINDS))for(const c of ['kerb','path','bank'])k[c]=new THREE.Color(k[c]);
+for(const k of Object.values(BANK_KINDS)){k.tw??=0;k.th??=k.ph;k.ts??=0;k.pr??=0;k.toe??=k.kerb;
+  for(const c of ['kerb','toe','path','bank'])k[c]=new THREE.Color(k[c]);}
+const WETTSTEIN_PH=1.1;   // the Wettsteinbrücke's Grossbasel platform and the path at its foot (the survey: about 1.0 m)
 const BANK_STEPS=6,BANK_BLEND=8;   // steps (or slope segments) in a bank; game units over which one stretch turns into the next
 const bankMat=new THREE.MeshStandardMaterial({vertexColors:true,roughness:.92,map:canvasTexture(128,128,(x,w,h)=>{
   x.fillStyle='#e4e4e2';x.fillRect(0,0,w,h);
   for(let i=0;i<1600;i++){x.fillStyle=rng()<.5?'rgba(0,0,0,.09)':'rgba(255,255,255,.1)';x.fillRect(rng()*w,rng()*h,2,2);}
   x.fillStyle='rgba(0,0,0,.1)';for(let y=0;y<h;y+=16){x.fillRect(0,y,w,1);for(let xx=((y/16)%2)*16;xx<w;xx+=32)x.fillRect(xx,y,1,16);}})});
-function bankProfile(p){   // the cross-section: [metres landward of the water's edge, metres over the river]
-  const pts=[[0,-1.5],[0,p.ph],[p.pw,p.ph]];
-  for(let k=1;k<=BANK_STEPS;k++){const h=p.ph+(RIVER_TOP-p.ph)*k/BANK_STEPS;pts.push([p.pw+p.sw*(k-p.st)/BANK_STEPS,h],[p.pw+p.sw*k/BANK_STEPS,h]);}
+function bankProfile(p,toe){   // the cross-section: [metres landward of the water's edge, metres over the river]
+  const pts=[[0,-1.5],[0,toe?p.th:p.ph]];   // (a shore with a toe anywhere has its points everywhere, flat where there is none)
+  if(toe)for(let k=1;k<=BANK_STEPS;k++){const h=p.th+(p.ph-p.th)*k/BANK_STEPS;pts.push([p.tw*(k-p.ts)/BANK_STEPS,h],[p.tw*k/BANK_STEPS,h]);}
+  const d0=toe?p.tw:0;pts.push([d0+p.pw,p.ph]);
+  for(let k=1;k<=BANK_STEPS;k++){const h=p.ph+(RIVER_TOP-p.ph)*k/BANK_STEPS;pts.push([d0+p.pw+p.sw*(k-p.st)/BANK_STEPS,h],[d0+p.pw+p.sw*k/BANK_STEPS,h]);}
   return pts;
 }
 function bankH(p,d){       // metres over the river, d metres landward of the water's edge
+  if(p.tw>0){if(d<p.tw){const f=d/p.tw*BANK_STEPS,k=Math.min(BANK_STEPS-1,Math.floor(f)),fr=f-k;   // the toe
+    const h0=p.th+(p.ph-p.th)*k/BANK_STEPS,h1=p.th+(p.ph-p.th)*(k+1)/BANK_STEPS;return fr<1-p.ts?h0+(h1-h0)*fr/(1-p.ts):h1;}
+    d-=p.tw;}
   if(d<=p.pw)return p.ph;
   if(d>=p.pw+p.sw)return RIVER_TOP;
   const f=(d-p.pw)/p.sw*BANK_STEPS,k=Math.min(BANK_STEPS-1,Math.floor(f)),fr=f-k;
@@ -3697,8 +3733,8 @@ function bankH(p,d){       // metres over the river, d metres landward of the wa
 }
 const smooth01=t=>{t=clamp(t,0,1);return t*t*(3-2*t);};
 function mixKind(a,b,w){
-  const m={};for(const k of ['pw','ph','sw','st','rail'])m[k]=a[k]+(b[k]-a[k])*w;
-  for(const k of ['kerb','path','bank'])m[k]=a[k].clone().lerp(b[k],w);return m;
+  const m={};for(const k of ['pw','ph','sw','st','rail','tw','th','ts','pr'])m[k]=a[k]+(b[k]-a[k])*w;
+  for(const k of ['kerb','toe','path','bank'])m[k]=a[k].clone().lerp(b[k],w);return m;
 }
 /* the river's way on out of the map at one end (0 upstream, 1 downstream), for both shores: along its course (GB.course,
    OpenStreetMap's centreline of the Rhine, from upstream; without it straight on the way the shores leave the map).
@@ -3778,19 +3814,20 @@ function buildRiver(banks,plan,parent){
       if(m>0&&s-st[m-1].end<st[m-1].blend){const b=st[m-1].blend;return mixKind(st[m-1].kind,st[m].kind,smooth01((s-st[m-1].end+b)/(2*b)));}
       if(m<st.length-1&&st[m].end-s<st[m].blend){const b=st[m].blend;return mixKind(st[m].kind,st[m+1].kind,smooth01((s-st[m].end+b)/(2*b)));}
       return st[m].kind;});
-    sh.Q=sh.P.map((p,i)=>{const w=(sh.p[i].pw+sh.p[i].sw)/US;return [p[0]+sh.N[i][0]*w,p[1]+sh.N[i][1]*w];});   // the bank's top edge
+    sh.Q=sh.P.map((p,i)=>{const w=(sh.p[i].tw+sh.p[i].pw+sh.p[i].sw)/US;return [p[0]+sh.N[i][0]*w,p[1]+sh.N[i][1]*w];});   // the bank's top edge
   }
   // the banks: one strip per segment of the cross-section, so each face is lit as it faces
   const pos=[],nrm=[],col=[],uv=[],idx=[],rail=[];
   for(const sh of shores){
-    const n=sh.P.length,prof=sh.p.map(bankProfile),J=prof[0].length,c=new THREE.Color(),first=idx.length;
+    const toe=sh.p.some(p=>p.tw>1e-6),n=sh.P.length,prof=sh.p.map(p=>bankProfile(p,toe)),J=prof[0].length,c=new THREE.Color(),first=idx.length;
+    const jP=toe?2*BANK_STEPS+1:1;   // the path's strip; the kerb's is 0, the toe's between them, the bank's after it
     for(let j=0;j+1<J;j++){
       const base=pos.length/3;
       for(let i=0;i<n;i++){
         const [d0,h0]=prof[i][j],[d1,h1]=prof[i][j+1],N=sh.N[i],p=sh.p[i];
         let ox=-N[0]*(h1-h0)*VS,oy=(d1-d0)/US,oz=-N[1]*(h1-h0)*VS;const ol=Math.hypot(ox,oy,oz);
         if(ol<1e-6){ox=0;oy=1;oz=0;}else{ox/=ol;oy/=ol;oz/=ol;}
-        c.copy(j===0?p.kerb:j===1?p.path:p.bank);if(j>=2&&j%2===1)c.multiplyScalar(1.08);   // treads lighter than risers
+        c.copy(j===0?p.kerb:j<jP?p.toe:j===jP?p.path:p.bank);if(j>jP&&j%2===1||j>0&&j<jP&&j%2===0)c.multiplyScalar(1.08);   // treads lighter than risers
         let v0=0;for(let k=0;k<j;k++)v0+=Math.hypot(prof[i][k+1][0]-prof[i][k][0],prof[i][k+1][1]-prof[i][k][1]);
         for(const [d,h,v] of [[d0,h0,v0],[d1,h1,v0+Math.hypot(d1-d0,h1-h0)]]){
           pos.push(sh.P[i][0]+N[0]*d/US,(h-RIVER_TOP)*VS,sh.P[i][1]+N[1]*d/US);nrm.push(ox,oy,oz);col.push(c.r,c.g,c.b);uv.push(sh.S[i]/3,v/3);}
@@ -3803,18 +3840,34 @@ function buildRiver(banks,plan,parent){
     if(p1.sub(p0).cross(p2.sub(p0)).dot(new V3().fromArray(nrm,idx[first]*3))<0)
       for(let i=first;i<idx.length;i+=3){const t=idx[i+1];idx[i+1]=idx[i+2];idx[i+2]=t;}
     for(let i=0;i<n;i++)if(sh.p[i].rail>0.5){   // railings along the street's edge
-      const Q=sh.Q[i],N=sh.N[i];rail.push({sh,i,x:Q[0]+N[0]*0.03,z:Q[1]+N[1]*0.03});}
+      const Q=sh.Q[i],N=sh.N[i];rail.push({sh,i,x:Q[0]+N[0]*0.03,z:Q[1]+N[1]*0.03,y:0,l:0});}
+    for(let i=0;i<n;i++)if(sh.p[i].pr>0.5){   // and along a raised promenade's river edge
+      const p=sh.p[i],N=sh.N[i],d=(p.tw+0.15)/US;rail.push({sh,i,x:sh.P[i][0]+N[0]*d,z:sh.P[i][1]+N[1]*d,y:(p.ph-RIVER_TOP)*VS,l:1});}
   }
   const g=new THREE.BufferGeometry();
   g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(nrm,3));
   g.setAttribute('color',new THREE.Float32BufferAttribute(col,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(idx);
   parent.add(new THREE.Mesh(g,bankMat));
-  if(rail.length){const rp=[],ru=[],ri=[];
-    for(let k=0;k<rail.length;k++){const r=rail[k],nx=rail[k+1];
-      rp.push(r.x,0,r.z,r.x,0.3,r.z);ru.push(r.sh.S[r.i]/0.6,0,r.sh.S[r.i]/0.6,1);
-      if(nx&&nx.sh===r.sh&&nx.i===r.i+1){const a=k*2;ri.push(a,a+1,a+2,a+1,a+3,a+2);}}
-    const rg=new THREE.BufferGeometry();rg.setAttribute('position',new THREE.Float32BufferAttribute(rp,3));
-    rg.setAttribute('uv',new THREE.Float32BufferAttribute(ru,2));rg.setIndex(ri);rg.computeVertexNormals();parent.add(new THREE.Mesh(rg,BR.rail));}
+  // the railings are made once the ways down the bank are known (buildRails, below): each way that crosses one, a toe
+  // flight, a ferry's gangway, a ladder or a bath's walk, leaves an opening in it (railGaps: a segment and a radius)
+  const railMesh=rail.length?new THREE.Mesh(new THREE.BufferGeometry(),BR.rail):null;if(railMesh)parent.add(railMesh);
+  const buildRails=gaps=>{if(!railMesh)return;const rp=[],ru=[],ri=[];
+    const near=(x,z,G)=>G.some(g=>{const dx=g.b[0]-g.a[0],dz=g.b[1]-g.a[1],l2=dx*dx+dz*dz||1e-9,t=Math.max(0,Math.min(1,((x-g.a[0])*dx+(z-g.a[1])*dz)/l2));
+      return (x-g.a[0]-dx*t)**2+(z-g.a[1]-dz*t)**2<g.r*g.r;});
+    for(let k=0;k<rail.length;k++){const r=rail[k];rp.push(r.x,r.y,r.z,r.x,r.y+0.3,r.z);ru.push(r.sh.S[r.i]/0.6,0,r.sh.S[r.i]/0.6,1);}
+    for(let k=0;k+1<rail.length;k++){const r=rail[k],nx=rail[k+1];
+      if(!(nx.sh===r.sh&&nx.i===r.i+1&&nx.l===r.l))continue;
+      const L=Math.hypot(nx.x-r.x,nx.z-r.z),cx=(r.x+nx.x)/2,cz=(r.z+nx.z)/2;
+      const G=gaps.filter(g=>Math.hypot(cx-g.a[0],cz-g.a[1])<L/2+g.r+Math.hypot(g.b[0]-g.a[0],g.b[1]-g.a[1]));   // the openings near enough
+      const m=G.length?Math.max(1,Math.ceil(L/0.02)):1,mid=j=>G.length>0&&near(r.x+(nx.x-r.x)*(j+0.5)/m,r.z+(nx.z-r.z)*(j+0.5)/m,G);
+      let open=false;for(let j=0;j<m&&!open;j++)open=mid(j);
+      if(!open){const a=k*2;ri.push(a,a+1,a+2,a+1,a+3,a+2);continue;}
+      const vtx=t=>{if(t===0)return k*2;if(t===1)return k*2+2;const S=r.sh.S[r.i]+(r.sh.S[nx.i]-r.sh.S[r.i])*t,v=rp.length/3,
+        x=r.x+(nx.x-r.x)*t,y=r.y+(nx.y-r.y)*t,z=r.z+(nx.z-r.z)*t;rp.push(x,y,z,x,y+0.3,z);ru.push(S/0.6,0,S/0.6,1);return v;};
+      for(let j=0;j<m;){if(mid(j)){j++;continue;}let e=j;while(e<m&&!mid(e))e++;   // a closed run of the segment, from j to e
+        const a=vtx(j/m),b=vtx(e/m);ri.push(a,a+1,b,a+1,b+1,b);j=e;}}
+    railMesh.geometry.setAttribute('position',new THREE.Float32BufferAttribute(rp,3));
+    railMesh.geometry.setAttribute('uv',new THREE.Float32BufferAttribute(ru,2));railMesh.geometry.setIndex(ri);railMesh.geometry.computeVertexNormals();};
   // the land on either side: from the bank's top edge round the far side of a big square, with the photo on it
   const H=3000,cx=(GB.x0+GB.x1)/2,cz=(GB.z0+GB.z1)/2,X0=cx-H,X1=cx+H,Z0=cz-H,Z1=cz+H,A=2*H;
   const inside=p=>p[0]>X0&&p[0]<X1&&p[1]>Z0&&p[1]<Z1;
@@ -3841,11 +3894,11 @@ function buildRiver(banks,plan,parent){
   });
   // where the river is, for groundAt(): the segments near each point, and a grid of the channel for the rest; and
   // its way on out of the map at either end, for the hills on the horizon
-  const R={shores,outs,cell:5,x0:GB.x0-80,z0:GB.z0-80,hash:new Map()};
+  const R={shores,outs,cell:5,x0:GB.x0-80,z0:GB.z0-80,hash:new Map(),reach:Math.max(5,...shores.flatMap(sh=>sh.p.map(p=>(p.tw+p.pw+p.sw)/US+1)))};
   for(const sh of shores)for(let i=0;i+1<sh.P.length;i++){
     const a=sh.P[i],b=sh.P[i+1];if(!inMap(a)&&!inMap(b))continue;
-    for(let r=Math.floor((Math.min(a[1],b[1])-5-R.z0)/R.cell);r<=Math.floor((Math.max(a[1],b[1])+5-R.z0)/R.cell);r++)
-      for(let c=Math.floor((Math.min(a[0],b[0])-5-R.x0)/R.cell);c<=Math.floor((Math.max(a[0],b[0])+5-R.x0)/R.cell);c++){
+    for(let r=Math.floor((Math.min(a[1],b[1])-R.reach-R.z0)/R.cell);r<=Math.floor((Math.max(a[1],b[1])+R.reach-R.z0)/R.cell);r++)
+      for(let c=Math.floor((Math.min(a[0],b[0])-R.reach-R.x0)/R.cell);c<=Math.floor((Math.max(a[0],b[0])+R.reach-R.x0)/R.cell);c++){
         const key=r*100000+c;if(!R.hash.has(key))R.hash.set(key,[]);R.hash.get(key).push([sh,i]);}}
   R.rx0=GB.x0-60;R.rz0=GB.z0-60;R.rw=Math.ceil(GB.x1-GB.x0+120);R.rh=Math.ceil(GB.z1-GB.z0+120);R.wet=new Uint8Array(R.rw*R.rh);
   const poly=[...shores[0].Q,...[...shores[1].Q].reverse()];
@@ -3853,6 +3906,7 @@ function buildRiver(banks,plan,parent){
     for(let i=0,j=poly.length-1;i<poly.length;j=i++){const [x1,z1]=poly[i],[x2,z2]=poly[j];if((z1>z)!==(z2>z))xs.push(x1+(z-z1)*(x2-x1)/(z2-z1));}
     xs.sort((a,b)=>a-b);
     for(let k=0;k+1<xs.length;k+=2){const c0=Math.max(0,Math.ceil(xs[k]-R.rx0-0.5)),c1=Math.min(R.rw-1,Math.floor(xs[k+1]-R.rx0-0.5));for(let c=c0;c<=c1;c++)R.wet[r*R.rw+c]=1;}}
+  R.railGaps=[];R.railMesh=railMesh;R.buildRails=()=>buildRails(R.railGaps);
   return R;
 }
 function groundAt(x,z,R){   // the ground's height there: the street (0), a bank, or the river
@@ -3862,9 +3916,9 @@ function groundAt(x,z,R){   // the ground's height there: the street (0), a bank
   if(list)for(const [sh,i] of list){const A=sh.P[i],B=sh.P[i+1],dx=B[0]-A[0],dz=B[1]-A[1];
     const t=clamp(((x-A[0])*dx+(z-A[1])*dz)/(dx*dx+dz*dz||1e-9),0,1),fx=A[0]+dx*t,fz=A[1]+dz*t,d=Math.hypot(x-fx,z-fz);
     if(d<bd){bd=d;best={sh,i,t,fx,fz};}}
-  if(best&&bd<5){const {sh,i,t,fx,fz}=best,N0=sh.N[i],N1=sh.N[i+1],nx=N0[0]+(N1[0]-N0[0])*t,nz=N0[1]+(N1[1]-N0[1])*t;
+  if(best&&bd<R.reach){const {sh,i,t,fx,fz}=best,N0=sh.N[i],N1=sh.N[i+1],nx=N0[0]+(N1[0]-N0[0])*t,nz=N0[1]+(N1[1]-N0[1])*t;
     const d=((x-fx)*nx+(z-fz)*nz)/(Math.hypot(nx,nz)||1)*BASEL.S,p=sh.p[t<0.5?i:i+1];
-    return d<=0?RIVER_Y:d<p.pw+p.sw?(bankH(p,d)-RIVER_TOP)*VS:0;}
+    return d<=0?RIVER_Y:d<p.tw+p.pw+p.sw?(bankH(p,d)-RIVER_TOP)*VS:0;}
   const c=Math.floor(x-R.rx0),r=Math.floor(z-R.rz0);
   return c>=0&&r>=0&&c<R.rw&&r<R.rh&&R.wet[r*R.rw+c]?RIVER_Y:0;
 }
@@ -3878,9 +3932,20 @@ const RIVER_PLAN_TODAY=(()=>{   // after the photos mapped to stretches of shore
   // downstream, under the terraces (bridgeheads())
   const mb=BASEL.bridges.find(b=>/Mittlere/.test(b.name));let mkb=null;
   if(mb&&mb.ends){const [cx,cz,L,,a]=mb.axis,e=Math.min(mb.ends[1],L/2-0.25);mkb=off=>({pts:[[cx+Math.cos(a)*e,cz-Math.sin(a)*e]],off});}
-  return {g:[['path',br(/Wettstein/)],['pfalz',br(/Mittlere/)],['quay',trois],['path',br(/Johanniter/)],['park',null]],
-          k:mkb?[['park',br(/Wettstein/)],['rheinbord',ferry(/Münster/)],['steps',mkb(-7.6),1],['terrace',mkb(6.7),1],['steps',br(/Johanniter/)],['rheinbord',null]]
-              :[['park',br(/Wettstein/)],['rheinbord',ferry(/Münster/)],['steps',br(/Johanniter/)],['rheinbord',null]]};
+  // the survey's stretch ends where no bridge or ferry marks them (Swiss coordinates of the game's shore there)
+  const lv=(E,N)=>({pts:[[(E-2611372)/BASEL.S,-(N-1267726)/BASEL.S]]});
+  // under the Johanniterbrücke's Grossbasel end the deck leaves no room for the promenade at 3.5 m (the real one runs
+  // through a passage in the abutment, which the game's bridge does not have): the path stays as it was there
+  const jb=BASEL.bridges.find(b=>/Johanniter/.test(b.name));let jg=null;
+  if(jb&&jb.ends){const [cx,cz,L,Wj,a]=jb.axis,ne=Math.cos(a)+Math.sin(a)>0?1:-1,e=ne>0?Math.max(jb.ends[0],-L/2+0.25):Math.min(jb.ends[1],L/2-0.25);
+    jg=s=>({pts:[[cx+Math.cos(a)*e,cz-Math.sin(a)*e]],off:s*(Wj/2+1.5)});}
+  const g=[['breiteUp',lv(2613172,1267380),3],['breite',lv(2612658,1267217),3],['letzi',lv(2612424,1267192),2],['albanweg',br(/Wettstein/),3],
+    ['pfalz',lv(2611600,1267394),2],['rheinsprung',br(/Mittlere/),2],['quay',trois,2],['troisrois',lv(2611155,1267893),2],
+    ...(jg?[['johannsweg',jg(-1),1],['path',jg(1),1]]:[['johannsweg',br(/Johanniter/),2]]),
+    ['johannpark',lv(2610901,1268485),3],['park',lv(2610894,1268740),1.5],['faehre',lv(2610900,1268819),1.5],['rheinufer',null]];
+  return {g,
+          k:mkb?[['park',br(/Wettstein/),3],['oberer',ferry(/Münster/),1.5],['obererSteps',mkb(-7.6),1],['terrace',mkb(6.7),1],['unterer',lv(2611200,1268213),2],['untererNord',lv(2611129,1268915),2],['klybeck',null]]
+              :[['park',br(/Wettstein/),3],['oberer',ferry(/Münster/),1.5],['unterer',lv(2611200,1268213),2],['untererNord',lv(2611129,1268915),2],['klybeck',null]]};
 })();
 
 /* ---------- Basel today ---------- */
@@ -4005,7 +4070,7 @@ function bridgeheads(B){
   if(wb&&wb.ends){
     const [cx,cz,L,Wb,ang]=wb.axis,ne=Math.cos(ang)+Math.sin(ang)>0?1:-1,eg=ne>0?Math.max(wb.ends[0],-L/2+0.25):Math.min(wb.ends[1],L/2-0.25);
     const gx=cx+Math.cos(ang)*eg,gz=cz-Math.sin(ang)*eg,F=frameOf(gx,gz,ang),dn=downSign(gx,gz,ang),inl=-ne;   // inland along u
-    const yP=(BANK_KINDS.path.ph-RIVER_TOP)*VS,vA=(Wb+0.3)/2;   // the lower path's level; the abutment block's half width
+    const yP=(WETTSTEIN_PH-RIVER_TOP)*VS,vA=(Wb+0.3)/2;   // the lower path's level; the abutment block's half width
     // the stair down the abutment's downstream face from the street to the platform (REF 031, 034), a landing at the
     // top reaching back to the street, a wall on its land side and a railing on its river side
     const u0=inl*m(2.6),u1=inl*m(4.6),vt=dn*(vA+0.05),vf=dn*(vA+0.05+1.6);
@@ -4024,7 +4089,7 @@ function bridgeheads(B){
     if(best){const {sh,i}=best,s0=sh.S[i],posts=[];
       for(let j=i;j<sh.P.length&&sh.S[j]-s0<m(110);j++){if(sh.S[j]-s0<m(20))continue;
         if(posts.length&&sh.S[j]-posts[posts.length-1].s<m(3))continue;
-        const p=sh.p[j],N=sh.N[j],y=(p.ph-RIVER_TOP)*VS,d=Math.max(0.3,p.pw-0.3)/US;
+        const p=sh.p[j],N=sh.N[j],y=(p.ph-RIVER_TOP)*VS,d=Math.max(0.3,p.tw+p.pw-0.3)/US;
         posts.push({s:sh.S[j],v:new V3(sh.P[j][0]+N[0]*d,y,sh.P[j][1]+N[1]*d)});}
       for(const q of posts)B.put(boxGeo,BR.concrete,M4(null,q.v.x,q.v.y,q.v.z,m(0.25),hM(0.95),m(0.25)));
       for(let k=0;k+1<posts.length;k++){const a=posts[k].v.clone().add(new V3(0,hM(0.8),0)),b=posts[k+1].v.clone().add(new V3(0,hM(0.8),0));
@@ -4070,7 +4135,9 @@ function splatTarget(ring,base,top){let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;for(const 
 rathaus(BASEL.landmarks.rathaus,'today',TODAY);
 /* the stairs and ladders down to the Rhine, where the canton's register of them puts them (Geodaten Kanton Basel-
    Stadt): down a wall a flight along it to the lower path, down a slope or seating steps a flight straight down it,
-   and from the path a few steps into the water; the ladders are the swimmers' ways out at the water's edge */
+   and from a low path a few steps into the water, from a raised one a flight down its toe (none where the toe is
+   seating steps, nor where a wall over 2 m high stands in the water); the ladders are the swimmers' ways out at the
+   water's edge, at the foot of the toe */
 if(BASEL.access&&RIVERS.today){
   const R=RIVERS.today,A=BASEL.access,US=BASEL.S,B=Batch();
   const stone=stdMat({color:0x8e887d,roughness:.9}),cheek=stdMat({color:0x77726a,roughness:.9}),steel=stdMat({color:0x3f454b,roughness:.45,metalness:.5});
@@ -4088,20 +4155,23 @@ if(BASEL.access&&RIVERS.today){
     for(const sh of R.shores)for(let i=1;i+1<sh.P.length;i++){const d=(sh.P[i][0]-x)**2+(sh.P[i][1]-z)**2;if(d<bd){bd=d;best={sh,i};}}
     if(!best)continue;
     const {sh,i}=best,P=sh.P[i],N=sh.N[i],p=sh.p[i],a=sh.P[i-1],b=sh.P[i+1],tl=Math.hypot(b[0]-a[0],b[1]-a[1])||1,T=[(b[0]-a[0])/tl,(b[1]-a[1])/tl];
-    const yPath=(p.ph-RIVER_TOP)*VS,at=(d,s=0)=>[P[0]+N[0]*d/US+T[0]*s,P[1]+N[1]*d/US+T[1]*s];
-    if(kind===2){   // a ladder: two rails and rungs from the edge of the path down into the water
-      const [lx,lz]=at(-0.15),top=yPath+0.3,bot=RIVER_Y-0.4,ry=Math.atan2(-T[1],T[0]);
+    const yPath=(p.ph-RIVER_TOP)*VS,yKerb=(p.th-RIVER_TOP)*VS,at=(d,s=0)=>[P[0]+N[0]*d/US+T[0]*s,P[1]+N[1]*d/US+T[1]*s];
+    if(kind===2){   // a ladder: two rails and rungs from the water's edge (the path's, or the toe's foot) down into the water
+      const [lx,lz]=at(-0.15),top=yKerb+0.3,bot=RIVER_Y-0.4,ry=Math.atan2(-T[1],T[0]);
       for(const s of [-1,1])B.put(boxGeo,steel,M4(null,lx+T[0]*s*0.08,bot,lz+T[1]*s*0.08,0.025,top-bot,0.025,0,ry,0));
-      for(let y=bot+0.06;y<yPath;y+=0.085)B.put(boxGeo,steel,M4(null,lx,y,lz,0.16,0.014,0.014,0,ry,0));
+      for(let y=bot+0.06;y<yKerb;y+=0.085)B.put(boxGeo,steel,M4(null,lx,y,lz,0.16,0.014,0.014,0,ry,0));
+      if(p.pr>0.5&&p.tw<1)R.railGaps.push({a:at(-0.15),b:at(p.tw+0.6),r:0.6/US});   // its way out through the railing just behind it
       continue;
     }
     if(p.sw<3){   // a wall: the flight runs along it, on the lower path, down from the street
-      const w=Math.min(1.4,Math.max(0.9,p.pw*0.45)),len=(RIVER_TOP-p.ph)/0.62/US,[fx,fz]=at(p.pw-w/2);
-      if(p.pw>0.8)flight(fx,fz,T[0],T[1],len,w/US,0,yPath,true);
+      const w=Math.min(1.4,Math.max(0.9,p.pw*0.45)),len=(RIVER_TOP-p.ph)/0.62/US,[fx,fz]=at(p.tw+p.pw-w/2);
+      if(p.pw>0.8&&RIVER_TOP-p.ph>0.3)flight(fx,fz,T[0],T[1],len,w/US,0,yPath,true);
     }else{        // a slope or seating steps: straight down it to the lower path
-      const [fx,fz]=at(p.pw+p.sw);flight(fx,fz,-N[0],-N[1],p.sw/US,1.6/US,0,yPath,false);
+      const [fx,fz]=at(p.tw+p.pw+p.sw);flight(fx,fz,-N[0],-N[1],p.sw/US,1.6/US,0,yPath,false);
     }
-    if(p.pw>0.8){const [wx,wz]=at(0.6);flight(wx,wz,-N[0],-N[1],0.25,1.4/US,yPath,RIVER_Y-0.1,false);}   // and into the water
+    if(p.tw<=0.5){if(p.pw>0.8&&p.ph<=2){const [wx,wz]=at(0.6);flight(wx,wz,-N[0],-N[1],0.25,1.4/US,yPath,RIVER_Y-0.1,false);}}   // and into the water
+    else if(p.ts<0.5&&(p.ph+0.1)/p.tw<=1){const [wx,wz]=at(p.tw);flight(wx,wz,-N[0],-N[1],p.tw/US,1.4/US,yPath,RIVER_Y-0.1,false);   // down the toe,
+      R.railGaps.push({a:at(p.tw-0.3),b:at(p.tw+0.6),r:0.85/US});}   // through an opening in a raised promenade's railing
   }
   B.build(TODAY);
 }
@@ -4769,7 +4839,14 @@ if(RIVERS.today&&BASEL.bridges.some(b=>/Mittlere/.test(b.name))){
   const pontoon=(s,len)=>{const a=shoreAt(s),P=out(s,0.45);   // a landing stage, and a gangway from it up to the bank
     part(TODAY,boxGeo,steelG,P[0],RIVER_Y-0.05,P[1],len,0.2,0.8,head(a.T));
     const top=groundAt(a.P[0]+a.N[0]*0.3,a.P[1]+a.N[1]*0.3,R),rise=top-(RIVER_Y+0.15),run=0.4,hn=head(a.N);
-    part(TODAY,boxGeo,white,a.P[0]+a.N[0]*0.13,RIVER_Y+0.15+rise/2,a.P[1]+a.N[1]*0.13,Math.hypot(run,rise),0.04,0.5).rotation.set(0,hn,Math.atan2(rise,run),'YXZ');};
+    if(rise/VS<=0.364*run*BASEL.S){part(TODAY,boxGeo,white,a.P[0]+a.N[0]*0.13,RIVER_Y+0.15+rise/2,a.P[1]+a.N[1]*0.13,Math.hypot(run,rise),0.04,0.5).rotation.set(0,hn,Math.atan2(rise,run),'YXZ');return;}
+    // over a high quay wall: a ramp along the stage's inner edge, from the wall's top down to the stage at 20 degrees
+    // at most (its layout is an estimate: the canton's model shows landings at the wall, not their ramps)
+    const yT=groundAt(a.P[0]+a.N[0]*0.05,a.P[1]+a.N[1]*0.05,R),L=(yT-(RIVER_Y+0.15))/VS/0.364/BASEL.S,s0=s-len/2+0.3;
+    const A=out(s0,0.17),Bp=out(s0+L,0.17),sl=Math.hypot(Bp[0]-A[0],Bp[1]-A[1]),dy=yT-(RIVER_Y+0.15),rk=head([(Bp[0]-A[0])/sl,(Bp[1]-A[1])/sl]);
+    part(TODAY,boxGeo,white,(A[0]+Bp[0])/2,RIVER_Y+0.15+dy/2,(A[1]+Bp[1])/2,Math.hypot(sl,dy),0.04,0.28).rotation.set(0,rk,-Math.atan2(dy,sl),'YXZ');
+    const o=out(s0+L/2,0.31);part(TODAY,boxGeo,white,o[0],RIVER_Y+0.15+dy/2+h(1.0),o[1],Math.hypot(sl,dy),0.03,0.03).rotation.set(0,rk,-Math.atan2(dy,sl),'YXZ');
+    for(let k=0;k<=4;k++){const q=out(s0+L*k/4,0.31),y=yT-dy*k/4;part(TODAY,boxGeo,steelG,q[0],Math.min(y,RIVER_Y+0.1),q[1],0.03,Math.abs(y-RIVER_Y-0.1)+h(1.0),0.03);}};
   // BPG at the Schifflände: Rhystärn by the bridge, bow to it; Christoph Merian at the next stage down, 10 m on
   const mb=BASEL.bridges.find(b=>/Mittlere/.test(b.name)),sM=sOf(mb.axis[0],mb.axis[1]);
   const RHY=rhystaernBoat(),MER=merianBoat(),Lr=u(69.9),Wr=u(11.4),Lm=u(65.5),Wm=u(10.5);
@@ -4894,6 +4971,20 @@ if(RIVERS.today&&BASEL.bridges.some(b=>/Mittlere/.test(b.name))){
     TODAY.add(grp);};
   bath(PL.bad_stjohann,u(45),u(10),2.4,0x2f7d48,true,null);
   bath(PL.bad_breite,u(70),u(14),4.2,0xf1f1ec,false,[-0.45,-0.05]);
+  // the way in from the bank (an estimate: no photo shows it): from the deck's landward edge, near its downstream end,
+  // a railed walk at the deck's level until the bank reaches it, then steps up the bank to the promenade or the street
+  const bathWay=(at,len,deckM,col)=>{if(!at)return;const s=sOf(at[0],at[1])+len*0.4,a=shoreAt(s),N=a.N,yD=RIVER_Y+h(deckM),mat=stdMat({color:col}),B=Batch();
+    const g=d=>groundAt(a.P[0]+N[0]*d,a.P[1]+N[1]*d,R),pt=d=>[a.P[0]+N[0]*d,a.P[1]+N[1]*d],ry=head([N[0],N[1]]);
+    let dl=0;while(dl<5&&g(dl)<yD)dl+=0.02;let dt=dl;while(dt<5&&g(dt+0.2)>g(dt)+0.002)dt+=0.02;
+    R.railGaps.push({a:pt(0),b:pt(dt+0.1),r:u(1.0)});   // an opening in any railing it comes up through
+    const yT=g(dt),c=pt(dl/2);B.put(boxGeo,mat,M4(null,c[0],yD-0.04,c[1],dl+0.06,0.04,u(1.6),0,ry,0));
+    for(let d=0;d<=dl+1e-6;d+=Math.max(0.2,dl/Math.ceil(dl/1.2))){const q=pt(d),gy=Math.max(RIVER_Y-0.3,g(d));if(yD-gy>0.02)for(const e of [-1,1])B.put(boxGeo,mat,M4(null,q[0]+a.T[0]*e*u(0.75),gy,q[1]+a.T[1]*e*u(0.75),0.05,yD-gy,0.05,0,ry,0));}
+    for(const e of [-1,1]){const q=pt(dl/2),T=a.T;B.put(boxGeo,mat,M4(null,q[0]+T[0]*e*u(0.8),yD+h(1.0),q[1]+T[1]*e*u(0.8),dl+0.06,0.025,0.025,0,ry,0));}
+    if(yT>yD+0.01){const n=Math.max(2,Math.round((yT-yD)/h(0.17))),run=(dt-dl)/n;
+      for(let k=0;k<n;k++){const q=pt(dl+(k+0.5)*run),y=yD+(k+1)*(yT-yD)/n,gy=g(dl+(k+0.5)*run);B.put(boxGeo,BR.granite,M4(null,q[0],Math.min(gy,y)-0.02,q[1],run+0.005,y-Math.min(gy,y)+0.02,u(1.6),0,ry,0));}}
+    B.build(TODAY);};
+  bathWay(PL.bad_stjohann,u(45),2.4,0x2f7d48);
+  bathWay(PL.bad_breite,u(70),4.2,0xf1f1ec);
 }
 const boatWarn=()=>Math.max(0,...ferries.map(f=>f.cross+4));   // how long before she leaves the ferries hold back for her
 function boatHome(b){   // to her landing at once (after a jump of the clock), as at the end of a trip
@@ -4943,9 +5034,20 @@ BASEL.ferries.forEach((f,k)=>{
   const G=R.shores[0],mid=at((t0+t1)/2);let gi=1,gd=1e18;
   for(let i=1;i<G.P.length-1;i++){const d=(G.P[i][0]-mid.x)**2+(G.P[i][1]-mid.z)**2;if(d<gd){gd=d;gi=i;}}
   const upv=new V3(G.P[gi-1][0]-G.P[gi+1][0],0,G.P[gi-1][1]-G.P[gi+1][1]).normalize(),upYaw=Math.atan2(-upv.z,upv.x);
-  const boat=ferryBoat(f.name),off=0.62+boat.B/2+0.02;
+  const boat=ferryBoat(f.name),offs=[];
   for(const e of [a,b]){part(TODAY,cyl6,greyMat,e.x,0,e.z,0.08,mastH,0.08);part(TODAY,sphere8,greyMat,e.x,mastH,e.z,0.12,0.12,0.12);}
-  for(const [t,s] of [[t0,1],[t1,-1]]){const P=at(t+s*0.33),up=at(t-s*1.2),uy=gy(t-s*1.2);
+  for(const [t,s] of [[t0,1],[t1,-1]]){
+    // the gangway: 1.2 units up the bank as before where that is no steeper than 20 degrees; else, below a raised
+    // promenade, as far up its toe (slope or seating steps, which lead on up) as 20 degrees allows, the stage where it
+    // was; where a wall stands at the water, onto the promenade 1.5 m past its edge, the stage moved out as far as that needs
+    const steep=(d,x)=>(gy(t-s*d)-(RIVER_Y+0.06))/VS/((d+x)*BASEL.S)>0.364;let dTop=1.2,ext=0.33;
+    if(steep(1.2,0.33)){let d=0;while(d<6&&!(gy(t-s*d)>RIVER_Y+0.02&&gy(t-s*(d+0.4))<=gy(t-s*d)+0.002))d+=0.02;
+      let dT=0;for(let q=0.04;q<d;q+=0.02)if(!steep(q,0.33))dT=q;
+      if(dT>=0.15)dTop=dT;
+      else{dTop=d+u(1.5);ext=Math.max(0.33,(gy(t-s*dTop)-(RIVER_Y+0.06))/VS/0.364/BASEL.S-dTop);}}
+    offs.push(ext+0.29+boat.B/2+0.02);
+    const P=at(t+s*ext),up=at(t-s*dTop),uy=gy(t-s*dTop),upB=at(t-s*(dTop+0.1));
+    R.railGaps.push({a:[P.x,P.z],b:[upB.x,upB.z],r:0.25});   // an opening in any railing it comes up through
     const stage=new THREE.Group(),SB=Batch(),I=new THREE.Matrix4();   // in the stage's frame: x upstream, z out over the river
     SB.add(boxGeo,timberM,M4(I,0,0,0,u(9),0.06,0.56));
     for(const x of [-0.6,0,0.6])SB.add(boxGeo,greyMat,M4(I,x*u(9)/1.6,-0.12,0,0.35,0.12,0.5));   // floats
@@ -4961,10 +5063,11 @@ BASEL.ferries.forEach((f,k)=>{
   TODAY.add(boat.g);
   const pulley=new THREE.Mesh(cyl8,greyMat);pulley.scale.set(0.1,0.12,0.1);TODAY.add(pulley);
   const rope=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new V3(),new V3()]),cableMat);TODAY.add(rope);
-  const l0=at(t0+off),l1=at(t1-off);
-  ferries.push({boat:boat.g,a,b,l0,l1,u0:(t0+off-m0+0.4)/span,u1:(t1-off-m0+0.4)/span,pulley,rope,mastH,sag,upv,
-    k:k%2,to:k%2?0:1,wait:2+k*5,cross:Math.max(14,(t1-t0-2*off)/1.4),dwell:7});
+  const l0=at(t0+offs[0]),l1=at(t1-offs[1]);
+  ferries.push({boat:boat.g,a,b,l0,l1,u0:(t0+offs[0]-m0+0.4)/span,u1:(t1-offs[1]-m0+0.4)/span,pulley,rope,mastH,sag,upv,
+    k:k%2,to:k%2?0:1,wait:2+k*5,cross:Math.max(14,(t1-t0-offs[0]-offs[1])/1.4),dwell:7});
 });
+if(RIVERS.today)RIVERS.today.buildRails();   // the railings along the Rhine, open where the stairs, ladders, gangways and baths' walks come up
 function shipComing(f){   // a ship in the river near this ferry's crossing, or heading for it
   const m=f.l0.clone().lerp(f.l1,0.5);
   for(const b of riverBoats){const p=b.g.position,dx=m.x-p.x,dz=m.z-p.z,d=Math.hypot(dx,dz);
@@ -5251,7 +5354,7 @@ const runTrains=(()=>{
   const mk=(g,m,c)=>{if(!g)return null;const im=new THREE.InstancedMesh(g,m,c);im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);im.frustumCulled=false;
     im.count=0;im.nDraw=0;im.visible=false;TODAY.add(im);return im;};
   const drawn=x=>{x.count=x.nDraw;x.visible=x.nDraw>0;x.instanceMatrix.needsUpdate=true;if(x.instanceColor)x.instanceColor.needsUpdate=true;
-    const s=x.geometry.attributes.stripe;if(s)s.needsUpdate=true;};
+    const s=x.geometry.attributes.stripe;if(s)s.needsUpdate=true;const dc=x.geometry.attributes.dcell;if(dc)dc.needsUpdate=true;};
   // the bogies, pantographs and lamps of all three trains: one instanced mesh each (white head lamps at the leading cab,
   // red tail lamps at the other, by day and by night)
   const TRB={bogie:mk(trBogieGeo(),bodyMat,64),panto:mk(trPantoGeo(),bodyMat,8),
@@ -5329,15 +5432,16 @@ const runTrains=(()=>{
   // stops at the window band's top), lamps [y0, y1, z, w], destination display [y0, y1, half width], a red band rising to
   // the front (rise), a split screen, a route box on the roof (in the body colour), nose: from s on the livery's bands
   // stop and the nose is the body colour with a strip [s, y0, y1, colour] (the TINA's lamp strip: BLT-4205), frame: [s0, s1]
-  // a pillar in the body colour between the cab's side window and the windscreen (the TINA's yellow frame: BLT-4205)
+  // a pillar in the body colour between the cab's side window and the windscreen (the TINA's yellow frame: BLT-4205); board: the Cornichon's cream destination board [y0, y1, half width] (Cornichon 496,
+  // size as the Blender world's, an estimate); panel: the display is a printed panel, not LEDs (the Schindler's, 218)
   const CABS={
     flexity:{Ln:2.0,rake:1.15,rakeLow:0.18,ry:1.0,nz:0.32,ne:2,ws:[1.08,2.66],mask:[1.05,2.98],sw:0.3,lamp:[1.08,1.2,0.6,0.3],disp:[2.72,2.94,0.6]},
     combino:{Ln:0.9,rake:0.28,rakeLow:0.06,ry:1.0,nz:0.2,ne:2,ws:[1.1,2.62],mask:[1.02,3.05],sw:0.72,lamp:[0.52,0.64,0.74,0.18],disp:[2.7,3.0,0.85],mirror:true},
-    cornichon:{Ln:0.9,rake:0.22,rakeLow:0.06,ry:1.2,nz:0.26,ne:2,ws:[1.25,2.55],mask:[1.22,2.6],sw:0.72,split:true,lamp:[0.68,0.8,0.1,0.16],box:true},
+    cornichon:{Ln:0.9,rake:0.22,rakeLow:0.06,ry:1.2,nz:0.26,ne:2,ws:[1.25,2.55],mask:[1.22,2.6],sw:0.72,split:true,lamp:[0.68,0.8,0.1,0.16],box:true,board:[2.37,2.52,0.45]},
     tina:{Ln:2.3,rake:1.35,rakeLow:0.3,ry:1.0,nz:0.32,ne:1,ws:[1.16,2.76],mask:[1.12,3.02],sw:0.34,lamp:[0.86,0.98,0.6,0.26],disp:[2.8,2.98,0.55],
       nose:[0.34,0.72,1.12,'#0c0d0c'],frame:[0.17,0.34]},
     tango:{Ln:2.1,rake:1.15,rakeLow:0.35,ry:1.1,nz:0.3,ne:2,ws:[1.14,2.74],mask:[1.1,3.0],sw:0.35,lamp:[0.8,0.9,0.72,0.2],disp:[2.8,3.0,0.6]},
-    schindler:{Ln:0.45,rake:0.12,rakeLow:0,ry:1.2,nz:0.12,ne:1,ws:[1.3,2.62],mask:[1.25,3.0],sw:0.8,lamp:[0.56,0.7,0.12,0.2],disp:[2.7,2.96,0.55]},
+    schindler:{Ln:0.45,rake:0.12,rakeLow:0,ry:1.2,nz:0.12,ne:1,ws:[1.3,2.62],mask:[1.25,3.0],sw:0.8,lamp:[0.56,0.7,0.12,0.2],disp:[2.7,2.96,0.55],panel:true},
     rear:{Ln:0.35,rake:0.12,rakeLow:0.04,ry:1.1,nz:0.1,ne:1,ws:[1.2,2.55],mask:[1.15,2.6],sw:0.8,lamp:[0.74,0.86,0.76,0.16]}};
   // modules front to back: length, bogies (x, metres ahead of the module's centre), doors [x, width] on the right (both
   // sides when `both`), pantograph (pan: its x), roof boxes (hvac: air conditioning, conv: covered converters, fair: the
@@ -5376,7 +5480,7 @@ const runTrains=(()=>{
   const fnv1a=s=>{let h=0x811c9dc5;for(const b of new TextEncoder().encode(s)){h^=b;h=Math.imul(h,16777619);}return h>>>0;};
   const pickVariant=(ref,op,key)=>{let R=TRULE[ref];R=typeof R==='string'?TSH[R]:R;if(!R)return op==='BLT'?'tango':'flexity_long';
     const r=fnv1a(key)%100;let c=0;for(const [v,p] of R){c+=p;if(c>r)return v;}return R[R.length-1][0];};
-  const TMAXM=Math.max(...Object.values(TVAR).map(v=>v.mods.length)),TW=24;   // modules at most; texels a tram's row
+  const TMAXM=Math.max(...Object.values(TVAR).map(v=>v.mods.length)),TW=25;   // modules at most; texels a tram's row
   const TRAM_W=Math.max(...Object.values(TVAR).map(v=>v.W))*TU;   // half the widest tram, units
   for(const k in TVAR){const VA=TVAR[k];VA.key=k;let off=0;
     VA.cars=VA.mods.map((md,m)=>{off+=(md.cpl||0)*TU;const c={C:{len:md.L*TU,pivot:0.42*md.L*TU},   // (on the track near its ends, so a long rigid car cuts in on a bend rather than swinging out)
@@ -5384,12 +5488,13 @@ const runTrains=(()=>{
       off:off+md.L*TU/2,role:m===0?1:m===VA.mods.length-1&&VA.rear!=='rear'?2:0,pan:(md.pan!=null?1:0)+(md.roof?2:0),px:(md.pan||0)*TU};off+=md.L*TU;return c;});
     VA.len=off;}
   function TG(){   // flat-shaded triangles in metres, each with its colour, module and glow (1 window, 2 headlamp, 3 tail lamp,
-    const P=[],N=[],C=[],X=[],col=new THREE.Color(),a=new V3(),b=new V3(),c=new V3(),n=new V3(),e=new V3(),o=new V3();   // 4 display,
-    const G={mod:0,tri(p,q,r,hex,out,glow=0){a.set(p[0]*TU,p[1]*VS,p[2]*TU);b.set(q[0]*TU,q[1]*VS,q[2]*TU);c.set(r[0]*TU,r[1]*VS,r[2]*TU);   // 5 its own colour)
+    const P=[],N=[],C=[],X=[],U=[],col=new THREE.Color(),a=new V3(),b=new V3(),c=new V3(),n=new V3(),e=new V3(),o=new V3();   // 4 display,
+    const G={mod:0,tri(p,q,r,hex,out,glow=0,du=null){let sw=false;a.set(p[0]*TU,p[1]*VS,p[2]*TU);b.set(q[0]*TU,q[1]*VS,q[2]*TU);c.set(r[0]*TU,r[1]*VS,r[2]*TU);   // 5 its own colour)
         n.subVectors(b,a).cross(e.subVectors(c,a));if(n.lengthSq()<1e-16)return;o.set(out[0],out[1],out[2]);
-        if(n.dot(o)<0){e.copy(b);b.copy(c);c.copy(e);n.negate();}n.normalize();col.set(hex);
-        for(const v of [a,b,c]){P.push(v.x,v.y,v.z);N.push(n.x,n.y,n.z);C.push(col.r,col.g,col.b);X.push(G.mod,glow,0);}},
-      quad(p,q,r,s,hex,out,glow){G.tri(p,q,r,hex,out,glow);G.tri(p,r,s,hex,out,glow);},
+        if(n.dot(o)<0){e.copy(b);b.copy(c);c.copy(e);n.negate();sw=true;}n.normalize();col.set(hex);
+        for(const v of [a,b,c]){P.push(v.x,v.y,v.z);N.push(n.x,n.y,n.z);C.push(col.r,col.g,col.b);X.push(G.mod,glow,0);}
+        for(const d of du?(sw?[du[0],du[2],du[1]]:du):[0,0,0])d?U.push(...d):U.push(0,0,0);},
+      quad(p,q,r,s,hex,out,glow,du){G.tri(p,q,r,hex,out,glow,du&&[du[0],du[1],du[2]]);G.tri(p,r,s,hex,out,glow,du&&[du[0],du[2],du[3]]);},
       box(x0,x1,y0,y1,z0,z1,hex,glow){const R=[[Math.min(x0,x1),Math.max(x0,x1)],[y0,y1],[z0,z1]];
         for(const [ax,i,j] of [[0,1,2],[1,0,2],[2,0,1]])for(const k of [0,1]){if(ax===1&&!k)continue;   // (no underside)
           const pt=(u,v)=>{const q=[0,0,0];q[ax]=R[ax][k];q[i]=R[i][u];q[j]=R[j][v];return q;},out=[0,0,0];out[ax]=k?1:-1;
@@ -5400,7 +5505,7 @@ const runTrains=(()=>{
           G.quad(f(p,a1,b1),f(q,a1,b1),f(q,a2,b2),f(p,a2,b2),hex,[u.x*(a1+a2)+w.x*(b1+b2),u.y*(a1+a2)+w.y*(b1+b2),u.z*(a1+a2)+w.z*(b1+b2)]);}},
       build(){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));
         g.setAttribute('normal',new THREE.Float32BufferAttribute(N,3));g.setAttribute('color',new THREE.Float32BufferAttribute(C,3));
-        g.setAttribute('aux',new THREE.Float32BufferAttribute(X,3));return g;}};
+        g.setAttribute('aux',new THREE.Float32BufferAttribute(X,3));g.setAttribute('dsp',new THREE.Float32BufferAttribute(U,3));return g;}};
     return G;}
   const tintAt=(Lv,y,rise=0,cab=false)=>{if(y<0.34)return Lv.skirt;for(const [a,b,c,sw] of Lv.bands){const d=sw?rise:0;if(y>=a+d&&y<b+d)return c;}
     if(y>=Lv.cant[0]&&y<Lv.cant[1])return Lv.cant[2];return y>Lv.wall+0.2?(cab?Lv.cabRoof:Lv.roof):Lv.body;};   // (the cant band rounds the shoulder; the roof above it is grey, a cab's cap the body colour)
@@ -5421,16 +5526,18 @@ const runTrains=(()=>{
       for(let k=1;k<=K;k++){const s0=(k-1)/K,s1=k/K,[a0,b0]=yb(s0),[a1,b1]=yb(s1);
         for(const sd of [1,-1])G.quad(off(at(sd*W,a0,s0),0.006),off(at(sd*W,a1,s1),0.006),off(at(sd*W,b1,s1),0.006),off(at(sd*W,b0,s0),0.006),sb[2],[dir*0.3,0,sd]);}}
     const xf=(y,d=0.015)=>x0+dir*(S.Ln*fx(y)+d),
-      pane=(y0,y1,z0,z1,hex,glow,d)=>G.quad([xf(y0,d),y0,z0],[xf(y0,d),y0,z1],[xf(y1,d),y1,z1],[xf(y1,d),y1,z0],hex,[dir,0,0],glow);
+      pane=(y0,y1,z0,z1,hex,glow,d,du)=>G.quad([xf(y0,d),y0,z0],[xf(y0,d),y0,z1],[xf(y1,d),y1,z1],[xf(y1,d),y1,z0],hex,[dir,0,0],glow,du),
+      dq=(k,us=1)=>{const a=dir>0?us:0,b=dir>0?0:us;return [[a,0,k],[b,0,k],[b,1,k],[a,1,k]];};   // (a display's corners: text reads from the viewer's left)
     if(sb){const [a,b]=[sb[0]+S.rise,sb[1]+S.rise];pane(a,b,-W*(1-S.nz),W*(1-S.nz),sb[2],0,0.008);}
     const [ly0,ly1,lz,lw]=S.lamp;
     for(const sd of [1,-1])pane(ly0,ly1,sd*(lz-lw/2),sd*(lz+lw/2),lamp===2?'#f6f3e6':'#6b0f0c',lamp);
     if(lamp===3&&front)for(const sd of [1,-1])pane(ly0,ly1,sd*(lz-lw*1.6),sd*(lz-lw*0.7),'#d9d6cc',0);   // (a cab's headlamps, off)
     if(S.split)pane(S.ws[0],S.ws[1],-0.04,0.04,'#0c0d0c',0,0.02);
-    if(S.disp&&front){const [y0,y1,hz]=S.disp;pane(y0,y1,hz*0.25,hz,'#ffffff',5);pane(y0,y1,-hz,hz*0.2,'#2a2110',4);}   // the line's colour, then the destination
+    if(S.disp&&front){const [y0,y1,hz]=S.disp;pane(y0,y1,-hz,hz,'#2a2110',4,undefined,dq(S.panel?4:1));}   // the line, then the destination (DSP)
+    if(S.board&&front){const [y0,y1,hz]=S.board;pane(y0,y1,-hz,hz,'#ece2c0',0,0.03,dq(3));}   // the Cornichon's cream board
     if(S.box&&front){const xe=x0+dir*S.Ln*fx(Lv.top),xa=xe-dir*0.62,xb=xe-dir*0.12,t=Lv.top;   // a route box on the roof
       G.box(xa,xb,t-0.08,t+0.42,-0.42,0.42,Lv.body);G.quad([xb+dir*0.005,t+0.06,0.38],[xb+dir*0.005,t+0.06,-0.38],[xb+dir*0.005,t+0.4,-0.38],[xb+dir*0.005,t+0.4,0.38],'#0c0d0c',[dir,0,0]);
-      G.quad([xb+dir*0.01,t+0.1,0.34],[xb+dir*0.01,t+0.1,-0.34],[xb+dir*0.01,t+0.36,-0.34],[xb+dir*0.01,t+0.36,0.34],'#ffffff',[dir,0,0],5);}
+      G.quad([xb+dir*0.01,t+0.1,0.34],[xb+dir*0.01,t+0.1,-0.34],[xb+dir*0.01,t+0.36,-0.34],[xb+dir*0.01,t+0.36,0.34],'#ffffff',[dir,0,0],5,[[0,0,2],[0.436,0,2],[0.436,1,2],[0,1,2]]);}   // (its number: DSP's box cell)
     if(S.mirror&&front)for(const sd of [1,-1])G.box(x0+dir*0.3,x0+dir*0.55,2.32,2.72,sd*W,sd*(W+0.26),'#111312');}
   function tramGeo(VA){   // a whole tram, module by module (each vertex knows its module; the module's pose comes per tram)
     const G=TG(),W=VA.W,Lv=LIVS[VA.liv],n=VA.mods.length,S0=CABS[VA.cab],S1=CABS[VA.rear];
@@ -5512,11 +5619,11 @@ const runTrains=(()=>{
     g.setAttribute('color',new THREE.Float32BufferAttribute(C,3));g.setAttribute('aux',new THREE.Float32BufferAttribute(X,3));return g;}
   // the poses of every tram's modules, a row a tram: for module k, texel 2k (x, y, z, heading) and 2k+1 (pitch, length,
   // its end: 1 front cab, 2 rear cab, -1 not drawn, pantograph); 2*TMAXM is the pantograph's module again; 16 the line's
-  // colour; 17-22 the far tram's colours and heights
+  // colour; 17-23 the far tram's colours and heights; 24 the trip's display cells (A, B: DSP)
   const tramMat=(far)=>{const m=new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.5,metalness:0.1,emissive:0xffffff,emissiveIntensity:0});
     if(far)m.defines={TRAM_FAR:''};nightGlow.push(m);
-    m.onBeforeCompile=(sh)=>{sh.uniforms.tramTex={value:tramTex};
-      const pre='uniform highp sampler2D tramTex;\nattribute vec3 aux;\nattribute float irow;\nvarying vec3 vGlow;\n#ifdef TRAM_FAR\nvarying float vLy;\nvarying float vPan;\nvarying vec3 vBody;\nvarying vec3 vAcc;\nvarying vec3 vBand;\nvarying vec3 vRoof;\nvarying vec4 vBY;\nvarying float vWall;\nvarying vec4 vFX;\nvarying vec4 vNM;\nvarying float vNose;\nvarying float vLz;\nvarying vec3 vLine;\n#endif\n';
+    m.onBeforeCompile=(sh)=>{sh.uniforms.tramTex={value:tramTex};if(!far)dispUniforms(sh);
+      const pre='uniform highp sampler2D tramTex;\nattribute vec3 aux;\nattribute float irow;\nvarying vec3 vGlow;\n#ifdef TRAM_FAR\nvarying float vLy;\nvarying float vPan;\nvarying vec3 vBody;\nvarying vec3 vAcc;\nvarying vec3 vBand;\nvarying vec3 vRoof;\nvarying vec4 vBY;\nvarying float vWall;\nvarying vec4 vFX;\nvarying vec4 vNM;\nvarying float vNose;\nvarying float vLz;\nvarying vec3 vLine;\n#else\nattribute vec3 dsp;\nvarying vec3 vDsp;\n'+DSP_V+'#endif\n';
       sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\n'+pre).replace('#include <color_vertex>',THREE.ShaderChunk.color_vertex+`
         int tRow=int(irow+0.5),tMod=int(aux.x+0.5);
         vec4 tP=texelFetch(tramTex,ivec2(2*tMod,tRow),0),tQ=texelFetch(tramTex,ivec2(2*tMod+1,tRow),0);
@@ -5530,6 +5637,7 @@ const runTrains=(()=>{
         #else
           if(all(greaterThan(color,vec3(0.99))))vColor.rgb=tLine;
           float tk=aux.y;vGlow=tk<0.5?vec3(0.0):tk<1.5?vec3(1.0,0.66,0.32):tk<2.5?vec3(1.8,1.75,1.5):tk<3.5?vec3(1.6,0.06,0.03):tk<4.5?vec3(1.2,0.55,0.12):tk<5.5?vColor.rgb*1.3:vColor.rgb*0.45;
+          vDsp=vec3(0.0);if(dsp.z>0.5){vec4 tC=texelFetch(tramTex,ivec2(24,tRow),0);vDsp=vec3(dispUV(abs(dsp.z-3.0)<0.5?tC.y:tC.x,dsp.xy),dsp.z);}
         #endif
         float tcp=cos(tQ.x),tsp=sin(tQ.x),tcy=cos(tP.w),tsy=sin(tP.w);`).replace('#include <beginnormal_vertex>',`vec3 objectNormal=vec3(normal);
         objectNormal.xy=vec2(objectNormal.x*tcp-objectNormal.y*tsp,objectNormal.x*tsp+objectNormal.y*tcp);
@@ -5543,7 +5651,7 @@ const runTrains=(()=>{
         transformed.xy=vec2(transformed.x*tcp-transformed.y*tsp,transformed.x*tsp+transformed.y*tcp);
         transformed.xz=vec2(transformed.x*tcy+transformed.z*tsy,-transformed.x*tsy+transformed.z*tcy);
         transformed+=tP.xyz;`);
-      sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\n'+pre.replace(/attribute[^\n]*\n/g,'').replace('uniform highp sampler2D tramTex;\n',''))
+      sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\n'+pre.replace(/attribute[^\n]*\n/g,'').replace('uniform highp sampler2D tramTex;\n','')+(far?'':DSP_F))
         .replace('#include <color_fragment>',`#include <color_fragment>
         #ifdef TRAM_FAR
           diffuseColor.rgb=vPan>1.5?vec3(0.27):vPan>0.5?vec3(0.04):vLy<0.34?vec3(0.03):vLy>vWall+0.2?vRoof:(vLy>=vBY.z&&vLy<vBY.w)?vBand:(vLy>=vBY.x&&vLy<vBY.y)?vAcc:vBody;
@@ -5552,10 +5660,12 @@ const runTrains=(()=>{
             if(vLy>=vFX.z&&vLy<vFX.w)diffuseColor.rgb=vec3(0.004);if(vLy>=vNM.x&&vLy<vNM.y)diffuseColor.rgb=vec3(0.034,0.058,0.076);}
           float tStr=(vLy>vWall+0.2&&abs(vLz)<0.3&&vNose<0.5&&(vPan<0.5||(vPan>1.5&&vLy>3.6)))?1.0:0.0;   // (the line's stripe along the roof and over its boxes)
           if(tStr>0.5)diffuseColor.rgb=vLine;
+        #else
+          vec3 dC=dispCol(vDsp);if(vDsp.z>0.5)diffuseColor.rgb=dC;   // (a display: its cell of the atlas)
         #endif`).replace('#include <emissivemap_fragment>',`#ifdef TRAM_FAR
           totalEmissiveRadiance*=tStr>0.5?vLine*0.45:(vPan<0.5&&vLy>vBY.z+0.1&&vLy<vBY.w-0.12)?vec3(0.8,0.53,0.26):vec3(0.0);
         #else
-          totalEmissiveRadiance*=vGlow;
+          totalEmissiveRadiance=vDsp.z>0.5?dC*(totalEmissiveRadiance*(vDsp.z<1.5?2.4:0.9)+(vDsp.z<1.5?0.3:0.0)):totalEmissiveRadiance*vGlow;   // (LEDs a little lit by day too)
         #endif`);};
     m.customProgramCacheKey=()=>far?'tram-far':'tram-near';return m;};
   const tramPath=(p)=>{   // a route every half unit: position, heading, and the deck height where it crosses a bridge
@@ -5568,6 +5678,80 @@ const runTrains=(()=>{
     return {len:(n-1)*STEP,at(s,o){const g=s/STEP,k=g<0?0:Math.min(Math.floor(g),n-2),u=g-k,y=g<0?Y[0]:g>n-1?Y[n-1]:Y[k]+(Y[k+1]-Y[k])*u;   // (on past
       return o.set(X[k]+(X[k+1]-X[k])*u,y,Z[k]+(Z[k+1]-Z[k])*u);},   // either end in a straight line: a tram starting at a terminus stands behind it)
       hd(s){return H[Math.round(f(s))];},X,Z,H,zones:[]};};
+  // the destination displays: each trip's headsign from Switzerland's timetable (GTFS, opentransportdata.swiss) for the
+  // game's day, 21 October 2026, matched to the game's trips by line, stop (within 70 m) and departure (within 100 s):
+  // per line the headsigns, then a character per trip in the data's order ('0' the first headsign). Only 5 of the 5701
+  // trips tie between two headsigns (the first is taken); none is unmatched. A line whose trip count no longer agrees
+  // (rebuilt data) falls back to its direction's terminus (trams) or shows its number alone (buses).
+  const HEADS={tram:{"1":{h:["Basel, Bahnhof SBB", "Basel, Dreirosenbrücke", "Basel, Badischer Bahnhof", "Basel, Wiesenplatz", "Basel, Morgartenring"],i:"01011001110010101010121201201201211212121212121212131010101100101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101212212121212121212121212121212121212121212121213131310100101012101201210421442121212121010100101010101010334"},
+    "2":{h:["Riehen, Grenze", "Binningen, Kronenplatz", "Basel, Eglisee", "Riehen, Fondation Beyeler", "Basel, Wiesenplatz", "Basel, Badischer Bahnhof"],i:"00101121331131321331313131313131313131312121212112112121212121212121212121212121212121212121212121212121212121212121212121212121212121212121212121212121212121212121212121212121212131313213211313131313131313131313131313131312121212112142121214212121514454415151515151515151515415151515151515154"},
+    "3":{h:["Basel, Burgfelderhof", "Birsfelden, Hard", "Basel, MParc", "Basel, Morgartenring", "Basel, Wiesenplatz"],i:"011011010101010110101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101001100110011001100101232010101010101011010101010101010104323"},
+    "6":{h:["Allschwil, Dorf", "Riehen, Grenze", "Basel, Eglisee", "Basel, Morgartenring", "Riehen, Fondation Beyeler", "Basel, Wiesenplatz"],i:"012110110110111010101010010110011001100110011001100110011001100110011001100110011001100110011001100110011001100110011001100110011001100110011001100110011001100110011001100101101010101010101010101010101010101010101010310101010101040104010401040104010401040104010401040104001031031501010101010353"},
+    "8":{h:["Basel, Neuweilerstrasse", "Weil am Rhein, Bahnhof/Zentrum", "Basel, Kleinhüningen", "Basel, Theater", "Basel, Wiesenplatz", "Basel, Morgartenring"],i:"000100100100220012001200120100201020102010201020102010201020102010201020102010201020102010201020102010201020102010201020102010201020102010201020102010201010101010101010101010101013010010101010101010101010101010101010101012010021002410021002100210021002100210021002100210021002150410410101010102414"},
+    "10":{h:["Dornach, Bahnhof", "Basel, Bankverein", "Rodersdorf, Station", "Flüh, Station", "Ettingen, Dorf", "Oberwil BL, Zentrum"],i:"001202102002030203020302030203020302040204020403040204030402040304020403040204030402040304020403040204030402040304020402040204020402040204020402040204020402040204020402040204020402030203020302030203020302040204020402040204020402040204024034020302030203020302030203020302030255"},
+    "11":{h:["Basel, St-Louis Grenze", "Basel, Dreispitz", "Basel, Theater"],i:"010010101100110011000110011010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101001101010101001010101010101010101010101010101010101010101011011101010101010101012"},
+    "14":{h:["Pratteln, Schlossstrasse", "Basel, Dreirosenbrücke", "Basel, Wiesenplatz", "Basel, St. Jakob", "Basel, Morgartenring", "Basel, MParc"],i:"00000100100100100101010010101010101010010101010101010101010101010101010101010120101010101010101010101010101010101010101010101010101010101010101010101010101010101010010110101010101010101010101010101010101010101010101010102101010101010131014101421012010101010101010101010101010140204524"},
+    "15":{h:["Basel, Bruderholz", "Basel, Messeplatz", "Basel, Wiesenplatz", "Basel, MParc"],i:"000100101001010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010102101010101010102012012010101010101010101010101010101013"},
+    "16":{h:["Basel, Bruderholz", "Basel, Schifflände", "Basel, Wiesenplatz", "Basel, MParc"],i:"01010100101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101001010101010101010101010101010101010101010101010101010101010101010101010212012020101010101010110101010101010232"},
+    "17":{h:["Basel, Schifflände", "Ettingen, Dorf", "Oberwil BL, Zentrum", "Basel, Wiesenplatz"],i:"001010101010101010202020202020223333133131313113311331133113311331133113311331131111"},
+    "21":{h:["Basel, Badischer Bahnhof", "Basel, Bahnhof St. Johann", "Basel, Wiesenplatz"],i:"010101010121011010101010101010101010202"}},
+   bus:{"80":{h:["Basel, Aeschenplatz", "Liestal, Bahnhof"],i:"01010101010101010101010101010101010101010101010101010101010101"},
+    "81":{h:["Basel, Aeschenplatz", "Liestal, Bahnhof"],i:"0101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
+    "37":{h:["Basel, Bahnhof SBB", "Münchenstein, Bahnhof", "Münchenstein, Limmeren", "Basel, Dreispitz"],i:"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010202020303030303030303"},
+    "30":{h:["Basel, Bahnhof SBB", "Basel, Badischer Bahnhof", "Basel, Metzerstrasse"],i:"00101010100101010101010001001100210100101010010110201010101010010110101010101010101010101010210201020102010201020102010201010101101101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010100100100120102010201020102010201020102010201020102010201020102010201020102010101010110110101010101010101010101010101010101010101010101010101010101101010101010101011"},
+    "31":{h:["Basel, Claraplatz", "Riehen, Otto Wenk-Platz"],i:"0110101010101010101010101010101010101010101010101010101010101010101010101010101010101010010101010101010101101010101010101001010101010101010"},
+    "33":{h:["Schönenbuch, Dorf", "Basel, Schifflände", "Allschwil, Letten", "Basel, Claraplatz", "Basel, Wanderstrasse"],i:"0101021001210121012101012101210121212101232130121012303210321012101210101010101010101012101210121012101201201210121012101210121012101210121012103213213031210321012301230121012130101010141"},
+    "34":{h:["Riehen, Bahnhof", "Bottmingen, Schloss", "Basel, Claraplatz", "Riehen, Otto Wenk-Platz"],i:"0110110110110100101010101010101020110310102101021010101310131013101310131013101310131013101310131013101310131013101310131013101310131013101310131013101310131013101301010101010101010101010101010101010101010101013101310123210131013101310131010101010101010101010101010101010232"},
+    "36":{h:["Basel, Kleinhüningen", "Basel, Schifflände", "Basel, Claraplatz", "Basel, Badischer Bahnhof"],i:"0101010100111001100010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101101010010101010101010101010102010101010101020110101010101010101013103110311031103110311032103210313201010101010102023233"},
+    "38":{h:["Allschwil, Friedhof", "Wyhlen, Siedlung", "Basel, Thomaskirche", "Basel, Claraplatz"],i:"010110100101101010101010101010101010101010101010101010101010101010101010101010101010101010120101010101010101010101010301333010101011010101033"},
+    "42":{h:["Basel, Bahnhof SBB", "Basel, Tinguely Museum", "Bettingen, Dorf", "Basel, Hoffmann-La Roche", "Basel, Wettsteinallee", "Basel, Badischer Bahnhof"],i:"001002010201020101030011010101010401050353300010201020102001020102010201020102010202552555"},
+    "46":{h:["Muttenz, Bahnhof", "Basel, Kleinhüningen", "Basel, Badischer Bahnhof"],i:"0010101010101010101010102102101010101010101010101010101010101010101010101010101010101010101010101010101010101010101212121212121212121212121212121212121"},
+    "48":{h:["Basel, Bahnhof SBB", "Basel, Bahnhof St. Johann", "Basel, Bachgraben"],i:"0001010010010201021002100210021002100210020110220202020202020202020202020202020202020202020202020201010001001100210021002100210021002100200120120122020202022020202020202020"},
+    "50":{h:["Basel EuroAirport, Verwaltung", "Basel, Bahnhof SBB", "Basel EuroAirport, Ankunft"],i:"0010010101010010010010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101011011011010101010101010101010101121211"},
+    "EV8":{h:["Basel, Claraplatz", "Basel, Ciba"],i:"00101001010101010101010101010101010010110101010101010101010101010101010101101010101010101010101010101010101010101010101010101010101010101010101010101010100101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010110101101010101010101"},
+    "55":{h:["Basel, Claraplatz", "Kandern, Busbahnhof", "Kandern, Schulzentrum", "Haltingen, Zentrum"],i:"010201030103010301030103010301030103010101010101010301001"}}};
+  // one atlas (canvas) for every display, a 192 x 32 px cell (about a display's 6 : 1) per (style, line, destination)
+  // the day's trips show, drawn at load in DM Mono (OFL, the game's own font); text only, no logos. Each row is the line
+  // number, then the headsign with 'Basel, ' and commas dropped (as the Blender world's led_font), on two lines when one
+  // would be squeezed to under 3/4. Styles after the photos of the markings inventory: 'led' amber on black, BLT 11 and
+  // 17 with their numbers white on a red and a blue field (tango_2021, Schindler 218); 'schindler' the number, then purple
+  // on a white panel; the Cornichon's roof route box ('box', black on white) and its cream board ('board') as blinds
+  const DSP=(()=>{const CW=192,CH=32,NC=5,cells=[],idx=new Map(),FIELD={'BLT|11':'#e21e26','BLT|17':'#1856a8'};
+    const at=(st,op,num,dest)=>{const k=[st,op,num,dest].join('|');if(!idx.has(k)){idx.set(k,cells.length);cells.push([st,op,num,dest]);}return idx.get(k);};
+    const text=h=>(h||'').replace(/Basel, /g,'').replace(/,/g,' ').split(/\s+/).filter(Boolean).join(' ');
+    const D={at,text,cells,tex:null,grid:new THREE.Vector4(),dots:new THREE.Vector2()};
+    const draw=c=>{const x=c.getContext('2d');x.fillStyle='#0a0704';x.fillRect(0,0,c.width,c.height);x.textBaseline='middle';
+      const put=(s,x0,w,col,px,y)=>{x.font=`500 ${px}px "DM Mono",monospace`;const m=x.measureText(s).width,k=Math.min(1,w/Math.max(1,m));
+        x.fillStyle=col;x.save();x.translate(x0,y);x.scale(k,1);x.fillText(s,0,0);x.restore();return m*k;};
+      cells.forEach(([st,op,num,dest],i)=>{const X=(i%NC)*CW,Y=Math.floor(i/NC)*CH;x.save();x.beginPath();x.rect(X,Y,CW,CH);x.clip();
+        const fit=(s,x0,w,col)=>{x.font='500 22px "DM Mono",monospace';const ws=s.split(' ');
+          if(x.measureText(s).width*0.75<=w||ws.length<2){put(s,x0,w,col,22,Y+CH/2+1);return;}
+          let b=null;for(let j=1;j<ws.length;j++){const p=ws.slice(0,j).join(' '),q=ws.slice(j).join(' '),d=Math.max(p.length,q.length);if(!b||d<b[0])b=[d,p,q];}
+          put(b[1],x0,w,col,14,Y+9);put(b[2],x0,w,col,14,Y+24);};
+        if(st==='box'){x.fillStyle='#f4f3ee';x.fillRect(X,Y,CW,CH);x.font='500 24px "DM Mono",monospace';const m=x.measureText(num).width;
+          put(num,X+Math.max(2,(CH*2.6-m)/2),CH*2.6-4,'#141414',24,Y+CH/2+1);}   // (the box's face is 2.6 : 1: the cell's left part)
+        else if(st==='board'){x.fillStyle='#ece2c0';x.fillRect(X,Y,CW,CH);fit(dest,X+6,CW-12,'#141414');}
+        else{const f=FIELD[op+'|'+num];x.font='500 22px "DM Mono",monospace';const nw=Math.max(x.measureText(num).width,14)+8;
+          if(f){x.fillStyle=f;x.fillRect(X+2,Y+3,nw,CH-6);}
+          put(num,X+6,nw,f?'#f6f6f2':'#ffce76',22,Y+CH/2+1);
+          if(st==='schindler'){x.fillStyle='#f4f3ee';x.fillRect(X+nw+6,Y+2,CW-nw-8,CH-4);fit(dest,X+nw+10,CW-nw-16,'#683480');}
+          else if(dest)fit(dest,X+nw+8,CW-nw-12,'#ffce76');}
+        x.restore();});};
+    D.build=()=>{const c=document.createElement('canvas');c.width=CW*NC;c.height=CH*Math.max(1,Math.ceil(cells.length/NC));draw(c);
+      const t=D.tex=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;
+      D.grid.set(CW/c.width,CH/c.height,NC,0);D.dots.set(c.width/2,c.height/2);   // (a dot every 2 px: 96 x 16 a cell)
+      document.fonts.load('500 22px "DM Mono"').then(()=>{draw(c);t.needsUpdate=true;}).catch(()=>{});};
+    return D;})();
+  // GLSL: the atlas coordinates of cell c at (u, v) in the display (0..1, v up), and the dot look: round LEDs, fading to
+  // the plain texture where a dot is smaller than about a pixel
+  const DSP_V=`uniform sampler2D dispTex;uniform vec4 dGrid;uniform vec2 dDots;
+    vec2 dispUV(float c,vec2 uv){float r=floor((c+0.5)/dGrid.z),k=c-r*dGrid.z;
+      return vec2((k+0.004+uv.x*0.992)*dGrid.x,1.0-(r+1.0-(0.03+uv.y*0.94))*dGrid.y);}
+`,
+    DSP_F=`vec3 dispCol(vec3 d){vec3 c=texture(dispTex,d.xy).rgb;vec2 g=d.xy*dDots,w=fwidth(g);
+      float f=clamp(max(w.x,w.y)*1.6-0.4,0.0,1.0),m=1.0-smoothstep(0.3,0.48,length(fract(g)-0.5));
+      return d.z<1.5?c*mix(m,1.0,f):c;}\n`;
+  const dispUniforms=sh=>{sh.uniforms.dispTex={value:DSP.tex};sh.uniforms.dGrid={value:DSP.grid};sh.uniforms.dDots={value:DSP.dots};};
   const TT=3,VCATCH=7,GAP_T=0.6,TL=(BASEL.trams||[]).filter(l=>l.dirs&&l.dirs.length===2&&l.trips&&l.trips.length);
   const ease=u=>u<0.25?2.667*u*u:u>0.75?1-2.667*(1-u)*(1-u):1.333*u-0.1667;   // speed up, run, slow down for the stop
   const lines=TL.map((l,li)=>{const op=l.op==='BLT'?'BLT':'BVB',paths=l.dirs.map(d=>tramPath(d.p)),trips=[];
@@ -5579,7 +5763,10 @@ const runTrains=(()=>{
     return p[p.length-3];};
   // each trip's variant, and as many trams of each variant as the timetable ever has out at once
   for(const L of lines){for(const t of L.trips)t.va=pickVariant(String(L.l.ref),L.op,`${L.l.ref}|${t.dir}|${Math.round(t.t0+t.pat[2])}`);
-    L.pv=Math.max(0,...[...new Set(L.trips.map(t=>t.va))].flatMap(k=>TVAR[k].cars.map(c=>c.C.pivot)));}   // (its longest car's pivots: how far its trams cut in)
+    L.pv=Math.max(0,...[...new Set(L.trips.map(t=>t.va))].flatMap(k=>TVAR[k].cars.map(c=>c.C.pivot)));
+    const H=HEADS.tram[String(L.l.ref)],ok=H&&H.i.length===L.trips.length,num=String(L.l.ref);   // (its displays' cells: A the display
+    L.trips.forEach((t,k)=>{const dest=DSP.text(ok?H.h[H.i.charCodeAt(k)-48]:(L.l.dirs[t.dir].name||'').split('→').pop()),cab=TVAR[t.va].cab;   // or the route box, B the board)
+      if(cab==='cornichon'){t.cA=DSP.at('box',L.op,num,'');t.cB=DSP.at('board',L.op,num,dest);}else t.cA=t.cB=DSP.at(cab==='schindler'?'schindler':'led',L.op,num,dest);});}   // (its longest car's pivots: how far its trams cut in)
   const need={},LATE=120;   // (with two minutes' grace for one that is late at its terminus)
   for(const k in TVAR){const ev=[];for(const L of lines)for(const t of L.trips)if(t.va===k)ev.push([t.t0,1],[t.t1+LATE,-1]);
     ev.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);let n=0,mx=0;for(const [,d] of ev){n+=d;mx=Math.max(mx,n);}if(mx)need[k]=mx;}
@@ -5763,7 +5950,7 @@ const runTrains=(()=>{
     g=k=>+p.find(x=>x.type===k).value;return g('hour')*3600+g('minute')*60+g('second');}catch(e){return 8*3600;}};
   const startClock=night=>{const z=zurich();return night?(z>=20*3600?z:z<2400?z+86400:22.5*3600):(z>=6*3600&&z<20*3600?z:8*3600);};
   let clock=0,clockNight=null;
-  function startTram(V,t,T){V.trip=t;const c=lines[t.li].col;tdat.set([c.r,c.g,c.b,1],V.id*TW*4+64);V.s=posAt(t,T);V.shown=false;V.no=0;setZones(V,pathOf(V));}   // (and its line's colour)
+  function startTram(V,t,T){V.trip=t;const c=lines[t.li].col;tdat.set([c.r,c.g,c.b,1],V.id*TW*4+64);tdat.set([t.cA,t.cB,0,0],V.id*TW*4+96);V.s=posAt(t,T);V.shown=false;V.no=0;setZones(V,pathOf(V));}   // (and its line's colour)
   function resetTrams(T){for(const V of trams){V.trip=null;V.shown=false;V.no=0;dropZones(V);}
     for(const L of lines){L.next=L.trips.findIndex(t=>t.t0>T);if(L.next<0)L.next=L.trips.length;
       for(const t of L.trips)if(t.t0<=T&&T<=t.t1){const V=trams.find(v=>!v.trip&&v.va===t.va);if(V)startTram(V,t,T);}}}
@@ -5843,11 +6030,12 @@ const runTrains=(()=>{
     VA.cols=[VA.body,VA.line,far].map(c=>new THREE.Color(c));}
   const BUS_ZB=0.3,BUS_GL=[1.04,2.76],BUS_WR=0.48,BUS_AR=0.62,BUS_R=0.25,BHW=1.275;
   function busKit(){   // triangles in metres (x forward, y up, z to the right) stored in game units, normals out
-    const P=[],N=[],C=[],F=[],col=new THREE.Color(),a=new V3(),b=new V3(),c=new V3(),n=new V3(),e=new V3();
-    const tri=(p,q,r,hex,ox,oy,oz,gl=0)=>{a.set(p[0]*M2U,p[1]*VS,p[2]*M2U);b.set(q[0]*M2U,q[1]*VS,q[2]*M2U);c.set(r[0]*M2U,r[1]*VS,r[2]*M2U);
-      n.subVectors(b,a).cross(e.subVectors(c,a));if(n.lengthSq()<1e-14)return;if(n.x*ox+n.y*oy+n.z*oz<0){e.copy(b);b.copy(c);c.copy(e);n.negate();}n.normalize();col.set(hex);
-      for(const v of [a,b,c]){P.push(v.x,v.y,v.z);N.push(n.x,n.y,n.z);C.push(col.r,col.g,col.b);F.push(gl);}};
-    const quad=(p,q,r,s,hex,ox,oy,oz,gl)=>{tri(p,q,r,hex,ox,oy,oz,gl);tri(p,r,s,hex,ox,oy,oz,gl);};
+    const P=[],N=[],C=[],F=[],U=[],col=new THREE.Color(),a=new V3(),b=new V3(),c=new V3(),n=new V3(),e=new V3();
+    const tri=(p,q,r,hex,ox,oy,oz,gl=0,du=null)=>{a.set(p[0]*M2U,p[1]*VS,p[2]*M2U);b.set(q[0]*M2U,q[1]*VS,q[2]*M2U);c.set(r[0]*M2U,r[1]*VS,r[2]*M2U);let sw=false;
+      n.subVectors(b,a).cross(e.subVectors(c,a));if(n.lengthSq()<1e-14)return;if(n.x*ox+n.y*oy+n.z*oz<0){e.copy(b);b.copy(c);c.copy(e);n.negate();sw=true;}n.normalize();col.set(hex);
+      for(const v of [a,b,c]){P.push(v.x,v.y,v.z);N.push(n.x,n.y,n.z);C.push(col.r,col.g,col.b);F.push(gl);}
+      for(const d of du?(sw?[du[0],du[2],du[1]]:du):[0,0,0])d?U.push(...d):U.push(0,0,0);};   // (a display's coordinates, as the trams')
+    const quad=(p,q,r,s,hex,ox,oy,oz,gl,du)=>{tri(p,q,r,hex,ox,oy,oz,gl,du&&[du[0],du[1],du[2]]);tri(p,r,s,hex,ox,oy,oz,gl,du&&[du[0],du[2],du[3]]);};
     const box=(x0,x1,y0,y1,z0,z1,hex,gl)=>{
       quad([x1,y0,z0],[x1,y1,z0],[x1,y1,z1],[x1,y0,z1],hex,1,0,0,gl);quad([x0,y0,z0],[x0,y1,z0],[x0,y1,z1],[x0,y0,z1],hex,-1,0,0,gl);
       quad([x0,y1,z0],[x1,y1,z0],[x1,y1,z1],[x0,y1,z1],hex,0,1,0,gl);quad([x0,y0,z0],[x1,y0,z0],[x1,y0,z1],[x0,y0,z1],hex,0,-1,0,gl);
@@ -5860,10 +6048,10 @@ const runTrains=(()=>{
           quad([xs[i],A[j][1],s*A[j][0]],[xs[i+1],B[j][1],s*B[j][0]],[xs[i+1],B[j+1][1],s*B[j+1][0]],[xs[i],A[j+1][1],s*A[j+1][0]],hex,0,oy,s*(A[j][0]+A[j+1][0]+0.01),gl);}}}};
     const cap=(x,R,sx,paint)=>{for(let j=0;j+1<R.length;j++){const p=R[j],q=R[j+1];if(Math.abs(q[1]-p[1])<1e-6)continue;   // an end, in strips
       const [hex,gl]=paint((p[1]+q[1])/2);quad([x,p[1],-p[0]],[x,p[1],p[0]],[x,q[1],q[0]],[x,q[1],-q[0]],hex,sx,0,0,gl);}};
-    const panel=(x,z0,z1,y0,y1,hex,sx,gl)=>quad([x,y0,z0],[x,y0,z1],[x,y1,z1],[x,y1,z0],hex,sx,0,0,gl);   // a flat plate across an end
+    const panel=(x,z0,z1,y0,y1,hex,sx,gl,du)=>quad([x,y0,z0],[x,y0,z1],[x,y1,z1],[x,y1,z0],hex,sx,0,0,gl,du);   // a flat plate across an end
     const side=(x0,x1,y0,y1,z,hex,gl)=>quad([x0,y0,z],[x1,y0,z],[x1,y1,z],[x0,y1,z],hex,0,0,Math.sign(z),gl);   // and on a side
     const geo=()=>{const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(N,3));
-      g.setAttribute('color',new THREE.Float32BufferAttribute(C,3));g.setAttribute('glass',new THREE.Float32BufferAttribute(F,1));return g;};
+      g.setAttribute('color',new THREE.Float32BufferAttribute(C,3));g.setAttribute('glass',new THREE.Float32BufferAttribute(F,1));g.setAttribute('dsp',new THREE.Float32BufferAttribute(U,3));return g;};
     return {tri,quad,box,loft,cap,panel,side,geo};}
   const busRing=(w,top,levels,zb)=>{   // a bus body's cross-section: chamfered at the bottom, straight sides, a rounded roof edge
     const r=BUS_R,ys=[...new Set([zb,zb+0.08,...levels.filter(y=>y>zb+0.08&&y<top),top-r,...[30,60].map(a=>top-r+r*Math.sin(a*Math.PI/180))].map(y=>+y.toFixed(3)))].sort((p,q)=>p-q);
@@ -5890,17 +6078,17 @@ const runTrains=(()=>{
     const R1=ring(x1),R0=ring(x0),wf=wAt(x1),wr=wAt(x0);
     K.cap(x1,R1,1,y=>cab?(y<(cab==='hess'?l0:0.55)?[BODY,0]:[BLACK,0]):['#5d6266',0]);   // (the lighTram's green runs up to its white line)
     K.cap(x0,R0,-1,()=>last?[BODY,0]:['#5d6266',0]);
-    if(cab){let e=x1+0.004;const P=(z0,z1,y0,y1,hex,gl)=>K.panel(e,z0,z1,y0,y1,hex,1,gl);   // the front, after the photos
+    if(cab){let e=x1+0.004;const P=(z0,z1,y0,y1,hex,gl,du)=>K.panel(e,z0,z1,y0,y1,hex,1,gl,du),DQ=[[1,0,1],[0,0,1],[0,1,1],[1,1,1]];   // the front, after the photos (DQ: the display, DSP)
       if(cab==='ecitaro'){P(-wf,wf,0.55,top-0.15,VA.cf);e+=0.004;P(-wf+0.07,wf-0.07,0.62,top-0.15,BLACK);e+=0.004;   // black mask in a white
-        P(-wf+0.12,wf-0.12,1.08,2.48,GLASS,0.4);P(-wf+0.35,wf-0.35,2.58,2.86,'#ffae1a',-1.2);   // C-frame, green bumper (8109/8111)
+        P(-wf+0.12,wf-0.12,1.08,2.48,GLASS,0.4);P(-wf+0.35,wf-0.35,2.58,2.86,'#ffae1a',-1.2,DQ);   // C-frame, green bumper (8109/8111)
         for(const s of [-1,1])P(s*(wf-0.5)-0.25,s*(wf-0.5)+0.25,0.7,0.8,'#f4f1e6',-2);}
       else if(cab==='hess'){P(-wf,wf,l0,l1,STRIPE);P(-wf,wf,1.04,top-0.05,BLACK);e+=0.004;   // upright, a black header with the display (9101):
         // the white line runs up both sides of the black mask, a U open at the top, over a green front
         for(const s of [-1,1])P(Math.min(s*(wf-0.085),s*(wf-0.025)),Math.max(s*(wf-0.085),s*(wf-0.025)),l0,top-0.12,STRIPE);
-        P(-wf+0.1,wf-0.1,1.08,2.55,GLASS,0.4);P(-wf+0.4,wf-0.4,2.65,2.92,'#ffae1a',-1.2);
+        P(-wf+0.1,wf-0.1,1.08,2.55,GLASS,0.4);P(-wf+0.4,wf-0.4,2.65,2.92,'#ffae1a',-1.2,DQ);
         for(const s of [-1,1])P(s*(wf-0.45)-0.12,s*(wf-0.45)+0.12,0.58,0.82,'#f4f1e6',-2);}
       else{P(-wf+0.05,wf-0.05,0.98,top-0.08,BLACK);e+=0.004;   // the Citaro's black-framed windscreen over a body-coloured front
-        P(-wf+0.12,wf-0.12,1.02,2.45,GLASS,0.4);P(-wf+0.35,wf-0.35,2.55,2.83,'#ffae1a',-1.2);
+        P(-wf+0.12,wf-0.12,1.02,2.45,GLASS,0.4);P(-wf+0.35,wf-0.35,2.55,2.83,'#ffae1a',-1.2,DQ);
         for(const s of [-1,1])P(s*(wf-0.45)-0.22,s*(wf-0.45)+0.22,0.66,0.8,'#f4f1e6',-2);}
       for(const s of [-1,1])K.box(x1-0.32,x1-0.12,2.1,2.5,Math.min(s*1.27,s*1.42),Math.max(s*1.27,s*1.42),BLACK);}   // mirrors
     if(last){const e=x0-0.004;K.panel(e,-wr+0.15,wr-0.15,1.45,2.55,BLACK,-1);   // the back (no photo): rear window, tail lamps
@@ -5950,10 +6138,12 @@ const runTrains=(()=>{
     return K.geo();}
   const busMat=new THREE.MeshStandardMaterial({vertexColors:true,roughness:0.45,metalness:0.12,emissive:0xffd59a,emissiveIntensity:0});
   busMat.onBeforeCompile=(sh)=>{   // one material for every bus: colours per bus; glass glows at night, the lamps and display in their colour
-    sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nattribute float glass;\nattribute vec3 stripe;\nvarying float vGlass;')
-      .replace('#include <color_vertex>','#include <color_vertex>\n\tvGlass = glass;\n#ifdef USE_INSTANCING_COLOR\n\tvColor.rgb = all( greaterThan( color, vec3( 0.99 ) ) ) ? instanceColor.rgb : ( color.r > 0.99 && color.g < 0.01 && color.b > 0.99 ) ? stripe : color;\n#endif');
-    sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying float vGlass;')
-      .replace('vec3 totalEmissiveRadiance = emissive;','vec3 totalEmissiveRadiance = vGlass < 0.0 ? vColor.rgb * ( - vGlass ) * emissive.r : emissive * vGlass;')
+    dispUniforms(sh);   // (and near the camera the display shows the trip: DSP's cell dcell, per bus)
+    sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nattribute float glass;\nattribute vec3 stripe;\nattribute vec3 dsp;\nattribute float dcell;\nvarying float vGlass;\nvarying vec3 vDsp;\n'+DSP_V)
+      .replace('#include <color_vertex>','#include <color_vertex>\n\tvGlass = glass;\n\tvDsp = dsp.z > 0.5 && dcell >= 0.0 ? vec3( dispUV( dcell, dsp.xy ), dsp.z ) : vec3( 0.0 );\n#ifdef USE_INSTANCING_COLOR\n\tvColor.rgb = all( greaterThan( color, vec3( 0.99 ) ) ) ? instanceColor.rgb : ( color.r > 0.99 && color.g < 0.01 && color.b > 0.99 ) ? stripe : color;\n#endif');
+    sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying float vGlass;\nvarying vec3 vDsp;\n'+DSP_V+DSP_F)
+      .replace('vec3 totalEmissiveRadiance = emissive;','vec3 dC = dispCol( vDsp );\n\tvec3 totalEmissiveRadiance = vDsp.z > 0.5 ? dC * ( 2.2 * emissive.r + 0.3 ) : vGlass < 0.0 ? vColor.rgb * ( - vGlass ) * emissive.r : emissive * vGlass;')
+      .replace('#include <color_fragment>','#include <color_fragment>\n\tif ( vDsp.z > 0.5 ) diffuseColor.rgb = dC;')
       .replace('#include <roughnessmap_fragment>','#include <roughnessmap_fragment>\n\troughnessFactor = mix( roughnessFactor, 0.22, abs( vGlass ) > 0.0 ? 1.0 : 0.0 );')
       .replace('#include <metalnessmap_fragment>','#include <metalnessmap_fragment>\n\tmetalnessFactor = mix( metalnessFactor, 0.35, max( vGlass, 0.0 ) );');};
   nightGlow.push(busMat);
@@ -5961,7 +6151,10 @@ const runTrains=(()=>{
     const paths=l.routes.map(r=>tramPath(r.p)),trips=[];
     for(let k=0;k<l.trips.length;k+=3){const pat=l.pats[l.trips[k+1]],t0=l.trips[k+2];
       trips.push({li,dir:l.trips[k],pat,t0,t1:t0+pat[pat.length-1],va:pickBus(l.op,String(l.ref),`${l.ref}|${l.trips[k]}|${Math.round(t0+pat[2])}`)});}
+    const H=HEADS.bus[String(l.ref)],ok=H&&H.i.length===trips.length;   // (its display's cell)
+    trips.forEach((t,k)=>{t.cA=DSP.at('led',l.op,String(l.ref),ok?DSP.text(H.h[H.i.charCodeAt(k)-48]):'');});
     return {ref:l.ref,op:l.op,paths,trips,next:0};});
+  DSP.build();if(DEBUG)window.__disp=DSP;
   buildZones([...lines.flatMap(L=>L.paths.map(P=>({P,bus:false,pv:L.pv}))),...busLines.flatMap(L=>L.paths.map(P=>({P,bus:true})))]);
   // as many buses of each variant as the timetable ever has out at once, with ten minutes' grace for a late one
   const busNeed={};
@@ -5972,7 +6165,7 @@ const runTrains=(()=>{
     for(let v=0;v<busNeed[k];v++)buses.push({id:buses.length,kind:'bus',va:k,model:k,VA,liv:VA.cols,near:false,
       len:(VA.defs[0].piv+VA.defs.reduce((t,D)=>t+D.j,0)-VA.defs[VA.defs.length-1].x0)*M2U,
       trip:null,s:0,k:0,until:null,shown:false,ob:new Float32Array(VA.defs.length*6),no:0,bb:[0,0,0,0],by:null,zp:null,zi:0,held:[]});}
-  const busPool=(g,k,c)=>{g.setAttribute('stripe',new THREE.InstancedBufferAttribute(new Float32Array(k*3),3));
+  const busPool=(g,k,c)=>{g.setAttribute('stripe',new THREE.InstancedBufferAttribute(new Float32Array(k*3),3));g.setAttribute('dcell',new THREE.InstancedBufferAttribute(new Float32Array(k).fill(-1),1));
     const im=mk(g,busMat,k);for(let i=0;i<k;i++)im.setColorAt(i,c);return im;};
   for(const gk in nGeo){const [VA,D]=geoOf[gk];busMesh[gk]=busPool(busSecGeo(VA,D),nGeo[gk],VA.cols[0]);}
   const busFar=nFar.map((n,e)=>n?busPool(busFarGeo(e&1,e&2),n,BVAR.bvb_ecitaro_g.cols[0]):null);
@@ -5990,7 +6183,7 @@ const runTrains=(()=>{
         if(onMap(M)){q.setFromAxisAngle(UP,Math.atan2(-uz,ux));qp.setFromAxisAngle(FWD,Math.atan2(Fp.y-Rp.y,L));m.compose(Fp,q.multiply(qp),ONE);
           const [body,stripe,far]=V.liv,im=V.near?busMesh[D.gk]:busFar[D.fe],j=im.nDraw++;
           if(!V.near){const xe=D.bellows||D.x1;BLm.makeScale(xe-D.x0,V.VA.top/3,1).setPosition(xe*M2U,0,0);m.multiply(BLm);}
-          const c=V.near?stripe:far;im.setMatrixAt(j,m);im.setColorAt(j,body);im.geometry.attributes.stripe.setXYZ(j,c.r,c.g,c.b);}}
+          const c=V.near?stripe:far;im.setMatrixAt(j,m);im.setColorAt(j,body);im.geometry.attributes.stripe.setXYZ(j,c.r,c.g,c.b);im.geometry.attributes.dcell.setX(j,V.near?V.trip.cA:-1);}}
       if(D.j){Jp.set(Fp.x-ux*D.j*M2U,Fp.y+(Rp.y-Fp.y)*D.j/D.wb,Fp.z-uz*D.j*M2U);dist+=D.j;}}
     if(probe>0){const o=n++*6,ux=ob[2],uz=ob[3],e=ob[4]+probe/2;
       ob[o]=ob[0]+ux*e;ob[o+1]=ob[1]+uz*e;ob[o+2]=ux;ob[o+3]=uz;ob[o+4]=probe/2;ob[o+5]=BUS_HW*0.8;}
@@ -6262,6 +6455,7 @@ function build1615(){
   city1615=buildCity(BASEL1615);Y1615.add(city1615.mesh);
   buildFortifications(city1615.forts,Y1615);
   RIVERS['1615']=buildRiver(BASEL1615.ground.banks,{g:[['wall1615',null]],k:[['wall1615',null]]},Y1615);
+  RIVERS['1615'].buildRails();
   openChannel(RIVERS['1615']);   // the hills keep both eras' ways out open
   {const mb=BASEL.bridges.find(b=>/Mittlere/.test(b.name));if(mb){const B=Batch();buildBridge(mb,B,'1615');B.build(Y1615);}}
   plantTrees(BASEL1615.trees,BASEL1615.treeInfo,Y1615,RIVERS['1615']);

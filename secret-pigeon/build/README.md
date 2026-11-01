@@ -80,12 +80,21 @@ in front of the mosaic), Les Trois Rois (Amadeus Merian's hotel of 1842–44: ye
 terrace over the quay with its iron railing, the winter garden and the gold letters between the two corner pavilions,
 Basel's flag on the south one's roof and the Swiss flag on the north one's, the porch with the Three Kings on the
 Blumenrain, and beside it the sandstone corner building put up for the Kantonalbank in 1901–03), the bridges and the
-Rhine ferries. The Rhine runs in its bed, about 6.5 m below the promenades, between banks built after photos of
-each stretch of them: Kleinbasel's sloped stone Rheinweg with a lower path at the water and broad seating steps from
-the Leu ferry past the Kaserne to the Johanniterbrücke, grassy slopes at Solitude and below the Dreirosenbrücke, the
-Pfalz's and the Rheinsprung's tall walls over a narrow path, the quay at the Schifflände and Les Trois Rois, and the
-St. Alban- and St. Johanns-Rheinweg along the water under a railed wall; in 1615 town walls stand in the water on
-both sides. The bridges stand on the water, their piers and abutments
+Rhine ferries. The Rhine runs in its bed, 6.5 m below the streets, between banks whose paths stand at the heights the
+promenade survey of 1 November 2026 measured on the canton's ground model (aligned to the game's shores; metres over the
+game's water, 245.6 m a.s.l., an estimate of mean water), their forms after photos of each stretch. Kleinbasel has no
+path at the water: its Rheinweg runs on the top of the Rheinbord, 4.0 m up on the Oberer Rheinweg over a stone slope
+and, below the Leu ferry, seating steps, 2.9 m on the Unterer Rheinweg over seating steps, 2.5 m on to the
+Dreirosenbrücke over a stone slope and below it over a kerb wall, while Solitude and the Schaffhauserrheinweg keep
+their grassy slope. In Grossbasel a level at 3.4 m lies above the Schwarzwaldbrücke and an even slope runs from there
+to St. Alban (both from the ground model alone), then the Letzi's ledge at 1.6 m, the St. Alban-Rheinweg's lower path
+at 1.5 m under a paved slope, the Pfalz's narrow path at 1.1 m, the Rheinsprung's houses on a wall in the water, the
+Schifflände's quay wall up to the street, Les Trois Rois' path at 3.8 m, the St. Johanns-Rheinweg at 3.5 m over a
+ledge and a paved slope, St. Johann's promenade at 4.0 m, the St. Johann ferry's landing at 4.3 m and the promenade
+below the Dreirosenbrücke at 3.1 m, all of these raised ones but St. Johann's railed along the water, with an opening wherever a
+flight down the toe, a ferry's gangway or a Rhine bath's walk comes up through the railing. Under the Johanniterbrücke's Grossbasel
+end the game's deck leaves too little headroom for the promenade at 3.5 m (the real one passes through the abutment),
+so the path stays there at 1.1 m as before. In 1615 town walls stand in the water on both sides. The bridges stand on the water, their piers and abutments
 where Basel-Stadt's bridge 3D model has them (`build_city.py`'s `BRIDGE_PIERS`, measured on the canton's model and
 checked against the engineers' span figures): the Mittlere Brücke's six granite arches on five piers (pointed upstream, round downstream), the
 middle one with the Käppelijoch (after the canton's model, the 1962 elevation and photos), the old SBB bridge's
@@ -104,7 +113,7 @@ rising to 255.7 m 13 m out, then a gentle curve to 257.2 m at mid-span, i.e. 7.7
 box is 7.3 / 3.4 m deep under its top, which the drawing puts at 260.6 m, 0.4 m over the game's track level), the old
 bridge its 4.5 m lattice girders. Each deck
 holds its profile across the water and its bank up to the bank's top, so the abutments stand on the banks and the lower
-promenades pass under the Dreirosenbrücke's ends with 6.7-7.1 m of headroom; only on land do the approaches come down
+promenades pass under the Dreirosenbrücke's ends with 4.2-5.6 m of headroom; only on land do the approaches come down
 to the game's street, along their axes, on columns where they stand 3.5 m or more over it and solid below, every tram,
 bus and train following them: the Dreirosenbrücke 155 m (Grossbasel) and 171 m (Kleinbasel, ending before line 1 turns
 off) past the bank tops at 6 % at most; the Schwarzwaldbrücke 142 m in Grossbasel at 6 %, 62-63 m wide there to carry bus 42's road, which runs
@@ -125,9 +134,9 @@ long flat hull whose bow narrows and sweeps up, its cabin windows lit at night, 
 ferries they are (the current presses on the hull the rudder sets at an angle to it, the tether to the trolley on the
 high cable takes the push along the hull and the rest carries the boat over; the Basel ferry friends' *Fähri-Zytig*
 and the reaction-ferry article stored in the research library): bow upstream, turned about 35° towards the bank
-they are making for, straightening as they land; their floors sit above the waterline. They land at landing stages on floats with railed gangways and hang from masts on the
+they are making for, straightening as they land; their floors sit above the waterline. They land at landing stages on floats with railed gangways no steeper than 20° (below a raised promenade they end on its toe, whose slope or seating steps lead on up; at the St. Johann ferry's walled Grossbasel landing the float lies 7.5 m further out for a long gangway up to the platform) and hang from masts on the
 promenades, waiting while a ship, the Merian or a cargo ship, comes by; the canton's stairs and ladders lead down to the water
-where its register puts them. Two bridgeheads are built after the reference world's pass on them (the bridge-bank
+where its register puts them, a flight down the slope below a raised promenade, the ladders at its foot. Two bridgeheads are built after the reference world's pass on them (the bridge-bank
 photos and the canton's bridge model): where the Mittlere Brücke lands in Kleinbasel, the lower promenade runs under
 its land arch and under a terrace either side of it at the deck's level, ceiled in blue-green glass between concrete
 beams, with a stair down from each corner of the deck at the river's edge, swimmers' steps into the Rhine beside them,
@@ -168,7 +177,8 @@ Every boat is one mesh in one shared material. No boat stands in a bridge: moore
 head, and the Merian passes each bridge square to it, straight through its widest opening that her decks fit under
 (her wheelhouse would go down into its block only where her raised profile does not clear; at the real heights it
 stays up on her whole trip, as the 2023 photos show it), and the Rhine baths of St. Johann and the Breite stand on their stilts (after the
-operators' figures and photos). In the tour the pigeon can dive into the river's bed and fly along the water. In
+operators' figures and photos), each reached from the bank by a railed walk and steps (their layout an estimate); at the
+Schifflände's quay wall a ramp runs down along each landing stage to it (its layout an estimate as well). In the tour the pigeon can dive into the river's bed and fly along the water. In
 1615 it marks the university's first home instead, the
 college on the Rheinsprung, used from 1460 until the Kollegienhaus opened. Basel's public fountains stand where IWB's
 inventory puts them (data.bs.ch 100008; it has names and places, no sizes, so the shapes follow photos of a few): most a
@@ -263,7 +273,10 @@ cab, with the grey roof between them; each cab front follows its photos (the Fle
 windscreen, the TINA's yellow nose with its black lamp strip, the Schindler's display above a single windscreen, the
 Cornichon's route box). The far trams take the same colours, fairings and cab fronts. Module lengths, bogies, doors,
 pantographs, band heights and the upper body are one table with the reference world's `blender/tram_models.py`; where
-neither the spec nor a photo gives them they are estimates. The destination display shows the line's colour, and windows, headlamps,
+neither the spec nor a photo gives them they are estimates. On the near trams the destination display (on the Tango at both cabs) shows the trip: the line number, then its headsign from the timetable
+(GTFS, 21 October 2026, matched to the game's trips by stop and time and kept in the template as a table, with 'Basel, ' and commas dropped as in the reference world), drawn at load in DM Mono into one 960 x 800 px atlas with a cheap
+dot look; BLT 11 and 17 put their numbers on a red and a blue field, the Schindler pair's panel is white with purple letters and the Cornichon shows its number in the roof route box and the destination on a cream board,
+after the photos; text only, no logos (the far trams keep a plain display). Windows, headlamps,
 tail lamps and displays light up at night. For play, a 0.6 m stripe in the line's colour runs along the middle of each tram's roof, between the fairings and over the roof equipment and the pantograph's base, on the near and the far trams and faintly lit at night, so that a pigeon can read the line from above; it is a game-only cue (the real trams have none, and the reference world leaves it out). The variant follows the spec's share for the line, picked by the trip's key
 `<line>|<direction>|<first departure>` hashed with 32-bit FNV-1a, mod 100 (the reference world uses the same rule). Each
 variant has as many trams as the timetable ever has out at once. Near the camera a tram is drawn in full, one
@@ -284,7 +297,7 @@ the right (white-framed on BVB's), round wheels with hubs in their arches, light
 folded charging pantograph on the battery buses, the eCitaro's black mask in its white (BVB) or yellow (BLT) frame, the
 lighTram's upright front with its black header and a white line up both sides of its black mask over a green lower
 front, the Citaro's black-framed windscreen, and an amber destination display
-that lights up at night with the head and tail lamps. Near the camera a bus is drawn in full; further than 250 m away as
+that lights up at night with the head and tail lamps; on the near buses it shows the trip's line number and headsign from the trams' atlas (amber on black, text only), on the far ones a plain amber patch. Near the camera a bus is drawn in full; further than 250 m away as
 a plain body in its colours, with a dark band at the wheels' height, its lit windscreen, display and headlamps at the
 front and its rear window and tail lamps at the back, in four draws (by which ends a section has). Every bus stands at each stop
 of its trip (a late one briefly) and moves only where its body and the road just ahead of it are clear of every other
