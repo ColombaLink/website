@@ -38,7 +38,8 @@ import sb3d  # noqa: E402
 S = 5.0             # metres per game unit on the ground
 EH = 1.4            # vertical exaggeration
 VS = EH / S         # game units per metre of height
-AREA = (-1450.0, 1950.0, -1650.0, 1450.0)   # west, east, south, north in metres around the origin
+AREA = (-1450.0, 2000.0, -2500.0, 1450.0)   # west, east, south, north in metres around the origin (south and east:
+                                            # SBB's Areal Wolf, its yard and Gundeldingen, since 1 November 2026)
 ORIGIN_LATLON = (47.56015, 7.58972)          # Mittlere Brücke, replaced by the bridge outline's centre if found
 RHINE = "Q584"      # the Rhine's Wikidata item, which names its waterway relation in OpenStreetMap
 COURSE_R = 22000.0  # metres from the origin to which the Rhine's way beyond the map is kept (the game's land ends 15 km out)
@@ -71,7 +72,12 @@ FACADES = [("rathaus", "relation", 7634307), ("messe1", "way", 315916587), ("kun
            ("highrise", None, None), ("sacral", None, None),     # every other high-rise and church
            ("shops1", None, None), ("shops2", None, None), ("shops3", None, None), ("shops4", None, None),
            ("andreas1", None, None), ("andreas2", None, None), ("andreas3", None, None), ("andreas4", None, None),
-           ("andreas5", None, None)]                              # the houses round the Andreasplatz
+           ("andreas5", None, None),                              # the houses round the Andreasplatz
+           # the hospital campus (1 November 2026), after landmarks/eth-bss, biozentrum, ukbb, unispital-klinikum-1/-2
+           # and the canton's 2026 obliques: the ETH BSS building, the Biozentrum, the UKBB, and Klinikum 1 and 2 by
+           # the outlines of their zoning plan (future-plans.json; the hospital is one building in swissBUILDINGS3D)
+           ("bss", "way", 1087301718), ("biozentrum", "way", 537788765), ("ukbb", "way", 262215524),
+           ("klinikum1", None, None), ("klinikum2", None, None)]
 UNI_ENTRANCE = (47.5578479, 7.5841403)   # the Kollegienhaus's main door, by Carl Gutknecht's relief (OSM)
 SHOP_STYLES = ["shops1", "shops2", "shops3", "shops4"]   # houses with shop fronts along the streets below
 ANDREAS_STYLES = ["andreas1", "andreas2", "andreas3", "andreas4", "andreas5"]
@@ -94,6 +100,72 @@ FACADE_STYLES = sorted({f[0] for f in FACADES}, key=[f[0] for f in FACADES].inde
 IN_1615 = ["muenster", "kreuzgang", "spalentor", "stalbantor", "stjohannstor", "rathaus", "barfuesser", "martins",
            "peters", "leonhard", "theodor", "clara", "prediger", "stalbankirche", "kartaeuser"]
 TOWERS = {"roche2": ("way", 317511699), "messe": ("way", 315916699)}
+# the zoning plans' outlines and heights for the campus and the future switch (Klinikum 2's Baufeld, the Areal Wolf),
+# the Klinikum 2 building site of November 2026 and the BSS building's dome: see "about" and "source" in the file
+PLANS = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "future-plans.json")))
+
+
+def campus_data(geo):
+    """The campus's hand-modelled parts and the future switch's volumes for the game, in game units (heights in m)."""
+    g = lambda r: [[round((e - geo.e0) / S, 2), round(-(n - geo.n0) / S, 2)] for e, n in r]
+    hp, d, w = PLANS["hospital"], PLANS["bss_dome"], PLANS["wolf"]
+    return {"dome": {"c": g([d["centre"]])[0], "axes": [a / S for a in d["axes_m"]], "rot": d["axis_deg_from_east"],
+                     "base": round(d["base_m"] - d["ground_m"], 2), "top": round(d["top_m"] - d["ground_m"], 2)},
+            "site": {"tower": g(hp["tower"]), "stub": hp["site"]["stub_m"], "mast": hp["site"]["crane_m"],
+                     "jib": hp["site"]["jib_m"], "cranes": [g([c[:2]])[0] + [c[2]] for c in hp["site"]["cranes"]]},
+            "future": {"hospital": {"base": g(hp["base"]), "tower": g(hp["tower"]), "low": hp["low_m"], "high": hp["tower_m"]},
+                       "wolf": [{"h": f["h"], "r": g(f["ring"])} for f in w["fields"]]}}
+
+
+def split_hospital(blds, geo, stats):
+    """swissBUILDINGS3D has the Universitaetsspital as one building: split its roof faces by zoning plan 13'778's
+    outlines into Klinikum 1, Klinikum 2 (the Baufeld) and the other wings, and leave out the faces in the bed
+    tower's field, a building pit since 2024 (orthophoto 2024, photos of the site 2024-2026). No face is moved."""
+    hp = PLANS["hospital"]
+    loc = lambda r: [(e - geo.e0, n - geo.n0) for e, n in r]
+    k1, k2, tower = loc(hp["klinikum1"]), loc(hp["baufeld"]), loc(hp["tower"])
+    out = []
+    for b in blds:
+        if b.get("id") != hp["sb3d_id"]:
+            out.append(b)
+            continue
+        parts = {}
+        for f in b["roof"]:
+            c = (sum(p[0] for p in f) / len(f), sum(p[1] for p in f) / len(f))
+            if inside(c, tower):
+                stats["hospital_pit_faces"] += 1
+                continue
+            parts.setdefault("k2" if inside(c, k2) else "k1" if inside(c, k1) else "other", []).append(f)
+        for key, faces in sorted(parts.items()):
+            out.append(dict(b, id=b["id"] + "#" + key, roof=faces))
+            stats["hospital_" + key + "_faces"] += len(faces)
+    return out
+
+def flatten_bss_vault(blds, geo, stats):
+    """swissBUILDINGS3D has the ETH BSS building's atrium dome as a vault on its roof, at the height of the dome that
+    campusParts() models (future-plans.json, bss_dome), which hid that dome under the vault's grey roof faces. Lay
+    the vault's faces flat on the courtyard roof round it (the same outlines, no hole), so the modelled dome stands
+    alone; the building's other faces are left as they are."""
+    d = PLANS["bss_dome"]
+    v, c = d["vault"], (d["centre"][0] - geo.e0, d["centre"][1] - geo.n0)
+    out = []
+    for b in blds:
+        if b.get("id") != d["sb3d_id"]:
+            out.append(b)
+            continue
+        if b["ground"] is None or abs(b["ground"] - d["ground_m"]) > 0.05:
+            raise SystemExit("bss_dome: ground_m %.2f is not the BSS building's ground %s" % (d["ground_m"], b["ground"]))
+        roof = []
+        for f in b["roof"]:
+            m = (sum(p[0] for p in f) / len(f), sum(p[1] for p in f) / len(f))
+            if min(p[2] for p in f) > v["above_m"] and math.dist(m, c) < v["within_m"]:
+                f = [(p[0], p[1], v["floor_m"]) for p in f]
+                stats["bss_vault_faces"] += 1
+            roof.append(f)
+        out.append(dict(b, roof=roof))
+    return out
+
+
 # swisstopo's OBJEKTART -> a small code the game uses (windows go on 0, 1 and 10)
 KINDS = {"Gebaeude Einzelhaus": 0, "Hochhaus": 1, "Sakrales Gebaeude": 2, "Kapelle": 2, "Sakraler Turm": 2,
          "Lagertank": 3, "Flugdach": 4, "Offenes Gebaeude": 5, "Treibhaus": 6, "Mauer gross": 7,
@@ -915,12 +987,12 @@ BUS_AGENCIES = {"Basler Verkehrsbetriebe": ("BVB", ("BVB", "Basler Verkehrs")),
 def gtfs_timetable(raw, work):
     """Basel's tram and bus trips on TT_DATE from Switzerland's timetable (GTFS, opentransportdata.swiss): for each
     line, each trip's stops as (lat, lon, arrival, departure) in seconds after midnight, and for the buses the company
-    that runs each line. The timetable is big (its stop times alone are 3.7 GB unpacked), so it is read as a stream
+    that runs each line; under "heads", each trip's headsign (its destination display), in the same order. The timetable is big (its stop times alone are 3.7 GB unpacked), so it is read as a stream
     once and the result kept in the work folder."""
     src = os.path.join(raw, "gtfs.zip")
     if not os.path.exists(src):
-        return {"trams": {}, "buses": {}}
-    key = [os.path.getsize(src), TT_DATE, list(TT_AGENCIES), sorted(BUS_AGENCIES)]
+        return {"trams": {}, "buses": {}, "heads": {"trams": {}, "buses": {}}}
+    key = [os.path.getsize(src), TT_DATE, list(TT_AGENCIES), sorted(BUS_AGENCIES), "heads"]
     cache = os.path.join(work, "timetable.json")
     if os.path.exists(cache):
         c = json.load(open(cache))
@@ -947,25 +1019,27 @@ def gtfs_timetable(raw, work):
         elif name in BUS_AGENCIES and (rt == 3 or 700 <= rt <= 799):
             routes[r["route_id"]] = ("buses", r["route_short_name"], name)
     first = lambda l: l.split(",", 1)[0].strip('"')      # every field is quoted
-    trips = {r["trip_id"]: (routes[r["route_id"]], r["service_id"]) for r in table("trips.txt", lambda l: first(l) in routes)}
-    services = {sid for _, sid in trips.values()}
+    trips = {r["trip_id"]: (routes[r["route_id"]], r["service_id"], r.get("trip_headsign", ""))
+             for r in table("trips.txt", lambda l: first(l) in routes)}
+    services = {sid for _, sid, _ in trips.values()}
     day = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")[datetime.date(int(TT_DATE[:4]), int(TT_DATE[4:6]), int(TT_DATE[6:])).weekday()]
     active = {r["service_id"] for r in table("calendar.txt") if r["service_id"] in services and r["start_date"] <= TT_DATE <= r["end_date"] and r[day] == "1"}
     for r in table("calendar_dates.txt", lambda l: TT_DATE in l):
         if r["service_id"] in services and r["date"] == TT_DATE:
             (active.add if r["exception_type"] == "1" else active.discard)(r["service_id"])
-    keep = {t for t, (_, sid) in trips.items() if sid in active}
+    keep = {t for t, (_, sid, _) in trips.items() if sid in active}
     times = {}
     for r in table("stop_times.txt", lambda l: first(l) in keep):
         times.setdefault(r["trip_id"], []).append((int(r["stop_sequence"]), r["stop_id"], hms(r["arrival_time"]), hms(r["departure_time"])))
     want = {sid for v in times.values() for _, sid, _, _ in v}
     stops = {r["stop_id"]: (float(r["stop_lat"]), float(r["stop_lon"])) for r in table("stops.txt") if r["stop_id"] in want}
-    out = {"trams": {}, "buses": {}}         # trams by line; buses by company and line ("BVB 30")
+    out = {"trams": {}, "buses": {}, "heads": {"trams": {}, "buses": {}}}   # trams by line; buses by company and line ("BVB 30")
     for tid, seq in times.items():
         seq.sort()
-        (kind, line, name), _ = trips[tid]
-        out[kind].setdefault(line if kind == "trams" else f"{BUS_AGENCIES[name][0]} {line}", []).append(
-            [[*stops[sid], a, d] for _, sid, a, d in seq if sid in stops])
+        (kind, line, name), _, head = trips[tid]
+        k = line if kind == "trams" else f"{BUS_AGENCIES[name][0]} {line}"
+        out[kind].setdefault(k, []).append([[*stops[sid], a, d] for _, sid, a, d in seq if sid in stops])
+        out["heads"][kind].setdefault(k, []).append(head)
     with open(cache, "w") as f:
         json.dump({"key": key, "timetable": out}, f, separators=(",", ":"))
     return out
@@ -982,17 +1056,18 @@ def along_line(pts, q):
     return best
 
 
-def timetable_runs(trips, lines, geo, along, min_stops=3, end_reach=35):
+def timetable_runs(trips, lines, geo, along, min_stops=3, end_reach=35, heads=None):
     """Each timetabled trip laid on one of the line's routes (the one with most of its stops, at least min_stops):
     the trip's stops that lie on the route, in order (its first and last may be end_reach metres off it), with times
     smoothed (the timetable gives whole minutes, so stops that share a minute are spread by distance) and
     a short stop at each. A trip that carries on beyond the route's ends enters or leaves at the end, out of sight;
     one that starts or ends on the route stands at its terminus for a while. Returns the distinct patterns (stops
     as distance in game units, arrival and departure in seconds after the trip's start) and the trips that use
-    them as (route, pattern, start in seconds after midnight)."""
+    them as (route, pattern, start in seconds after midnight), with the trip's headsign fourth when heads (one per trip)
+    are given."""
     totals = [sum(math.dist(a, b) for a, b in zip(l, l[1:])) for l in lines]
     pats, index, runs = [], {}, []
-    for trip in trips:
+    for ti, trip in enumerate(trips):
         best = None
         for di, line in enumerate(lines):
             kept = []
@@ -1032,9 +1107,20 @@ def timetable_runs(trips, lines, geo, along, min_stops=3, end_reach=35):
         if pat not in index:
             index[pat] = len(pats)
             pats.append(list(pat))
-        runs.append([di, index[pat], round(t0)])
+        runs.append([di, index[pat], round(t0)] + ([heads[ti]] if heads else []))
     runs.sort(key=lambda r: r[2])
     return pats, runs
+
+
+def trip_heads(runs):
+    """The headsigns of a line's trips for its destination displays: the distinct ones, and one character per trip in
+    the trips' order ('0' the first headsign)."""
+    hs = []
+    for r in runs:
+        if r[3] not in hs:
+            hs.append(r[3])
+    assert len(hs) < 75, hs
+    return {"heads": hs, "hi": "".join(chr(48 + hs.index(r[3])) for r in runs)}
 
 
 def tram_network(raw, work, geo):
@@ -1101,7 +1187,8 @@ def tram_network(raw, work, geo):
         parts = name.split(":", 1)[-1].split("→")
         return (parts[0].strip(), parts[-1].strip()) if len(parts) == 2 else (name, name)
 
-    timetable = gtfs_timetable(raw, work)["trams"]
+    tt = gtfs_timetable(raw, work)
+    timetable, theads = tt["trams"], tt["heads"]["trams"]
     lines = {}
     for r in els:
         if r["type"] == "relation" and r.get("tags", {}).get("ref"):
@@ -1134,9 +1221,9 @@ def tram_network(raw, work, geo):
         t = best[1][0]["tags"]
         if not timetable.get(ref):
             continue                                # not in today's timetable
-        pats, runs = timetable_runs(timetable[ref], routes, geo, along)
+        pats, runs = timetable_runs(timetable[ref], routes, geo, along, heads=theads[ref])
         out.append({"ref": ref, "colour": t.get("colour") or "#888888", "op": t.get("operator") or "", "dirs": dirs,
-                    "pats": pats, "trips": [v for r in runs for v in r]})
+                    "pats": pats, "trips": [v for r in runs for v in r[:3]], **trip_heads(runs)})
     return [[round(v / S * (1 if i % 2 == 0 else -1), 2) for x, y in rdp(r, 0.3) for i, v in enumerate((x, y))] for r in tracks], out
 
 
@@ -1188,7 +1275,8 @@ def bus_network(raw, work, geo, footprints):
     stops), each laid in the middle of the rightmost lane and away from the walls, and every trip of an ordinary
     weekday on the route it takes. Game units; empty without the data. Also returns a report for the build log."""
     src = os.path.join(raw, "osm_bus.json")
-    timetable = gtfs_timetable(raw, work)["buses"]
+    tt = gtfs_timetable(raw, work)
+    timetable, bheads = tt["buses"], tt["heads"]["buses"]
     if not os.path.exists(src) or not timetable:
         return [], {}
     W, E, Sth, N = AREA
@@ -1466,14 +1554,14 @@ def bus_network(raw, work, geo, footprints):
                 stuck.append(st)
         if not routes:
             continue
-        pats, runs = timetable_runs(trips, routes, geo, along, min_stops=2, end_reach=END_REACH)
+        pats, runs = timetable_runs(trips, routes, geo, along, min_stops=2, end_reach=END_REACH, heads=bheads[key])
         if not runs:
             continue
         used = sorted({r[0] for r in runs})
         renum = {di: k for k, di in enumerate(used)}
         out.append({"ref": ref, "op": op,
                     "routes": [{"p": [round(v / S * (1 if i % 2 == 0 else -1), 2) for x, y in routes[di] for i, v in enumerate((x, y))]} for di in used],
-                    "pats": pats, "trips": [v for r in runs for v in (renum[r[0]], r[1], r[2])]})
+                    "pats": pats, "trips": [v for r in runs for v in (renum[r[0]], r[1], r[2])], **trip_heads(runs)})
         report[key] = {"trips": [len(runs), len(trips)], "patterns": len(pats),
                        "routes": [[kinds[di], len(routes[di]), stuck[di]] for di in used]}
     return out, report
@@ -1687,6 +1775,9 @@ def main(raw, work, out_js):
                 facade_rings.append((r, bbox(r), FACADE_STYLES.index(key)))
     letzi = [(e - 0.8 - geo.e0, n - geo.n0) for e, n in LETZI_WALL] + [(e + 8.0 - geo.e0, n - geo.n0) for e, n in reversed(LETZI_WALL)]
     facade_rings.append((letzi, bbox(letzi), FACADE_STYLES.index("letzimauer")))
+    for key, ring in (("klinikum1", PLANS["hospital"]["klinikum1"]), ("klinikum2", PLANS["hospital"]["baufeld"])):
+        r = [(e - geo.e0, n - geo.n0) for e, n in ring]
+        facade_rings.append((r, bbox(r), FACADE_STYLES.index(key)))
     lm_bb = {k: bbox(r) for k, r in lm_rings.items()}
     lm_heights = {k: [] for k in lm_rings}       # roof heights of the 3D model inside each landmark, and its peak
     lm_peak = {}
@@ -1823,6 +1914,8 @@ def main(raw, work, out_js):
         return False
 
     recs = []
+    blds = split_hospital(blds, geo, stats)
+    blds = flatten_bss_vault(blds, geo, stats)
     for b in blds:
         roof = b["roof"]
         pts = [p for f in roof for p in f]
@@ -2011,6 +2104,16 @@ def main(raw, work, out_js):
 
     frecs = [r for r in recs if r["facade"]]
     recs = [r for r in recs if not r["facade"]]
+    # the Areal Wolf's buildings that its zoning plan replaces (every one standing in Baufeld A, B or C or in the
+    # Wolfshof; the kept Dienstgebaeude and sheds 3 and 4 lie outside them) go in a pack of their own, BASEL.wolfNow,
+    # so the future switch can hide them
+    wolf_rings = [[(e - geo.e0, n - geo.n0) for e, n in f["ring"]] for f in PLANS["wolf"]["fields"]] + \
+                 [[(e - geo.e0, n - geo.n0) for e, n in r] for r in PLANS["wolf"]["hof"]]
+    wolf_bb = [bbox(r) for r in wolf_rings]
+    in_wolf = lambda c: any(bb[0] <= c[0] <= bb[1] and bb[2] <= c[1] <= bb[3] and inside(c, r) for r, bb in zip(wolf_rings, wolf_bb))
+    wolf_now = [r for r in recs if in_wolf(r["c"])]
+    recs = [r for r in recs if not in_wolf(r["c"])]
+    stats["wolf_replaced"] = len(wolf_now)
 
     # the Rathaus front onto the Marktplatz: the longest straight run of its walls facing the square, so the game
     # can put the arcade, battlements, clock and flèche exactly on it
@@ -2253,6 +2356,7 @@ def main(raw, work, out_js):
     buf, packed = pack(keep_l)
     _, fpacked = pack(keep_f)
     _, opacked = pack(olds, order=False)
+    _, wpacked = pack(wolf_now)
 
     # ---------- landmarks, places, trees, bridges, ferries ----------
     landmarks = {}
@@ -2484,6 +2588,8 @@ def main(raw, work, out_js):
                    "banks": shores, "course": course},
         "lod2": {"count": len(keep_l), "gz": base64.b64encode(packed).decode()},
         "facades": {"count": len(keep_f), "gz": base64.b64encode(fpacked).decode(), "styles": FACADE_STYLES},
+        "wolfNow": {"count": len(wolf_now), "gz": base64.b64encode(wpacked).decode()},
+        "campus": campus_data(geo),
         **({"oldtown": {"count": len(olds), "gz": base64.b64encode(opacked).decode(),
                         "meta": base64.b64encode(gzip.compress(bytes(ometa), 9, mtime=0)).decode(),
                         "types": ["plain"] + oldtown.TYPES, "ground": oldtown.GROUND}} if olds else {}),

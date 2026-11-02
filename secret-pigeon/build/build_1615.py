@@ -21,10 +21,15 @@ import sys
 from array import array
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from build_city import (S, VS, AREA, Geo, ORIGIN_LATLON, read_bmp, write_bmp, area2, centroid,  # noqa: E402
+from build_city import (S, VS, Geo, ORIGIN_LATLON, read_bmp, write_bmp, area2, centroid,  # noqa: E402
                         inside, rdp, simplify_ring, obb, element_rings, star_shaped, convex, tree_byte, LANDMARKS, IN_1615,
                         river_mask, river_banks, river_shores, scan_fill, GROSSBASEL)
 from fetch_1615 import TRACE, COLS, ROWS, MPP  # noqa: E402
+
+# the 1615 scene keeps the map's area from before 1 November 2026 (the game's map then grew 850 m south and 50 m east
+# for SBB's Areal Wolf: build_city.AREA): its plan, ground and river are laid on this rectangle, and the game maps
+# them onto it (AREA_1615 in the template)
+AREA = (-1450.0, 1950.0, -1650.0, 1450.0)   # west, east, south, north in metres around the origin
 
 LEVEL = 3.3
 ROOFS = ["#9c4a33", "#8f4630", "#a8583c", "#7f4130", "#b0643f", "#94503a", "#7a5546", "#a14d38", "#6e5b52"]

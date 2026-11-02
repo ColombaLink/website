@@ -38,7 +38,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import horizon  # noqa: E402
 from build_city import COURSE_R, ORIGIN_LATLON, RHINE, lv95  # noqa: E402
 
-BBOX = (47.5440, 7.5690, 47.5735, 7.6170)  # south, west, north, east
+BBOX = (47.5363, 7.5690, 47.5735, 7.6170)  # south, west, north, east (south: 150 m beyond the map, N 1265226)
 UA = "SecretPigeonGame/0.1 (educational game; https://colomba.link, info@colomba.link)"
 OVERPASS = "https://overpass.osm.ch/api/interpreter"
 OVERPASS_WORLD = "https://overpass-api.de/api/interpreter"   # the Swiss mirror's data stops at the border

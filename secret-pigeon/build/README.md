@@ -3,7 +3,7 @@
 `secret-pigeon/index.html` is generated. Edit `game.template.html` (the game, including the hand-modelled landmarks
 and bridges) or the scripts below (the city data), then rebuild. Only the Python standard library and macOS `sips`
 are needed. Run the commands from the repository root, and run `build_city.py` before `build_1615.py` (the 1615 step
-reuses the aerial tiles it converts). The first `build_city.py` run parses about 2.8 GB of CityGML and takes about a
+reuses the aerial tiles it converts). The first `build_city.py` run parses about 4.7 GB of CityGML and takes about a
 minute; later runs use a cache in the work folder.
 
 ```bash
@@ -14,7 +14,7 @@ python3 -I secret-pigeon/build/build_1615.py /tmp/basel-raw /tmp/basel-work /tmp
 python3 -I secret-pigeon/build/assemble.py secret-pigeon/build/game.template.html /tmp/basel-work/basel-data.js /tmp/basel-work/basel-1615.js secret-pigeon/index.html
 ```
 
-`fetch_data.py` downloads about 410 MB, most of it the four swissBUILDINGS3D map sheets and nine tiles of the Copernicus
+`fetch_data.py` downloads about 570 MB, most of it the six swissBUILDINGS3D map sheets and nine tiles of the Copernicus
 elevation model (47 MB, for the hills on the horizon), and the timetable on top: Switzerland's whole public transport
 timetable (GTFS, about 290 MB), from which the build keeps Basel's trams and buses. Add part names (`osm`, `rhine`,
 `rail`, `tram`, `bus`, `timetable`, `streets`, `ortho`, `sb3d`, `trees`, `access`, `fountains`, `art`, `dem`) to fetch only some of them.
@@ -23,6 +23,23 @@ One input can't be fetched: Basel-Stadt's own 3D city model (MapBS "3D-Stadtmode
 swissBUILDINGS3D in places. The canton's Geodaten-Shop (shop.geo.bs.ch) sends it free by email: order "Wavefront OBJ"
 with georeferencing (LV95) for areas of up to 5 km² covering the map, and put the GeodatenBS_*.zip archives it sends
 (or the OBJ files in them) in `<raw-dir>/mapbs`. Without them the build keeps swissBUILDINGS3D everywhere and says so.
+
+The map: `build_city.py`'s `AREA`, west -1450, east 2000, south -2500 and north 1450 m around the Mittlere Brücke
+(LV95 E 2609922-2613372, N 1265226-1269176, 3.45 by 3.95 km). On 1 November 2026 its south edge moved 850 m south (from
+N 1266076) and its east edge 50 m east (from E 2613322), across the whole width, to take in SBB's Areal Wolf (the goods
+station's yard, tracks, sheds and Dienstgebäude, about E 2612070-2613346, N 1265330-1266030) with Gundeldingen, the
+north end of the Dreispitz, the slopes of the Margarethen park and the Bruderholz, and the edge of Binningen (Basel-
+Landschaft). The strip is built from the same sources as the rest of the map: swissBUILDINGS3D 3.0 (sheets 1067-12 and
+1067-21, 2024) for its 2,629 buildings (382 of them on the Wolf), the aerial photo, OpenStreetMap's rail tracks (the
+yard's included) and bridges, the tree register and, where it has none, OpenStreetMap's trees (about 2,130 trees in the
+strip; Binningen, in Basel-Landschaft, is not in the canton's register, so its trees are OpenStreetMap's alone, and the
+canton's 3D model updates none of the strip's buildings). Tram lines 2, 10, 11, 14, 15, 16 and 17 and bus lines 34, 36,
+37 and 42 run on into it on their real routes and timetable (lines 15 and 16 gain the few trips that only touch the
+map there). The Wolf is shown as it stands in November 2026, today's goods station; the blocks of its 2023 zoning plan
+appear only with the future switch (below). The pigeon keeps 150 m inside every edge, so the yard's south and east ends are seen rather than
+flown over. The 1615 scene keeps the earlier rectangle (W -1450, E 1950, S -1650, N 1450 m; `build_1615.py` pins it,
+and the game lays the 1615 plan on that part of the ground and keeps the pigeon inside it in 1615); the far hills now
+begin beyond the new edge in both scenes.
 
 The old-town facade pack: `build_city.py` moves the houses of the old town (Grossbasel's inner town and Kleinbasel's
 core) out of the two building packs into a third, `oldtown`, the same records plus each house's front: its facade type
@@ -274,7 +291,7 @@ windscreen, the TINA's yellow nose with its black lamp strip, the Schindler's di
 Cornichon's route box). The far trams take the same colours, fairings and cab fronts. Module lengths, bogies, doors,
 pantographs, band heights and the upper body are one table with the reference world's `blender/tram_models.py`; where
 neither the spec nor a photo gives them they are estimates. On the near trams the destination display (on the Tango at both cabs) shows the trip: the line number, then its headsign from the timetable
-(GTFS, 21 October 2026, matched to the game's trips by stop and time and kept in the template as a table, with 'Basel, ' and commas dropped as in the reference world), drawn at load in DM Mono into one 960 x 800 px atlas with a cheap
+(GTFS, 21 October 2026: `build_city.py` writes each trip's own `trip_headsign` into the data with the trip, as `heads` and `hi` per line; 'Basel, ' and commas are dropped as in the reference world), drawn at load in DM Mono into one 960 x 800 px atlas with a cheap
 dot look; BLT 11 and 17 put their numbers on a red and a blue field, the Schindler pair's panel is white with purple letters and the Cornichon shows its number in the roof route box and the destination on a cream board,
 after the photos; text only, no logos (the far trams keep a plain display). Windows, headlamps,
 tail lamps and displays light up at night. For play, a 0.6 m stripe in the line's colour runs along the middle of each tram's roof, between the fairings and over the roof equipment and the pantograph's base, on the near and the far trams and faintly lit at night, so that a pigeon can read the line from above; it is a game-only cue (the real trams have none, and the reference world leaves it out). The variant follows the spec's share for the line, picked by the trip's key
@@ -363,3 +380,98 @@ delegation do not incur any liability for any use of the Copernicus WorldDEM™-
 
 The colomba.link copy also lists these sources in its structured data (`site-parts.html`, schema.org `isBasedOn`). The
 game is free to play, with no charge, ads or sign-in.
+
+## The hospital campus, the Johanniter passage and the future switch (1 November 2026)
+
+**Campus (today's scene, November 2026).** `build_city.py` gives five more buildings painted facades (`FACADES`; the
+painters are in the template's `FACADE_STYLES`), after the photos in the reference library (`landmarks/eth-bss`,
+`biozentrum`, `ukbb`, `unispital-klinikum-1`, `unispital-klinikum-2`), the hospital's construction photos (April 2024 to
+September 2026) and the canton's 2026 obliques. They are private reference: they shape the textures, nothing is copied.
+
+- ETH BSS (Nickl & Partner, 2023, OSM way 1087301718): six storeys over the street, as ETH and OSM say (Implenia's 9
+  must count the basements, an inference): a recessed, dark glazed ground floor, four glazed storeys between light slab
+  edges, with thin vertical mullions every 1.5 m over the dark glass, and the set-back top storey's dark vertical panels
+  over a glazed strip (photos of 1 November 2026, `landmarks/eth-bss/photos-survey`). The outer walls have no lattice:
+  the triangular lattice is the atrium's glass roof. The tile's levels are metres above the building's ground floor in
+  swissBUILDINGS3D (255.98 m), where its walls start: the ground floor to 4.7 m, four storeys of about 4.7 m up to the
+  main roof at 23.6 m (279.6 m), then the top storey (its strip to 25.4 m). The atrium's glass dome
+  (20 x 35 m, Baunetz) is hand-modelled (`campusParts()`), its heights taken from the building's ground floor
+  (255.98 m), as the building's are. swissBUILDINGS3D has the dome as a vault on the roof: its rise (283.8 to 288.5 m),
+  its centre (the vault's footprint centroid) and its long axis (the footprint's principal axis, 71 degrees from east;
+  the moment fit, 35.8 x 20.9 m, bears out Baunetz's size) come from that vault, and `flatten_bss_vault()` lays the
+  vault's 139 faces flat on the courtyard roof (283.8 m), so their grey no longer hides the dome.
+- Biozentrum (Ilg Santer, 2021, 73 m): light chrome-steel frames round square windows of pale glass, storeys of 4.5 m
+  (colours after the photos and the reference world's `campus-biozentrum.png`). Its material has a metalness of 0.15,
+  not 0.55: the scene has no environment map, so a more metallic tile lost most of its colour and read dark grey.
+- UKBB (Stump & Schibli, 2011): glazed bands over coloured glass parapets running green - yellow - orange, 3.95 m storeys.
+- The hospital is one building in swissBUILDINGS3D (`ID_5EEBEA27-...`, 391 roof faces). `split_hospital()` splits its
+  faces by zoning plan 13'778's outlines (laid on Klinikum 1's south-west face, as the reference world's
+  `blender/campus.py`): Klinikum 1 (284 faces; light plaster, punched windows 1.5 x 1.7 m on 3 m axes, 3.5 m storeys),
+  Klinikum 2 (50 faces; light grey panels, paired windows in a dark band, after the photo of 23 September 2026) and the
+  other wings (55 faces, as before). The 2 faces in the bed tower's field are left out: a building pit since 2024.
+  The centre test leaves 3 small roof faces (about 41 m²) just across the plan's line that continue Klinikum 1's roof;
+  they need no rule, because the other wings take Klinikum 1's facade too (the facade test finds them in its outline).
+- The Klinikum 2 building site (`campusParts()`): the pit decked at street level, the tower's first walls (about 5 m)
+  round 80 % of its field, and three red tower cranes (masts 55 m, jibs 50 m; places from the March 2026 obliques). All
+  of these sizes and places are estimates.
+- The Pharmazentrum keeps the city model's walls: the library has no photo of it.
+
+**Johanniter passage.** The promenade under the Johanniterbrücke's Grossbasel end (35 m that kept the old 1.1 m path)
+is raised to the promenade's 3.5 m (`BANK_KINDS.passage`) and runs through a passage in the abutment (`JOHANN_PASS`,
+in `buildBridge`), as the Mittlere Brücke's Kleinbasel land arch spans its promenade: where the path lies under the
+deck, the deck's solid stops at the passage's ceiling, and the abutment's face below the end span stops at the path.
+Floor 3.5 m over the river (the path's surface measures 3.3 m at its inner edge), ceiling 6.1 m: 2.6 m headroom; the
+deck's top there is about 7.0 m, so the slab is about 0.9 m. The passage is 4 m wide (the old path's width, an
+estimate) and as long as the bridge is wide (25.3 m).
+
+**The future switch.** "Plans" on the title screen, under the time machine and in its style: "As built · 2026" (the
+default) and "Planned · 2027–2042". It is kept in the save; it is disabled in 1615, whose scene it does not touch.
+When on, it hides Klinikum 2 (its own facade materials), its building site and cranes, and the Areal Wolf's buildings
+that the plan replaces (`BASEL.wolfNow`, a separate pack: 2 buildings), and shows simple volumes in plain materials
+(light walls, planted roofs) from the official zoning plans' outlines and heights only. Nothing comes from the
+architects' or the competitions' designs (Giuliani Hönger's Arcadia, the 2025 Wolf entries 'Janus' and 'Binaria'):
+those plans, renders and photos stay private reference. The outlines are in `future-plans.json`, with their sources.
+
+- Hospital: Bebauungsplan 13'778 a/b (Ratschlag 2014, adopted), pdf p. 47 at 1:1500: Baufeld Petersgraben at most
+  23 m, the bed tower's field 60 m, both from 260.19 m (the entrance level on the Petersgraben). The tower's field is read
+  from sections A-A and D-D (about 50 x 54 m, +-5 m, an estimate). Shown as after stage 2 (2035-2042: Klinikum 2 fully
+  replaced); stage 1 (the bed tower and the underground annex) is finished 2031 and in use 2033. Courtyards and the
+  five-storey base on the Petersgraben are the plan's orienting content, not fixed outlines, and are not cut.
+- Areal Wolf: Bebauungsplan 14'289 (21 December 2020, in force 2023; Ratschlag 21.1362.01 pdf p. 50, 1:2000), read at
+  300 dpi (0.169 m a pixel), north-up, anchored on the kept Dienstgebäude (OSM way 340257285; about +-3 m, an
+  estimate). Baufelder A, B and C, filled in 2 m cells (101 boxes) to the plan's 20 m and 30 m wall heights over the
+  courtyard level 276.00 m (no roof storeys: the plan forbids them). The 9 m height step stands where the plan's two
+  height labels meet halfway; the plan lets it move within a marked band (an estimate). The width steps of at least
+  2.5 m are not shown (the Baufelder are filled). Kept: the Dienstgebäude and goods sheds 3 and 4. Building 2027-2033.
+- Limits: the volumes are not solid to the pigeon, and the hidden Klinikum 2 still is (the city's collision grid); the
+  yard's tracks stay drawn in the Wolfshof; the game's city is flat, so the levels 260.19 m and 276.00 m are its street.
+
+The canton asks to be contacted (geo@bs.ch) before anything derived from its obliques is published; the facades here
+are drawn after them and the photos, not taken from them.
+
+## How the variety is drawn (2 November 2026)
+
+The game draws its variety (each tree's size, turn and tint, which building walls get a lit window and where, the noise
+in the textures, the clouds) so that a change to the map's data changes nothing anywhere else. Until now everything
+came from one shared random sequence (mulberry32, seed 1149), taken in data order, so adding or removing a building or
+a tree anywhere re-rolled the look of everything drawn after it, the 1615 scene included: the south strip of 1 November
+re-rolled the tree sizes, turns and tints and the clouds' places across the old city.
+
+- **A value per element comes from where it stands.** `posKey(x, z)` hashes the element's position (game units,
+  rounded to 1 cm) and `vary(key, attribute)` turns it into a number in [0, 1) per attribute. Trees use their position
+  (attributes 1 to 5: size, turn, lightness, red, blue); a wall's lit-window sprite uses `wallKey()` of its two ends
+  (attributes 1 to 3: whether, where along, how high), on the simple buildings (both eras) and on the 3D buildings. The
+  ranges are as before (size x0.9 to 1.1, any turn, the same tints, a window on 35 % of the walls long and high enough), only which element gets which value
+  changed once. The old-town houses' "burnt" draws, which kept the shared sequence in step, are gone.
+- **Everything else has a generator of its own,** seeded from its name (`stream(name)`): each texture (from its size and
+  drawing code, or a salt where one code draws several: `glowTex`, `speckled`, each church tower's ashlar by its
+  position), the 34 sky clouds (`clouds`, laid round a fixed middle, game x 55 / z 105, the map's middle in November
+  2026, so a change in the map's extent doesn't move them), the cloud server room's deck, and the feathers at play time.
+  `aside()` is gone: there is no shared sequence left to protect. `rng()` still exists for the texture code and draws
+  from the texture being drawn; a draw outside any texture is counted in `rng.loose` (the debug build's
+  `__sp.variety.loose`), which is 0.
+- The traffic (trams, buses, trains, boats) draws no random numbers; rain and snow particles, the fountains' jet phases
+  and the items' bobbing phase still use `Math.random()`, as before.
+- Checked by building the page with two data sets (the current data and the smaller map shipped before the south strip):
+  all 13,485 trees standing at the same place with the same attributes in both got identical values, the clouds and all
+  7,306 trees of 1615 were identical (with the old shared sequence: none).
